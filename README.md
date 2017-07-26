@@ -28,6 +28,7 @@ Then use the previously downloaded xchtmlreport tool to create the HTML report
 
 ``` bash
 $ ./xchtmlreport -r TestResults
+Report successfully created at TestResults/index.html
 ```
 
 ## Contribution
