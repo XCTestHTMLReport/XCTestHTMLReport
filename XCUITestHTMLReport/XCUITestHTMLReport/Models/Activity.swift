@@ -35,8 +35,15 @@ struct Activity: HTML
 {
     var uuid: String
     var attachments: [Attachment]?
-    var startTime: TimeInterval
-    var finishTime: TimeInterval
+    var startTime: TimeInterval?
+    var finishTime: TimeInterval?
+    var totalTime: TimeInterval {
+        if let start = startTime, let finish = finishTime {
+            return finish - start
+        }
+
+        return 0.0
+    }
     var hasScreenshotData: Bool?
     var title: String
     var subActivities: [Activity]?
@@ -44,8 +51,8 @@ struct Activity: HTML
     
     init(dict: [String : Any]) {
         uuid = dict["UUID"] as! String
-        startTime = dict["StartTimeInterval"] as! TimeInterval
-        finishTime = dict["FinishTimeInterval"] as! TimeInterval
+        startTime = dict["StartTimeInterval"] as? TimeInterval
+        finishTime = dict["FinishTimeInterval"] as? TimeInterval
         title = dict["Title"] as! String
         hasScreenshotData = dict["HasScreenshotData"] as? Bool
 
@@ -73,7 +80,7 @@ struct Activity: HTML
         return [
             "UUID": uuid,
             "TITLE": title,
-            "TIME": String(format: "%.2f", finishTime - startTime),
+            "TIME": String(format: "%.2f", totalTime),
             "ACTIVITY_TYPE_CLASS": type?.cssClass ?? "",
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? "no-drop-down" : "",
             "SUB_ACTIVITY": subActivities?.reduce("", { (accumulator: String, activity: Activity) -> String in
