@@ -2,6 +2,8 @@
 
 Xcode-like HTML report for UI Tests
 
+![screenshot](http://i.imgur.com/oD9jsk2.jpg)
+
 ## Installation
 
 Simply go to your iOS project and download the latest version of XCUITestHTMLReport
