@@ -66,6 +66,9 @@ struct HTMLTemplates
       font-size: 12px;
       color: #333;
       line-height: 18px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     #info-sections ul li h3 {
