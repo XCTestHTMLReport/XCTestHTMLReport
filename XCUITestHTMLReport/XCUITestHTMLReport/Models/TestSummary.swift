@@ -46,7 +46,10 @@ struct TestSummary: HTML
         return status
     }
 
-    init(dict: [String : Any]) {
+    init(dict: [String : Any])
+    {
+        Logger.substep("Parsing TestSummary")
+        
         uuid = NSUUID().uuidString
         testName = dict["TestName"] as! String
         let rawTests = dict["Tests"] as! [[String: Any]]

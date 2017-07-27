@@ -10,16 +10,9 @@ import Foundation
 
 class Argument
 {
-    class func validate(_ value: String, forType type: ArgumentType) -> Bool
-    {
-        switch type {
-        case .path:
-            return FileManager.default.fileExists(atPath: value)
-        }
-    }
-
     enum ArgumentType: String {
         case path = "path"
+        case bool = "bool"
     }
 
     let shortFlag: String
@@ -28,8 +21,6 @@ class Argument
     let helpMessage: String
     let type: ArgumentType
     let required: Bool
-
-    var value: String?
 
     var usageString: String {
         guard required else {
@@ -51,5 +42,31 @@ class Argument
         self.helpMessage = helpMessage
         self.type = type
         self.required = required
+    }
+}
+
+class ValueArgument: Argument
+{
+    var value: String?
+
+    class func validate(_ value: String, forType type: ArgumentType) -> (Bool, String?)
+    {
+        switch type {
+        case .path:
+            return (FileManager.default.fileExists(atPath: value), "Invalid path: \(value)")
+        default:
+            return (false, "")
+        }
+    }
+}
+
+class BlockArgument: Argument
+{
+    var block:  () -> ()
+
+    init(_ shortFlag: String, _ optionName: String?, required: Bool, helpMessage: String, block: @escaping () -> ())
+    {
+        self.block = block
+        super.init(.bool, shortFlag, optionName, required: required, helpMessage: helpMessage)
     }
 }
