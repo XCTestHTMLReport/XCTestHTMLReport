@@ -86,10 +86,6 @@
             argument = "-r ../../TestResults"
             isEnabled = "YES">
          </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-r ../../results"
-            isEnabled = "NO">
-         </CommandLineArgument>
       </CommandLineArguments>
       <AdditionalOptions>
       </AdditionalOptions>
