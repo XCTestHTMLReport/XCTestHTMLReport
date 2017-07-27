@@ -429,6 +429,7 @@ struct HTMLTemplates
       </header>
       <div id=\"container\">
         <div id=\"left-sidebar\" class=\"sidebar\">
+          <div class=\"resizer\"></div>
           <ul id=\"info-sections\">
             <li class=\"section\">
               <h4>Device</h4>
