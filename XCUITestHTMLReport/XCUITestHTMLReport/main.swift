@@ -8,18 +8,19 @@
 
 import Foundation
 
-let arguments = Arguments(arguments: CommandLine.arguments)
+var result = Argument(.path, "r", "resultBundePath", required: true, helpMessage: "Path to the result bundle")
+var command = Command(arguments: [result])
 
-guard arguments.results != nil else {
-    print("Argument -r is missing")
+if !command.isValid {
+    print(command.usage)
     exit(EXIT_FAILURE)
 }
 
-let summary = Summary(root: arguments.results!)
+let summary = Summary(root: result.value!)
 let activityLogs = summary.activityLogs
 
 do {
-    try activityLogs.write(toFile: "\(arguments.results!)/logs.txt", atomically: false, encoding: .utf8)
+    try activityLogs.write(toFile: "\(result.value!)/logs.txt", atomically: false, encoding: .utf8)
 }
 catch {
     print("An error has occured while create the activity log file")
@@ -28,7 +29,7 @@ catch {
 let html = summary.html
 
 do {
-    let path = "\(arguments.results!)/index.html"
+    let path = "\(result.value!)/index.html"
     try html.write(toFile: path, atomically: false, encoding: .utf8)
     print("Report successfully created at \(path)")
 }

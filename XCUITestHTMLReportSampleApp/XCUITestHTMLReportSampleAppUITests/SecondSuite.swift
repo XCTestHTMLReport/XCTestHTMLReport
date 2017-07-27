@@ -43,6 +43,8 @@ class SecondSuite: XCTestCase {
             activity.add(logsAttachement)
         }
 
+        XCUIApplication().children(matching: .sheet)
+
         XCTContext.runActivity(named: "Image Attachment") { (activity) in
             let path = Bundle(for: SecondSuite.self).path(forResource: "iPhone", ofType: "png")
             let image = UIImage(contentsOfFile: path!)!
