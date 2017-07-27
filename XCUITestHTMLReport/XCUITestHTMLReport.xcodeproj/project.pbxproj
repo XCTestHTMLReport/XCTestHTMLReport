@@ -21,6 +21,7 @@
 		F30667651F2A1BEC00EDE682 /* String+Rainbow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F306674F1F2A1BB900EDE682 /* String+Rainbow.swift */; };
 		F324B4991F22359500B5B8B4 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F324B4981F22359500B5B8B4 /* main.swift */; };
 		F324B4A01F22383D00B5B8B4 /* Argument.swift in Sources */ = {isa = PBXBuildFile; fileRef = F324B49F1F22383D00B5B8B4 /* Argument.swift */; };
+		F340F8181F2A37B000AECEE2 /* TimeInterval+Time.swift in Sources */ = {isa = PBXBuildFile; fileRef = F340F8171F2A37B000AECEE2 /* TimeInterval+Time.swift */; };
 		F34A8F0D1F29934F00831771 /* Command.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34A8F0C1F29934F00831771 /* Command.swift */; };
 		F3AB011B1F23650500334580 /* Activity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB011A1F23650500334580 /* Activity.swift */; };
 		F3AB011D1F23659D00334580 /* Attachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB011C1F23659D00334580 /* Attachment.swift */; };
@@ -62,6 +63,7 @@
 		F324B4951F22359500B5B8B4 /* XCUITestHTMLReport */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = XCUITestHTMLReport; sourceTree = BUILT_PRODUCTS_DIR; };
 		F324B4981F22359500B5B8B4 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		F324B49F1F22383D00B5B8B4 /* Argument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Argument.swift; sourceTree = "<group>"; };
+		F340F8171F2A37B000AECEE2 /* TimeInterval+Time.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TimeInterval+Time.swift"; sourceTree = "<group>"; };
 		F34A8F0C1F29934F00831771 /* Command.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Command.swift; sourceTree = "<group>"; };
 		F39729091F24759D006B1EF3 /* screenshot.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = screenshot.html; sourceTree = "<group>"; };
 		F3AB011A1F23650500334580 /* Activity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Activity.swift; sourceTree = "<group>"; };
@@ -133,12 +135,21 @@
 				F324B4981F22359500B5B8B4 /* main.swift */,
 				F3AB014C1F24600B00334580 /* HTMLTemplates.swift */,
 				F30667371F2A0DE900EDE682 /* Logger.swift */,
+				F340F8161F2A37A100AECEE2 /* Extensions */,
 				F3B7EE791F22F1D800E19B57 /* HTML */,
 				F3C0589F1F25E73C00EF51E1 /* Libraries */,
 				F3AB014B1F245F2A00334580 /* Models */,
 				F34A8F0B1F29900900831771 /* Protocols */,
 			);
 			path = XCUITestHTMLReport;
+			sourceTree = "<group>";
+		};
+		F340F8161F2A37A100AECEE2 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				F340F8171F2A37B000AECEE2 /* TimeInterval+Time.swift */,
+			);
+			path = Extensions;
 			sourceTree = "<group>";
 		};
 		F34A8F0B1F29900900831771 /* Protocols */ = {
@@ -274,6 +285,7 @@
 				F306675E1F2A1BEC00EDE682 /* BackgroundColor.swift in Sources */,
 				F3AB011D1F23659D00334580 /* Attachment.swift in Sources */,
 				F324B4A01F22383D00B5B8B4 /* Argument.swift in Sources */,
+				F340F8181F2A37B000AECEE2 /* TimeInterval+Time.swift in Sources */,
 				F324B4991F22359500B5B8B4 /* main.swift in Sources */,
 				F306675F1F2A1BEC00EDE682 /* CodesParser.swift in Sources */,
 				F30667631F2A1BEC00EDE682 /* OutputTarget.swift in Sources */,
