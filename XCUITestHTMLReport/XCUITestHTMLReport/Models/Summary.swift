@@ -11,39 +11,44 @@ import Foundation
 struct Summary: HTML
 {
     private let filename = "action_TestSummaries.plist"
+    private let activityLogsFilename = "action.xcactivitylog"
 
     var runDestination: RunDestination
     var testSummaries: [TestSummary]
-    var activityLogs: String
+    var activityLogs: String?
 
     init(root: String)
     {
+        Logger.step("Parsing Test Summaries")
         let enumerator = FileManager.default.enumerator(atPath: root)
 
         guard enumerator != nil else {
-            print("Could not find anyfiles")
+            Logger.error("Failed to create enumerator for path \(root)")
             exit(EXIT_FAILURE)
         }
 
         let paths = enumerator?.allObjects as! [String]
+
+        Logger.substep("Searching for \(filename) in \(root)")
         let plistPath = paths.filter{$0.contains("action_TestSummaries.plist")}
 
         if plistPath.count == 0 {
-            print("Could not find action_TestSummaries.plist in \(root)")
+            Logger.error("Failed to find action_TestSummaries.plist in \(root)")
             exit(EXIT_FAILURE)
         }
 
         if plistPath.count > 1 {
-            print("Found multiple action_TestSummaries.plist in \(root)")
+            Logger.error("Found multiple action_TestSummaries.plist in \(root)")
             exit(EXIT_FAILURE)
         }
 
         let testSummariesFullPath = root + "/" + plistPath.first!
+        Logger.substep("Found \(filename) at path: \(testSummariesFullPath)")
 
         let dict = NSDictionary(contentsOfFile: testSummariesFullPath)
 
         guard dict != nil else {
-            print("Failed to parse the content of \(testSummariesFullPath)")
+            Logger.error("Failed to parse the content of \(testSummariesFullPath)")
             exit(EXIT_FAILURE)
         }
 
@@ -51,42 +56,48 @@ struct Summary: HTML
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
         testSummaries = testableSummaries.map { TestSummary(dict: $0) }
 
+        Logger.step("Parsing Activity Logs")
+        Logger.substep("Searching for \(activityLogsFilename) in \(root)")
 
-        let logsPath = paths.filter{$0.contains("action.xcactivitylog")}
+        let logsPath = paths.filter{ $0.contains(activityLogsFilename) }
 
         if logsPath.count == 0 {
-            print("Could not find action.xcactivitylog in \(root)")
-            exit(EXIT_FAILURE)
-        }
-
-        if logsPath.count > 1 {
-            print("Found multiple action.xcactivitylog in \(root)")
-            exit(EXIT_FAILURE)
-        }
-
-        let logsPathFullPath = root + "/" + logsPath.first!
-        let data = NSData(contentsOfFile: logsPathFullPath)
-        let gunzippedData = data!.gunzipped()!
-        let logs = String(data: gunzippedData, encoding: .utf8)!
-
-        let runningTestsRegex = try! NSRegularExpression(pattern: "Running tests...", options: .caseInsensitive)
-        let runningTestsMatches = runningTestsRegex.matches(in: logs, options: [], range: NSRange(location: 0, length: logs.count))
-        let lastRunninTestsMatch = runningTestsMatches.last
-
-        let regex = try! NSRegularExpression(pattern: "Test Suite '.+.xctest' (failed|passed).+\r.+seconds", options: .caseInsensitive)
-        let matches = regex.matches(in: logs, options: [], range: NSRange(location: 0, length: logs.count))
-        let lastMatch = matches.last
-
-        if let matchA = lastRunninTestsMatch, let matchB = lastMatch {
-            let startIndex = matchA.range.location
-            let endIndex = matchB.range.location + matchB.range.length
-            let start = logs.index(logs.startIndex, offsetBy: startIndex)
-            let end = logs.index(logs.startIndex, offsetBy: endIndex)
-            let range = start..<end
-            activityLogs = logs.substring(with: range)
+            Logger.warning("Failed to find \(activityLogsFilename) in \(root). Not appending activity logs to report.")
         } else {
-            activityLogs = ""
+            if logsPath.count > 1 {
+                Logger.warning("Found multiple \(activityLogsFilename) in \(root). Not appending activity logs to report.")
+            } else {
+                let logsPathFullPath = root + "/" + logsPath.first!
+
+                Logger.substep("Found \(logsPathFullPath) at path: \(logsPathFullPath)")
+
+                let data = NSData(contentsOfFile: logsPathFullPath)
+
+                Logger.substep("Gunzipping activity logs")
+                let gunzippedData = data!.gunzipped()!
+                let logs = String(data: gunzippedData, encoding: .utf8)!
+
+                let runningTestsRegex = try! NSRegularExpression(pattern: "Running tests...", options: .caseInsensitive)
+                let runningTestsMatches = runningTestsRegex.matches(in: logs, options: [], range: NSRange(location: 0, length: logs.count))
+                let lastRunninTestsMatch = runningTestsMatches.last
+
+                let regex = try! NSRegularExpression(pattern: "Test Suite '.+.xctest' (failed|passed).+\r.+seconds", options: .caseInsensitive)
+                let matches = regex.matches(in: logs, options: [], range: NSRange(location: 0, length: logs.count))
+                let lastMatch = matches.last
+
+                if let matchA = lastRunninTestsMatch, let matchB = lastMatch {
+                    let startIndex = matchA.range.location
+                    let endIndex = matchB.range.location + matchB.range.length
+                    let start = logs.index(logs.startIndex, offsetBy: startIndex)
+                    let end = logs.index(logs.startIndex, offsetBy: endIndex)
+                    let range = start..<end
+                    activityLogs = logs.substring(with: range)
+                } else {
+                    activityLogs = ""
+                }
+            }
         }
+
     }
 
     // PRAGMA MARK: - HTML

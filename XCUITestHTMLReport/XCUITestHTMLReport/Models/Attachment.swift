@@ -1,4 +1,3 @@
-
 //
 //  Attachment.swift
 //  XCUITestHTMLReport
@@ -38,7 +37,7 @@ struct Attachment: HTML
         if let attachmentType = AttachmentType(rawValue: typeRaw) {
             type = attachmentType
         } else {
-            print("Attachment type is not supported: \(typeRaw)")
+            Logger.warning("Attachment type is not supported: \(typeRaw). Skipping.")
         }
     }
 

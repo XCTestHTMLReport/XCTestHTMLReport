@@ -13,7 +13,10 @@ struct RunDestination
     var name: String
     var targetDevice: TargetDevice
 
-    init(dict: [String : Any]) {
+    init(dict: [String : Any])
+    {
+        Logger.substep("Parsing RunDestination")
+        
         name = dict["Name"] as! String
         targetDevice = TargetDevice(dict: dict["TargetDevice"] as! [String : Any])
     }

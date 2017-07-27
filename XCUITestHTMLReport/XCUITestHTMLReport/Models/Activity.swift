@@ -60,7 +60,7 @@ struct Activity: HTML
         if let activityType = ActivityType(rawValue: rawActivityType) {
             type = activityType
         } else {
-            print("Activity type is not supported: \(rawActivityType)")
+            Logger.warning("Activity type is not supported: \(rawActivityType). Skipping activity: \(title)")
         }
 
         if let rawAttachments = dict["Attachments"] as? [[String : Any]] {
