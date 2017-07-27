@@ -619,7 +619,7 @@ struct HTMLTemplates
     <p class=\"[[ITEM_CLASS]]\">
       <span class=\"icon left drop-down-icon\" onclick=\"toggle(this, '[[UUID]]')\"></span>
       <span class=\"icon left test-icon\"></span>
-      [[NAME]] ([[TIME]]s)
+      [[NAME]] ([[TIME]])
     </p>
     <div class=\"border-bottom\"></div>
     [[SUB_TESTS]]
@@ -633,7 +633,7 @@ struct HTMLTemplates
   <div class=\"activity [[HAS_SUB-ACTIVITIES_CLASS]]\">
     <p class=\"[[ACTIVITY_TYPE_CLASS]]\">
       <span class=\"icon left drop-down-icon\" onclick=\"toggle(this, '[[UUID]]')\"></span>
-      [[TITLE]] ([[TIME]]s)
+      [[TITLE]] ([[TIME]])
     </p>
     <div class=\"border-bottom\"></div>
     <div id=\"attachments-[[UUID]]\" class=\"attachments\">

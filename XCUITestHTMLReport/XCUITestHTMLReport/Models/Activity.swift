@@ -80,7 +80,7 @@ struct Activity: HTML
         return [
             "UUID": uuid,
             "TITLE": title,
-            "TIME": String(format: "%.2f", totalTime),
+            "TIME": totalTime.timeString,
             "ACTIVITY_TYPE_CLASS": type?.cssClass ?? "",
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? "no-drop-down" : "",
             "SUB_ACTIVITY": subActivities?.reduce("", { (accumulator: String, activity: Activity) -> String in

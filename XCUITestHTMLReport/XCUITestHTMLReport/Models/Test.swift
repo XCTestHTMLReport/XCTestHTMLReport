@@ -85,7 +85,7 @@ struct Test: HTML
         return [
             "UUID": uuid,
             "NAME": name,
-            "TIME": String(format: "%.2f", duration),
+            "TIME": duration.timeString,
             "SUB_TESTS": subTests?.reduce("", { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
             }) ?? "",
