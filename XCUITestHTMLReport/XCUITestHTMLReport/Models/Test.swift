@@ -70,7 +70,7 @@ struct Test: HTML
         }
 
         if let rawActivitySummaries = dict["ActivitySummaries"] as? [[String : Any]] {
-            activities = rawActivitySummaries.map { Activity(dict: $0) }
+            activities = rawActivitySummaries.map { Activity(dict: $0, padding: 20) }
         }
 
         let rawStatus = dict["TestStatus"] as? String ?? ""

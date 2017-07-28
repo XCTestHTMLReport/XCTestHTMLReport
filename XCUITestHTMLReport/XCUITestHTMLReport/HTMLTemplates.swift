@@ -46,8 +46,8 @@ struct HTMLTemplates
     header {
       color: #111;
       background-color: #FFF;
-      position: fixed;
       width: 100%;
+      height: 70px;
     }
 
     #info-sections {
@@ -167,11 +167,7 @@ struct HTMLTemplates
 
     #logs {
       display: none;
-      position: absolute;
-      top: 0;
-      right: 0;
-      left: 0;
-      bottom: 0;
+      flex: 1;
     }
 
     #logs-iframe {
@@ -269,7 +265,6 @@ struct HTMLTemplates
 
     .activities {
       display: none;
-      padding-left: 10px;
     }
 
     .activity p.activity-assertion-failure {
@@ -278,39 +273,39 @@ struct HTMLTemplates
 
     .sub-activities {
       display: none;
-      padding-left: 10px;
     }
 
-    .activity.no-drop-down {
-      padding-left: 18px;
+    .padding {
+      float: left;
+      width: 1px;
+      height:1px;
     }
 
     .activity.no-drop-down .drop-down-icon {
       display: none;
     }
 
+    #tests {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
     #tests-header {
-      z-index: 1;
-      position: absolute;
-      top: 0px;
-      left: 0px;
-      right: 0px;
+      width: 100%;
     }
 
     #tests > .test-summary {
-      z-index: 0;
-      position: absolute;
       overflow-y: scroll;
-      top: 56px;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      width: 100%;
+      flex: 1;
     }
 
     .test p, .activity p {
       color: #111;
       font-size: 12px;
       padding: 4px 4px 4px 52px;
+      border-bottom: 1px solid #EEE;
     }
 
     .test-summary-group {
@@ -336,54 +331,55 @@ struct HTMLTemplates
       z-index: 1000;
     }
 
-    .border-bottom {
-      position: absolute;
-      height: 0px;
-      border-bottom: 1px solid #EEE;
-      left: 0;
-      right: 0;
-    }
-
     #content {
       height: 100%;
+      display: flex;
+      flex-direction: column;
     }
 
     #container {
-      height: 100%;
+      display: flex;
+      flex: 1;
     }
 
     .sidebar {
-      position: fixed;
-      bottom:0;
-      top:70px;
+      position: relative;
       background-color: #F2F2F2;
     }
 
     #left-sidebar {
-      left: 0;
       width: 200px;
       border-right: 1px solid #BBB;
     }
 
     #main-content {
-      position: fixed;
-      top: 70px;
-      bottom: 0;
-      left: 201px;
-      right: 400px;
+      position: relative;
+      flex: 1;
+      display: flex;
     }
 
     #right-sidebar {
-      right: 0;
       width: 400px;
       border-left: 1px solid #BBB;
     }
 
-    #right-sidebar .resizer {
+    .resizer {
+      background-color: red;
       cursor: col-resize;
       position: absolute;
-      width: 3px;
+      width: 6px;
       height: 100%;
+      z-index: 1;
+    }
+
+    #right-sidebar .resizer {
+      left: 0;
+      margin-left: -4px;
+    }
+
+    #left-sidebar .resizer {
+      right: 0;
+      margin-right: -4px;
     }
 
     #right-sidebar h2 {
@@ -402,7 +398,6 @@ struct HTMLTemplates
 
     .attachments {
       display: none;
-      padding-left:16px;
     }
 
     #text-attachment {
@@ -622,7 +617,6 @@ struct HTMLTemplates
       <span class=\"icon left test-icon\"></span>
       [[NAME]] ([[TIME]])
     </p>
-    <div class=\"border-bottom\"></div>
     [[SUB_TESTS]]
     <div id=\"activities-[[UUID]]\" class=\"activities\">
     [[ACTIVITIES]]
@@ -633,10 +627,10 @@ struct HTMLTemplates
   static let activity = """
   <div class=\"activity [[HAS_SUB-ACTIVITIES_CLASS]]\">
     <p class=\"[[ACTIVITY_TYPE_CLASS]]\">
+      <span style=\"margin-left: [[PADDING]]px\" class=\"padding\"></span>
       <span class=\"icon left drop-down-icon\" onclick=\"toggle(this, '[[UUID]]')\"></span>
       [[TITLE]] ([[TIME]])
     </p>
-    <div class=\"border-bottom\"></div>
     <div id=\"attachments-[[UUID]]\" class=\"attachments\">
         [[ATTACHMENTS]]
     </div>
@@ -648,21 +642,19 @@ struct HTMLTemplates
 
   static let screenshot = """
   <p>
-    <span class=\"icon left screenshot-icon\"></span>
+    <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Screenshot
     <span class=\"icon preview-icon\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
     <img class=\"screenshot\" src=\"Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\"/>
   </p>
-  <div class=\"border-bottom\"></div>
   """
 
   static let text = """
   <p>
-    <span class=\"icon left text-icon\"></span>
+    <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Text
     <span class=\"icon preview-icon\" onclick=\"showLog('[[FILENAME]]')\"></span>
   </p>
-  <div class=\"border-bottom\"></div>
   """
 }
 
