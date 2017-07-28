@@ -46,8 +46,8 @@ struct HTMLTemplates
     header {
       color: #111;
       background-color: #FFF;
-      position: fixed;
       width: 100%;
+      height: 70px;
     }
 
     #info-sections {
@@ -167,17 +167,13 @@ struct HTMLTemplates
 
     #logs {
       display: none;
-      position: absolute;
-      top: 0;
-      right: 0;
-      left: 0;
-      bottom: 0;
+      flex: 1;
+      flex-direction: column;
     }
 
     #logs-iframe {
       border: 0;
-      height: 100%;
-      width: 100%;
+      flex: 1;
     }
 
     .icon {
@@ -269,7 +265,6 @@ struct HTMLTemplates
 
     .activities {
       display: none;
-      padding-left: 10px;
     }
 
     .activity p.activity-assertion-failure {
@@ -278,39 +273,39 @@ struct HTMLTemplates
 
     .sub-activities {
       display: none;
-      padding-left: 10px;
     }
 
-    .activity.no-drop-down {
-      padding-left: 18px;
+    .padding {
+      float: left;
+      width: 1px;
+      height:1px;
     }
 
     .activity.no-drop-down .drop-down-icon {
       display: none;
     }
 
-    #tests-header {
-      z-index: 1;
-      position: absolute;
-      top: 0px;
-      left: 0px;
-      right: 0px;
+    #tests {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    #tests-header, #logs-header {
+      width: 100%;
     }
 
     #tests > .test-summary {
-      z-index: 0;
-      position: absolute;
       overflow-y: scroll;
-      top: 56px;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      width: 100%;
+      flex: 1;
     }
 
     .test p, .activity p {
       color: #111;
       font-size: 12px;
       padding: 4px 4px 4px 52px;
+      border-bottom: 1px solid #EEE;
     }
 
     .test-summary-group {
@@ -336,54 +331,54 @@ struct HTMLTemplates
       z-index: 1000;
     }
 
-    .border-bottom {
-      position: absolute;
-      height: 0px;
-      border-bottom: 1px solid #EEE;
-      left: 0;
-      right: 0;
-    }
-
     #content {
       height: 100%;
+      display: flex;
+      flex-direction: column;
     }
 
     #container {
-      height: 100%;
+      display: flex;
+      flex: 1;
     }
 
     .sidebar {
-      position: fixed;
-      bottom:0;
-      top:70px;
+      position: relative;
       background-color: #F2F2F2;
     }
 
     #left-sidebar {
-      left: 0;
       width: 200px;
       border-right: 1px solid #BBB;
     }
 
     #main-content {
-      position: fixed;
-      top: 70px;
-      bottom: 0;
-      left: 201px;
-      right: 400px;
+      position: relative;
+      flex: 1;
+      display: flex;
     }
 
     #right-sidebar {
-      right: 0;
       width: 400px;
       border-left: 1px solid #BBB;
     }
 
-    #right-sidebar .resizer {
+    .resizer {
       cursor: col-resize;
       position: absolute;
-      width: 3px;
+      width: 6px;
       height: 100%;
+      z-index: 1;
+    }
+
+    #right-sidebar .resizer {
+      left: 0;
+      margin-left: -4px;
+    }
+
+    #left-sidebar .resizer {
+      right: 0;
+      margin-right: -4px;
     }
 
     #right-sidebar h2 {
@@ -402,7 +397,6 @@ struct HTMLTemplates
 
     .attachments {
       display: none;
-      padding-left:16px;
     }
 
     #text-attachment {
@@ -429,6 +423,7 @@ struct HTMLTemplates
       </header>
       <div id=\"container\">
         <div id=\"left-sidebar\" class=\"sidebar\">
+          <div class=\"resizer\"></div>
           <ul id=\"info-sections\">
             <li class=\"section\">
               <h4>Device</h4>
@@ -458,9 +453,11 @@ struct HTMLTemplates
             [[TEST_SUMMARIES]]
           </div>
           <div id=\"logs\">
-            <ul class=\"toolbar toggle-toolbar\">
-              <li class=\"selected\">All Messages</li>
-            </ul>
+            <div id=\"logs-header\">
+              <ul class=\"toolbar toggle-toolbar\">
+                <li class=\"selected\">All Messages</li>
+              </ul>
+            </div>
             <iframe id=\"logs-iframe\" src=\"logs.txt\"></iframe>
           </div>
         </div>
@@ -476,20 +473,22 @@ struct HTMLTemplates
     </div>
 
     <script type=\"text/javascript\">
-    var resizer = document.querySelector('#right-sidebar .resizer');
-    var sidebar = document.getElementById('right-sidebar');
-    var main = document.getElementById('main-content');
-    var startX, startWidth, originalWidth;
-    var screenshot = document.getElementById('screenshot');
-    var iframe = document.getElementById('text-attachment');
+    var resizers = document.querySelectorAll('.resizer'),
+    leftSidebar = document.getElementById('left-sidebar'),
+    rightSidebar = document.getElementById('right-sidebar'),
+    sidebar, startX, startWidth, originalWidth,
+    screenshot = document.getElementById('screenshot'),
+    iframe = document.getElementById('text-attachment');
 
-    resizer.addEventListener('mousedown', initDrag, false);
+    for (var i = 0; i < resizers.length; i++) {
+        resizers[i].addEventListener('mousedown', initDrag, false);
+    }
 
     function initDrag(e) {
+      sidebar = e.target.parentElement
       startX = e.clientX;
       startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
       originalSidebarWidth = sidebar.clientWidth;
-      originalContentWidth = main.clientWidth;
       document.documentElement.addEventListener('mousemove', doDrag, false);
       document.documentElement.addEventListener('mouseup', stopDrag, false);
 
@@ -497,12 +496,16 @@ struct HTMLTemplates
     }
 
     function doDrag(e) {
-      console.log(\"doDrag\");
-      var distance = startX - e.clientX,
-      newSidebarWidth = originalSidebarWidth + distance;
-      newContentWidth = originalContentWidth - distance;
+      var newSidebarWidth,
+      distance = startX - e.clientX;
+
+      if (sidebar == leftSidebar) {
+        newSidebarWidth = Math.min(Math.max(originalSidebarWidth - distance, 200), 500);
+      } else if (sidebar == rightSidebar) {
+        newSidebarWidth = Math.min(Math.max(originalSidebarWidth + distance, 300), 800);
+      }
+
       sidebar.style.width = newSidebarWidth + 'px';
-      main.style.width = newContentWidth + 'px';
     }
 
     function stopDrag(e) {
@@ -593,14 +596,14 @@ struct HTMLTemplates
 
     function showLogs(el) {
       selectedElement(el);
-      showElementsWithSelector('#logs');
-      hideElementsWithSelector('#tests');
+      setDisplayToElementsWithSelector('#logs', 'flex')
+      setDisplayToElementsWithSelector('#tests', 'none')
     }
 
     function showTests(el) {
       selectedElement(el);
-      hideElementsWithSelector('#logs');
-      showElementsWithSelector('#tests');
+      setDisplayToElementsWithSelector('#logs', 'none')
+      setDisplayToElementsWithSelector('#tests', 'flex')
     }
     </script>
   </body>
@@ -621,7 +624,6 @@ struct HTMLTemplates
       <span class=\"icon left test-icon\"></span>
       [[NAME]] ([[TIME]])
     </p>
-    <div class=\"border-bottom\"></div>
     [[SUB_TESTS]]
     <div id=\"activities-[[UUID]]\" class=\"activities\">
     [[ACTIVITIES]]
@@ -632,10 +634,10 @@ struct HTMLTemplates
   static let activity = """
   <div class=\"activity [[HAS_SUB-ACTIVITIES_CLASS]]\">
     <p class=\"[[ACTIVITY_TYPE_CLASS]]\">
+      <span style=\"margin-left: [[PADDING]]px\" class=\"padding\"></span>
       <span class=\"icon left drop-down-icon\" onclick=\"toggle(this, '[[UUID]]')\"></span>
       [[TITLE]] ([[TIME]])
     </p>
-    <div class=\"border-bottom\"></div>
     <div id=\"attachments-[[UUID]]\" class=\"attachments\">
         [[ATTACHMENTS]]
     </div>
@@ -647,21 +649,19 @@ struct HTMLTemplates
 
   static let screenshot = """
   <p>
-    <span class=\"icon left screenshot-icon\"></span>
+    <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Screenshot
     <span class=\"icon preview-icon\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
     <img class=\"screenshot\" src=\"Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\"/>
   </p>
-  <div class=\"border-bottom\"></div>
   """
 
   static let text = """
   <p>
-    <span class=\"icon left text-icon\"></span>
+    <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Text
     <span class=\"icon preview-icon\" onclick=\"showLog('[[FILENAME]]')\"></span>
   </p>
-  <div class=\"border-bottom\"></div>
   """
 }
 

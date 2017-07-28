@@ -34,6 +34,7 @@ enum ActivityType: String {
 struct Activity: HTML
 {
     var uuid: String
+    var padding = 0
     var attachments: [Attachment]?
     var startTime: TimeInterval?
     var finishTime: TimeInterval?
@@ -49,7 +50,7 @@ struct Activity: HTML
     var subActivities: [Activity]?
     var type: ActivityType?
     
-    init(dict: [String : Any]) {
+    init(dict: [String : Any], padding: Int) {
         uuid = dict["UUID"] as! String
         startTime = dict["StartTimeInterval"] as? TimeInterval
         finishTime = dict["FinishTimeInterval"] as? TimeInterval
@@ -64,12 +65,14 @@ struct Activity: HTML
         }
 
         if let rawAttachments = dict["Attachments"] as? [[String : Any]] {
-            attachments = rawAttachments.map { Attachment(dict: $0) }
+            attachments = rawAttachments.map { Attachment(dict: $0, padding: padding + 16) }
         }
 
         if let rawSubActivities = dict["SubActivities"] as? [[String : Any]] {
-            subActivities = rawSubActivities.map { Activity(dict: $0) }
+            subActivities = rawSubActivities.map { Activity(dict: $0, padding: padding + 10) }
         }
+
+        self.padding = padding
     }
 
     // PRAGMA MARK: - HTML
@@ -80,6 +83,7 @@ struct Activity: HTML
         return [
             "UUID": uuid,
             "TITLE": title,
+            "PADDING": String(padding),
             "TIME": totalTime.timeString,
             "ACTIVITY_TYPE_CLASS": type?.cssClass ?? "",
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? "no-drop-down" : "",

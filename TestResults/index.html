@@ -42,8 +42,8 @@
   header {
     color: #111;
     background-color: #FFF;
-    position: fixed;
     width: 100%;
+    height: 70px;
   }
 
   #info-sections {
@@ -163,17 +163,13 @@
 
   #logs {
     display: none;
-    position: absolute;
-    top: 0;
-    right: 0;
-    left: 0;
-    bottom: 0;
+    flex: 1;
+    flex-direction: column;
   }
 
   #logs-iframe {
     border: 0;
-    height: 100%;
-    width: 100%;
+    flex: 1;
   }
 
   .icon {
@@ -265,7 +261,6 @@
 
   .activities {
     display: none;
-    padding-left: 10px;
   }
 
   .activity p.activity-assertion-failure {
@@ -274,39 +269,39 @@
 
   .sub-activities {
     display: none;
-    padding-left: 10px;
   }
 
-  .activity.no-drop-down {
-    padding-left: 18px;
+  .padding {
+    float: left;
+    width: 1px;
+    height:1px;
   }
 
   .activity.no-drop-down .drop-down-icon {
     display: none;
   }
 
-  #tests-header {
-    z-index: 1;
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    right: 0px;
+  #tests {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  #tests-header, #logs-header {
+    width: 100%;
   }
 
   #tests > .test-summary {
-    z-index: 0;
-    position: absolute;
     overflow-y: scroll;
-    top: 56px;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    width: 100%;
+    flex: 1;
   }
 
   .test p, .activity p {
     color: #111;
     font-size: 12px;
     padding: 4px 4px 4px 52px;
+    border-bottom: 1px solid #EEE;
   }
 
   .test-summary-group {
@@ -332,54 +327,54 @@
     z-index: 1000;
   }
 
-  .border-bottom {
-    position: absolute;
-    height: 0px;
-    border-bottom: 1px solid #EEE;
-    left: 0;
-    right: 0;
-  }
-
   #content {
     height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   #container {
-    height: 100%;
+    display: flex;
+    flex: 1;
   }
 
   .sidebar {
-    position: fixed;
-    bottom:0;
-    top:70px;
+    position: relative;
     background-color: #F2F2F2;
   }
 
   #left-sidebar {
-    left: 0;
     width: 200px;
     border-right: 1px solid #BBB;
   }
 
   #main-content {
-    position: fixed;
-    top: 70px;
-    bottom: 0;
-    left: 201px;
-    right: 400px;
+    position: relative;
+    flex: 1;
+    display: flex;
   }
 
   #right-sidebar {
-    right: 0;
     width: 400px;
     border-left: 1px solid #BBB;
   }
 
-  #right-sidebar .resizer {
+  .resizer {
     cursor: col-resize;
     position: absolute;
-    width: 3px;
+    width: 6px;
     height: 100%;
+    z-index: 1;
+  }
+
+  #right-sidebar .resizer {
+    left: 0;
+    margin-left: -4px;
+  }
+
+  #left-sidebar .resizer {
+    right: 0;
+    margin-right: -4px;
   }
 
   #right-sidebar h2 {
@@ -398,7 +393,6 @@
 
   .attachments {
     display: none;
-    padding-left:16px;
   }
 
   #text-attachment {
@@ -425,6 +419,7 @@
     </header>
     <div id="container">
       <div id="left-sidebar" class="sidebar">
+        <div class="resizer"></div>
         <ul id="info-sections">
           <li class="section">
             <h4>Device</h4>
@@ -451,109 +446,102 @@
               <li>Tests</li>
             </ul>
           </div>
-          <div class="test-summary" id="27911399-2646-4B04-A329-5F12BAF92C62">
+          <div class="test-summary" id="DD7F5D36-1BDD-43D5-B9A4-CD3F1252E5CE">
     <div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, '2B4ECE33-3D80-4E61-8B53-D76954D147DC')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, '6F4491C5-FA10-44B4-9608-B8F19DD0EE57')"></span>
     <span class="icon left test-icon"></span>
-    All tests (25.87s)
+    All tests (25s)
   </p>
-  <div class="border-bottom"></div>
   <div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, '73AB5717-40CC-4304-A4FB-8E6D6E4BC8A7')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, '50C77EB3-A09D-45A2-9340-88CCC35D4671')"></span>
     <span class="icon left test-icon"></span>
-    XCUITestHTMLReportSampleAppUITests.xctest (25.87s)
+    XCUITestHTMLReportSampleAppUITests.xctest (25s)
   </p>
-  <div class="border-bottom"></div>
   <div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, '3845A669-0331-4783-A7F5-AD2BFBC7D257')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, '6409A3C1-9734-4019-A03B-973480913BE1')"></span>
     <span class="icon left test-icon"></span>
-    FirstSuite (13.48s)
+    FirstSuite (13s)
   </p>
-  <div class="border-bottom"></div>
   <div class="test failed">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary">
     <span class="icon left drop-down-icon" onclick="toggle(this, 'D3CD71A2-CE59-4FAF-B36C-7CB3C8A26CDC')"></span>
     <span class="icon left test-icon"></span>
-    testFirstSuiteButtonDoesNotExist() (7.09s)
+    testFirstSuiteButtonDoesNotExist() (7s)
   </p>
-  <div class="border-bottom"></div>
   
   <div id="activities-D3CD71A2-CE59-4FAF-B36C-7CB3C8A26CDC" class="activities">
   <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'B506940F-DADD-495A-955B-7B9FE6EACB33')"></span>
-    Start Test at 2017-07-27 23:37:19.456 (0.21s)
+    Start Test at 2017-07-27 23:37:19.456 (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-B506940F-DADD-495A-955B-7B9FE6EACB33" class="attachments">
       <p>
-  <span class="icon left screenshot-icon"></span>
+  <span class="icon left screenshot-icon" style="margin-left: 36px"></span>
   Screenshot
   <span class="icon preview-icon" onclick="showScreenshot('Screenshot_B506940F-DADD-495A-955B-7B9FE6EACB33.png')"></span>
   <img class="screenshot" src="Attachments/Screenshot_B506940F-DADD-495A-955B-7B9FE6EACB33.png" id="screenshot-Screenshot_B506940F-DADD-495A-955B-7B9FE6EACB33.png"/>
 </p>
-<div class="border-bottom"></div>
   </div>
   <div id="activities-B506940F-DADD-495A-955B-7B9FE6EACB33" class="sub-activities">
       
   </div>
 </div><div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '0223F6F3-6C28-44F5-AF7B-9BD47C3A7C38')"></span>
-    Set Up (6.52s)
+    Set Up (6s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-0223F6F3-6C28-44F5-AF7B-9BD47C3A7C38" class="attachments">
       
   </div>
   <div id="activities-0223F6F3-6C28-44F5-AF7B-9BD47C3A7C38" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 30px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '5E5ACEAE-A367-443C-AE5A-3F2B5C7B5D13')"></span>
-    Open com.tito.XCUITestHTMLReportSampleApp (6.51s)
+    Open com.tito.XCUITestHTMLReportSampleApp (6s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-5E5ACEAE-A367-443C-AE5A-3F2B5C7B5D13" class="attachments">
       <p>
-  <span class="icon left screenshot-icon"></span>
+  <span class="icon left screenshot-icon" style="margin-left: 46px"></span>
   Screenshot
   <span class="icon preview-icon" onclick="showScreenshot('Screenshot_5E5ACEAE-A367-443C-AE5A-3F2B5C7B5D13.png')"></span>
   <img class="screenshot" src="Attachments/Screenshot_5E5ACEAE-A367-443C-AE5A-3F2B5C7B5D13.png" id="screenshot-Screenshot_5E5ACEAE-A367-443C-AE5A-3F2B5C7B5D13.png"/>
 </p>
-<div class="border-bottom"></div>
   </div>
   <div id="activities-5E5ACEAE-A367-443C-AE5A-3F2B5C7B5D13" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 40px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'FF3544D6-9E99-408B-BBCD-A90B7B1D6ADA')"></span>
-    Launch com.tito.XCUITestHTMLReportSampleApp (6.42s)
+    Launch com.tito.XCUITestHTMLReportSampleApp (6s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-FF3544D6-9E99-408B-BBCD-A90B7B1D6ADA" class="attachments">
       
   </div>
   <div id="activities-FF3544D6-9E99-408B-BBCD-A90B7B1D6ADA" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 50px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '4FCADC0E-FA2D-4999-A0F7-7406C20F4C43')"></span>
-    Wait for com.tito.XCUITestHTMLReportSampleApp to idle (0.64s)
+    Wait for com.tito.XCUITestHTMLReportSampleApp to idle (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-4FCADC0E-FA2D-4999-A0F7-7406C20F4C43" class="attachments">
       <p>
-  <span class="icon left screenshot-icon"></span>
+  <span class="icon left screenshot-icon" style="margin-left: 66px"></span>
   Screenshot
   <span class="icon preview-icon" onclick="showScreenshot('Screenshot_4FCADC0E-FA2D-4999-A0F7-7406C20F4C43.png')"></span>
   <img class="screenshot" src="Attachments/Screenshot_4FCADC0E-FA2D-4999-A0F7-7406C20F4C43.png" id="screenshot-Screenshot_4FCADC0E-FA2D-4999-A0F7-7406C20F4C43.png"/>
 </p>
-<div class="border-bottom"></div>
   </div>
   <div id="activities-4FCADC0E-FA2D-4999-A0F7-7406C20F4C43" class="sub-activities">
       
@@ -566,10 +554,10 @@
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-assertion-failure">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '7A659B58-E785-4EF3-BE49-365C74521483')"></span>
-    Assertion Failure: FirstSuite.swift:36: XCTAssertTrue failed - Button exists (0.00s)
+    Assertion Failure: FirstSuite.swift:36: XCTAssertTrue failed - Button exists (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-7A659B58-E785-4EF3-BE49-365C74521483" class="attachments">
       
   </div>
@@ -578,10 +566,10 @@
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'EC6CE940-EAAA-4C33-A8FC-2C508E4675A6')"></span>
-    Tear Down (0.00s)
+    Tear Down (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-EC6CE940-EAAA-4C33-A8FC-2C508E4675A6" class="attachments">
       
   </div>
@@ -595,17 +583,16 @@
   <p class="test-summary">
     <span class="icon left drop-down-icon" onclick="toggle(this, 'C2A64B3E-8D00-4E7B-9B4C-804EABF189F7')"></span>
     <span class="icon left test-icon"></span>
-    testFirstSuiteButtonExists() (6.39s)
+    testFirstSuiteButtonExists() (6s)
   </p>
-  <div class="border-bottom"></div>
   
   <div id="activities-C2A64B3E-8D00-4E7B-9B4C-804EABF189F7" class="activities">
   <div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'E1E91E91-7C46-4594-B7C9-1ED137A1EF4B')"></span>
-    Start Test at 2017-07-27 23:37:26.543 (0.02s)
+    Start Test at 2017-07-27 23:37:26.543 (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-E1E91E91-7C46-4594-B7C9-1ED137A1EF4B" class="attachments">
       
   </div>
@@ -614,10 +601,10 @@
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-delete-attachment">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '4B64B6BF-5189-42E1-A39B-D034AEAD3ADE')"></span>
-    Some screenshots were deleted because your scheme is configured to remove automatic screenshots on success. (0.00s)
+    Some screenshots were deleted because your scheme is configured to remove automatic screenshots on success. (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-4B64B6BF-5189-42E1-A39B-D034AEAD3ADE" class="attachments">
       
   </div>
@@ -626,40 +613,40 @@
   </div>
 </div><div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'A2D8106F-1839-4A43-B49C-66A61054D643')"></span>
-    Set Up (6.04s)
+    Set Up (6s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-A2D8106F-1839-4A43-B49C-66A61054D643" class="attachments">
       
   </div>
   <div id="activities-A2D8106F-1839-4A43-B49C-66A61054D643" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 30px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'CA304A4D-B1C4-4E02-927A-41E4285BDD4A')"></span>
-    Open com.tito.XCUITestHTMLReportSampleApp (5.94s)
+    Open com.tito.XCUITestHTMLReportSampleApp (5s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-CA304A4D-B1C4-4E02-927A-41E4285BDD4A" class="attachments">
       
   </div>
   <div id="activities-CA304A4D-B1C4-4E02-927A-41E4285BDD4A" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 40px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '7E4D15D9-9770-438A-BADC-AB8708AC692A')"></span>
-    Launch com.tito.XCUITestHTMLReportSampleApp (5.91s)
+    Launch com.tito.XCUITestHTMLReportSampleApp (5s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-7E4D15D9-9770-438A-BADC-AB8708AC692A" class="attachments">
       
   </div>
   <div id="activities-7E4D15D9-9770-438A-BADC-AB8708AC692A" class="sub-activities">
       <div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 50px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'A5B04D9C-99B2-46CA-A9FA-FB65F15B7B18')"></span>
-    Terminate com.tito.XCUITestHTMLReportSampleApp:4084 (0.35s)
+    Terminate com.tito.XCUITestHTMLReportSampleApp:4084 (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-A5B04D9C-99B2-46CA-A9FA-FB65F15B7B18" class="attachments">
       
   </div>
@@ -668,10 +655,10 @@
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 50px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'A4E44CF2-7795-41A3-ACCA-2DA8E36D1A4C')"></span>
-    Wait for com.tito.XCUITestHTMLReportSampleApp to idle (0.75s)
+    Wait for com.tito.XCUITestHTMLReportSampleApp to idle (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-A4E44CF2-7795-41A3-ACCA-2DA8E36D1A4C" class="attachments">
       
   </div>
@@ -686,10 +673,10 @@
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '8570515F-07F4-4200-AFA7-EF02EFB92BD6')"></span>
-    Tear Down (0.00s)
+    Tear Down (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-8570515F-07F4-4200-AFA7-EF02EFB92BD6" class="attachments">
       
   </div>
@@ -699,113 +686,107 @@
 </div>
   </div>
 </div>
-  <div id="activities-3845A669-0331-4783-A7F5-AD2BFBC7D257" class="activities">
+  <div id="activities-6409A3C1-9734-4019-A03B-973480913BE1" class="activities">
   
   </div>
 </div><div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, '17F0ACA2-E089-4C5F-8597-D65C00C9BD39')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, 'EE43F3CE-3465-4FB2-8CE9-5343B6754697')"></span>
     <span class="icon left test-icon"></span>
-    SecondSuite (12.39s)
+    SecondSuite (12s)
   </p>
-  <div class="border-bottom"></div>
   <div class="test failed">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary">
     <span class="icon left drop-down-icon" onclick="toggle(this, 'EF1AAED9-10B7-4481-B3D9-0411B2C21B35')"></span>
     <span class="icon left test-icon"></span>
-    testSecondSuiteButtonDoesNotExist() (6.65s)
+    testSecondSuiteButtonDoesNotExist() (6s)
   </p>
-  <div class="border-bottom"></div>
   
   <div id="activities-EF1AAED9-10B7-4481-B3D9-0411B2C21B35" class="activities">
   <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '48890D73-AEE9-4F66-90EA-7A19BCF37F9A')"></span>
-    Start Test at 2017-07-27 23:37:32.933 (0.02s)
+    Start Test at 2017-07-27 23:37:32.933 (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-48890D73-AEE9-4F66-90EA-7A19BCF37F9A" class="attachments">
       <p>
-  <span class="icon left screenshot-icon"></span>
+  <span class="icon left screenshot-icon" style="margin-left: 36px"></span>
   Screenshot
   <span class="icon preview-icon" onclick="showScreenshot('Screenshot_48890D73-AEE9-4F66-90EA-7A19BCF37F9A.png')"></span>
   <img class="screenshot" src="Attachments/Screenshot_48890D73-AEE9-4F66-90EA-7A19BCF37F9A.png" id="screenshot-Screenshot_48890D73-AEE9-4F66-90EA-7A19BCF37F9A.png"/>
 </p>
-<div class="border-bottom"></div>
   </div>
   <div id="activities-48890D73-AEE9-4F66-90EA-7A19BCF37F9A" class="sub-activities">
       
   </div>
 </div><div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '5E25AF04-778B-4E37-9866-E27A833F3EF6')"></span>
-    Set Up (6.30s)
+    Set Up (6s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-5E25AF04-778B-4E37-9866-E27A833F3EF6" class="attachments">
       
   </div>
   <div id="activities-5E25AF04-778B-4E37-9866-E27A833F3EF6" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 30px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'D1BD6DEF-78E9-4A87-B5FF-F8319825EC2F')"></span>
-    Open com.tito.XCUITestHTMLReportSampleApp (6.19s)
+    Open com.tito.XCUITestHTMLReportSampleApp (6s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-D1BD6DEF-78E9-4A87-B5FF-F8319825EC2F" class="attachments">
       <p>
-  <span class="icon left screenshot-icon"></span>
+  <span class="icon left screenshot-icon" style="margin-left: 46px"></span>
   Screenshot
   <span class="icon preview-icon" onclick="showScreenshot('Screenshot_D1BD6DEF-78E9-4A87-B5FF-F8319825EC2F.png')"></span>
   <img class="screenshot" src="Attachments/Screenshot_D1BD6DEF-78E9-4A87-B5FF-F8319825EC2F.png" id="screenshot-Screenshot_D1BD6DEF-78E9-4A87-B5FF-F8319825EC2F.png"/>
 </p>
-<div class="border-bottom"></div>
   </div>
   <div id="activities-D1BD6DEF-78E9-4A87-B5FF-F8319825EC2F" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 40px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '510C1CFE-3607-485D-B1FC-2ADF5A89BDB4')"></span>
-    Launch com.tito.XCUITestHTMLReportSampleApp (6.17s)
+    Launch com.tito.XCUITestHTMLReportSampleApp (6s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-510C1CFE-3607-485D-B1FC-2ADF5A89BDB4" class="attachments">
       
   </div>
   <div id="activities-510C1CFE-3607-485D-B1FC-2ADF5A89BDB4" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 50px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '1033ADE3-BA8B-450F-8FC1-80117470FA2E')"></span>
-    Terminate com.tito.XCUITestHTMLReportSampleApp:4092 (0.29s)
+    Terminate com.tito.XCUITestHTMLReportSampleApp:4092 (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-1033ADE3-BA8B-450F-8FC1-80117470FA2E" class="attachments">
       <p>
-  <span class="icon left screenshot-icon"></span>
+  <span class="icon left screenshot-icon" style="margin-left: 66px"></span>
   Screenshot
   <span class="icon preview-icon" onclick="showScreenshot('Screenshot_1033ADE3-BA8B-450F-8FC1-80117470FA2E.png')"></span>
   <img class="screenshot" src="Attachments/Screenshot_1033ADE3-BA8B-450F-8FC1-80117470FA2E.png" id="screenshot-Screenshot_1033ADE3-BA8B-450F-8FC1-80117470FA2E.png"/>
 </p>
-<div class="border-bottom"></div>
   </div>
   <div id="activities-1033ADE3-BA8B-450F-8FC1-80117470FA2E" class="sub-activities">
       
   </div>
 </div><div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 50px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '3E2002E9-C79C-4B2E-B43A-8896CACD0D1D')"></span>
-    Wait for com.tito.XCUITestHTMLReportSampleApp to idle (0.79s)
+    Wait for com.tito.XCUITestHTMLReportSampleApp to idle (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-3E2002E9-C79C-4B2E-B43A-8896CACD0D1D" class="attachments">
       <p>
-  <span class="icon left screenshot-icon"></span>
+  <span class="icon left screenshot-icon" style="margin-left: 66px"></span>
   Screenshot
   <span class="icon preview-icon" onclick="showScreenshot('Screenshot_3E2002E9-C79C-4B2E-B43A-8896CACD0D1D.png')"></span>
   <img class="screenshot" src="Attachments/Screenshot_3E2002E9-C79C-4B2E-B43A-8896CACD0D1D.png" id="screenshot-Screenshot_3E2002E9-C79C-4B2E-B43A-8896CACD0D1D.png"/>
 </p>
-<div class="border-bottom"></div>
   </div>
   <div id="activities-3E2002E9-C79C-4B2E-B43A-8896CACD0D1D" class="sub-activities">
       
@@ -818,10 +799,10 @@
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-assertion-failure">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '87CD48CE-F69F-44F4-A281-9B23361706B9')"></span>
-    Assertion Failure: SecondSuite.swift:58: XCTAssertTrue failed - Button exists (0.00s)
+    Assertion Failure: SecondSuite.swift:58: XCTAssertTrue failed - Button exists (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-87CD48CE-F69F-44F4-A281-9B23361706B9" class="attachments">
       
   </div>
@@ -830,10 +811,10 @@
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '669E1257-B8ED-4DC2-9B7E-19D33C2D6D95')"></span>
-    Tear Down (0.00s)
+    Tear Down (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-669E1257-B8ED-4DC2-9B7E-19D33C2D6D95" class="attachments">
       
   </div>
@@ -847,17 +828,16 @@
   <p class="test-summary">
     <span class="icon left drop-down-icon" onclick="toggle(this, '5ACFE2A7-A957-49CB-AFB0-B480EE83B63D')"></span>
     <span class="icon left test-icon"></span>
-    testSecondSuiteButtonExists() (5.74s)
+    testSecondSuiteButtonExists() (5s)
   </p>
-  <div class="border-bottom"></div>
   
   <div id="activities-5ACFE2A7-A957-49CB-AFB0-B480EE83B63D" class="activities">
   <div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '2E1CC812-0052-4B56-9C13-E73BEB080ABF')"></span>
-    Start Test at 2017-07-27 23:37:39.588 (0.02s)
+    Start Test at 2017-07-27 23:37:39.588 (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-2E1CC812-0052-4B56-9C13-E73BEB080ABF" class="attachments">
       
   </div>
@@ -866,10 +846,10 @@
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-delete-attachment">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '14389462-BB75-4015-A164-D69660B08ACA')"></span>
-    Some screenshots were deleted because your scheme is configured to remove automatic screenshots on success. (0.00s)
+    Some screenshots were deleted because your scheme is configured to remove automatic screenshots on success. (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-14389462-BB75-4015-A164-D69660B08ACA" class="attachments">
       
   </div>
@@ -878,40 +858,40 @@
   </div>
 </div><div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '09807E27-925D-4AE6-A785-B9CE77F17255')"></span>
-    Set Up (5.33s)
+    Set Up (5s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-09807E27-925D-4AE6-A785-B9CE77F17255" class="attachments">
       
   </div>
   <div id="activities-09807E27-925D-4AE6-A785-B9CE77F17255" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 30px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '9A51246C-C58C-4B35-8836-E9BD64F86C59')"></span>
-    Open com.tito.XCUITestHTMLReportSampleApp (5.23s)
+    Open com.tito.XCUITestHTMLReportSampleApp (5s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-9A51246C-C58C-4B35-8836-E9BD64F86C59" class="attachments">
       
   </div>
   <div id="activities-9A51246C-C58C-4B35-8836-E9BD64F86C59" class="sub-activities">
       <div class="activity ">
   <p class="activity-internal">
+    <span style="margin-left: 40px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '87DAD8BD-36A9-4B7B-90D6-05B7A6B54AE2')"></span>
-    Launch com.tito.XCUITestHTMLReportSampleApp (5.20s)
+    Launch com.tito.XCUITestHTMLReportSampleApp (5s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-87DAD8BD-36A9-4B7B-90D6-05B7A6B54AE2" class="attachments">
       
   </div>
   <div id="activities-87DAD8BD-36A9-4B7B-90D6-05B7A6B54AE2" class="sub-activities">
       <div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 50px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '435366D8-E916-418E-A805-3F7470B81BD3')"></span>
-    Terminate com.tito.XCUITestHTMLReportSampleApp:4097 (0.28s)
+    Terminate com.tito.XCUITestHTMLReportSampleApp:4097 (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-435366D8-E916-418E-A805-3F7470B81BD3" class="attachments">
       
   </div>
@@ -920,10 +900,10 @@
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 50px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, 'A6C274E9-C101-4384-B930-F7689C24FC65')"></span>
-    Wait for com.tito.XCUITestHTMLReportSampleApp to idle (0.18s)
+    Wait for com.tito.XCUITestHTMLReportSampleApp to idle (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-A6C274E9-C101-4384-B930-F7689C24FC65" class="attachments">
       
   </div>
@@ -938,45 +918,43 @@
   </div>
 </div><div class="activity ">
   <p class="activity-user-created">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '9F482464-9D1D-4CFC-9D87-BCD69C95DA09')"></span>
-    Text Attachment (0.00s)
+    Text Attachment (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-9F482464-9D1D-4CFC-9D87-BCD69C95DA09" class="attachments">
       <p>
-  <span class="icon left text-icon"></span>
+  <span class="icon left text-icon" style="margin-left: 36px"></span>
   Text
   <span class="icon preview-icon" onclick="showLog('public.plain-text_1_9F482464-9D1D-4CFC-9D87-BCD69C95DA09.txt')"></span>
 </p>
-<div class="border-bottom"></div>
   </div>
   <div id="activities-9F482464-9D1D-4CFC-9D87-BCD69C95DA09" class="sub-activities">
       
   </div>
 </div><div class="activity ">
   <p class="activity-user-created">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '724BFFA7-B469-4D34-A121-B779BAC82D5F')"></span>
-    Image Attachment (0.06s)
+    Image Attachment (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-724BFFA7-B469-4D34-A121-B779BAC82D5F" class="attachments">
       <p>
-  <span class="icon left screenshot-icon"></span>
+  <span class="icon left screenshot-icon" style="margin-left: 36px"></span>
   Screenshot
   <span class="icon preview-icon" onclick="showScreenshot('public.png_1_724BFFA7-B469-4D34-A121-B779BAC82D5F.png')"></span>
   <img class="screenshot" src="Attachments/public.png_1_724BFFA7-B469-4D34-A121-B779BAC82D5F.png" id="screenshot-public.png_1_724BFFA7-B469-4D34-A121-B779BAC82D5F.png"/>
 </p>
-<div class="border-bottom"></div>
   </div>
   <div id="activities-724BFFA7-B469-4D34-A121-B779BAC82D5F" class="sub-activities">
       
   </div>
 </div><div class="activity no-drop-down">
   <p class="activity-internal">
+    <span style="margin-left: 20px" class="padding"></span>
     <span class="icon left drop-down-icon" onclick="toggle(this, '2DD38871-AAE8-4180-A9FA-6AFAAAA4F778')"></span>
-    Tear Down (0.00s)
+    Tear Down (0s)
   </p>
-  <div class="border-bottom"></div>
   <div id="attachments-2DD38871-AAE8-4180-A9FA-6AFAAAA4F778" class="attachments">
       
   </div>
@@ -986,24 +964,26 @@
 </div>
   </div>
 </div>
-  <div id="activities-17F0ACA2-E089-4C5F-8597-D65C00C9BD39" class="activities">
+  <div id="activities-EE43F3CE-3465-4FB2-8CE9-5343B6754697" class="activities">
   
   </div>
 </div>
-  <div id="activities-73AB5717-40CC-4304-A4FB-8E6D6E4BC8A7" class="activities">
+  <div id="activities-50C77EB3-A09D-45A2-9340-88CCC35D4671" class="activities">
   
   </div>
 </div>
-  <div id="activities-2B4ECE33-3D80-4E61-8B53-D76954D147DC" class="activities">
+  <div id="activities-6F4491C5-FA10-44B4-9608-B8F19DD0EE57" class="activities">
   
   </div>
 </div>
 </div>
         </div>
         <div id="logs">
-          <ul class="toolbar toggle-toolbar">
-            <li class="selected">All Messages</li>
-          </ul>
+          <div id="logs-header">
+            <ul class="toolbar toggle-toolbar">
+              <li class="selected">All Messages</li>
+            </ul>
+          </div>
           <iframe id="logs-iframe" src="logs.txt"></iframe>
         </div>
       </div>
@@ -1019,20 +999,22 @@
   </div>
 
   <script type="text/javascript">
-  var resizer = document.querySelector('#right-sidebar .resizer');
-  var sidebar = document.getElementById('right-sidebar');
-  var main = document.getElementById('main-content');
-  var startX, startWidth, originalWidth;
-  var screenshot = document.getElementById('screenshot');
-  var iframe = document.getElementById('text-attachment');
+  var resizers = document.querySelectorAll('.resizer'),
+  leftSidebar = document.getElementById('left-sidebar'),
+  rightSidebar = document.getElementById('right-sidebar'),
+  sidebar, startX, startWidth, originalWidth,
+  screenshot = document.getElementById('screenshot'),
+  iframe = document.getElementById('text-attachment');
 
-  resizer.addEventListener('mousedown', initDrag, false);
+  for (var i = 0; i < resizers.length; i++) {
+      resizers[i].addEventListener('mousedown', initDrag, false);
+  }
 
   function initDrag(e) {
+    sidebar = e.target.parentElement
     startX = e.clientX;
     startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
     originalSidebarWidth = sidebar.clientWidth;
-    originalContentWidth = main.clientWidth;
     document.documentElement.addEventListener('mousemove', doDrag, false);
     document.documentElement.addEventListener('mouseup', stopDrag, false);
 
@@ -1040,12 +1022,16 @@
   }
 
   function doDrag(e) {
-    console.log("doDrag");
-    var distance = startX - e.clientX,
-    newSidebarWidth = originalSidebarWidth + distance;
-    newContentWidth = originalContentWidth - distance;
+    var newSidebarWidth,
+    distance = startX - e.clientX;
+
+    if (sidebar == leftSidebar) {
+      newSidebarWidth = Math.min(Math.max(originalSidebarWidth - distance, 200), 500);
+    } else if (sidebar == rightSidebar) {
+      newSidebarWidth = Math.min(Math.max(originalSidebarWidth + distance, 300), 800);
+    }
+
     sidebar.style.width = newSidebarWidth + 'px';
-    main.style.width = newContentWidth + 'px';
   }
 
   function stopDrag(e) {
@@ -1136,14 +1122,14 @@
 
   function showLogs(el) {
     selectedElement(el);
-    showElementsWithSelector('#logs');
-    hideElementsWithSelector('#tests');
+    setDisplayToElementsWithSelector('#logs', 'flex')
+    setDisplayToElementsWithSelector('#tests', 'none')
   }
 
   function showTests(el) {
     selectedElement(el);
-    hideElementsWithSelector('#logs');
-    showElementsWithSelector('#tests');
+    setDisplayToElementsWithSelector('#logs', 'none')
+    setDisplayToElementsWithSelector('#tests', 'flex')
   }
   </script>
 </body>
