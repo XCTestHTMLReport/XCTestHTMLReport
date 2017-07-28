@@ -472,20 +472,23 @@ struct HTMLTemplates
     </div>
 
     <script type=\"text/javascript\">
-    var resizer = document.querySelector('#right-sidebar .resizer');
-    var sidebar = document.getElementById('right-sidebar');
-    var main = document.getElementById('main-content');
+    var resizers = document.querySelectorAll('.resizer');
+    var leftSidebar = document.getElementById('left-sidebar');
+    var rightSidebar = document.getElementById('right-sidebar')
+    var sidebar;
     var startX, startWidth, originalWidth;
     var screenshot = document.getElementById('screenshot');
     var iframe = document.getElementById('text-attachment');
 
-    resizer.addEventListener('mousedown', initDrag, false);
+    for (var i = 0; i < resizers.length; i++) {
+        resizers[i].addEventListener('mousedown', initDrag, false);
+    }
 
     function initDrag(e) {
+      sidebar = e.target.parentElement
       startX = e.clientX;
       startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
       originalSidebarWidth = sidebar.clientWidth;
-      originalContentWidth = main.clientWidth;
       document.documentElement.addEventListener('mousemove', doDrag, false);
       document.documentElement.addEventListener('mouseup', stopDrag, false);
 
@@ -493,12 +496,16 @@ struct HTMLTemplates
     }
 
     function doDrag(e) {
-      console.log(\"doDrag\");
-      var distance = startX - e.clientX,
-      newSidebarWidth = originalSidebarWidth + distance;
-      newContentWidth = originalContentWidth - distance;
+      var newSidebarWidth,
+      distance = startX - e.clientX;
+
+      if (sidebar == leftSidebar) {
+        newSidebarWidth = Math.min(Math.max(originalSidebarWidth - distance, 200), 500);
+      } else if (sidebar == rightSidebar) {
+        newSidebarWidth = Math.min(Math.max(originalSidebarWidth + distance, 300), 800);
+      }
+
       sidebar.style.width = newSidebarWidth + 'px';
-      main.style.width = newContentWidth + 'px';
     }
 
     function stopDrag(e) {

@@ -447,25 +447,25 @@
               <li>Tests</li>
             </ul>
           </div>
-          <div class="test-summary" id="4CAB5DD7-B6B2-473B-ADEA-5E56CEB94949">
+          <div class="test-summary" id="5C603038-855A-433C-941E-72773DC6A5C5">
     <div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, '7B0E747C-55C9-476E-B41B-6825B9ED172A')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, 'A6C31B88-CE4C-40CE-BB32-6F3D7A746B84')"></span>
     <span class="icon left test-icon"></span>
     All tests (25s)
   </p>
   <div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, 'E1E172DD-A809-4EF3-AEB2-DE20C391482F')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, '0039B4AA-C370-4666-8E8D-6D0C7A841A22')"></span>
     <span class="icon left test-icon"></span>
     XCUITestHTMLReportSampleAppUITests.xctest (25s)
   </p>
   <div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, 'E8624F1C-7389-4D21-A745-4E4A019EC61F')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, 'FC9A6C62-067B-445A-B6E9-C2DA9DA93587')"></span>
     <span class="icon left test-icon"></span>
     FirstSuite (13s)
   </p>
@@ -687,13 +687,13 @@
 </div>
   </div>
 </div>
-  <div id="activities-E8624F1C-7389-4D21-A745-4E4A019EC61F" class="activities">
+  <div id="activities-FC9A6C62-067B-445A-B6E9-C2DA9DA93587" class="activities">
   
   </div>
 </div><div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, '87F5AD0C-35EF-4C29-A50F-0C151EE817E7')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, '98DE345B-E302-4813-9073-1607BE3ECA13')"></span>
     <span class="icon left test-icon"></span>
     SecondSuite (12s)
   </p>
@@ -965,15 +965,15 @@
 </div>
   </div>
 </div>
-  <div id="activities-87F5AD0C-35EF-4C29-A50F-0C151EE817E7" class="activities">
+  <div id="activities-98DE345B-E302-4813-9073-1607BE3ECA13" class="activities">
   
   </div>
 </div>
-  <div id="activities-E1E172DD-A809-4EF3-AEB2-DE20C391482F" class="activities">
+  <div id="activities-0039B4AA-C370-4666-8E8D-6D0C7A841A22" class="activities">
   
   </div>
 </div>
-  <div id="activities-7B0E747C-55C9-476E-B41B-6825B9ED172A" class="activities">
+  <div id="activities-A6C31B88-CE4C-40CE-BB32-6F3D7A746B84" class="activities">
   
   </div>
 </div>
@@ -998,20 +998,23 @@
   </div>
 
   <script type="text/javascript">
-  var resizer = document.querySelector('#right-sidebar .resizer');
-  var sidebar = document.getElementById('right-sidebar');
-  var main = document.getElementById('main-content');
+  var resizers = document.querySelectorAll('.resizer');
+  var leftSidebar = document.getElementById('left-sidebar');
+  var rightSidebar = document.getElementById('right-sidebar')
+  var sidebar;
   var startX, startWidth, originalWidth;
   var screenshot = document.getElementById('screenshot');
   var iframe = document.getElementById('text-attachment');
 
-  resizer.addEventListener('mousedown', initDrag, false);
+  for (var i = 0; i < resizers.length; i++) {
+      resizers[i].addEventListener('mousedown', initDrag, false);
+  }
 
   function initDrag(e) {
+    sidebar = e.target.parentElement
     startX = e.clientX;
     startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
     originalSidebarWidth = sidebar.clientWidth;
-    originalContentWidth = main.clientWidth;
     document.documentElement.addEventListener('mousemove', doDrag, false);
     document.documentElement.addEventListener('mouseup', stopDrag, false);
 
@@ -1019,12 +1022,16 @@
   }
 
   function doDrag(e) {
-    console.log("doDrag");
-    var distance = startX - e.clientX,
-    newSidebarWidth = originalSidebarWidth + distance;
-    newContentWidth = originalContentWidth - distance;
+    var newSidebarWidth,
+    distance = startX - e.clientX;
+
+    if (sidebar == leftSidebar) {
+      newSidebarWidth = Math.min(Math.max(originalSidebarWidth - distance, 200), 500);
+    } else if (sidebar == rightSidebar) {
+      newSidebarWidth = Math.min(Math.max(originalSidebarWidth + distance, 300), 800);
+    }
+
     sidebar.style.width = newSidebarWidth + 'px';
-    main.style.width = newContentWidth + 'px';
   }
 
   function stopDrag(e) {
