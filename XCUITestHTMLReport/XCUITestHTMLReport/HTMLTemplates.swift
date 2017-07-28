@@ -405,6 +405,15 @@ struct HTMLTemplates
       height: 100%;
     }
 
+    .list-item {
+      background-color: #FFF;
+    }
+
+    .list-item.selected {
+      background-color: #0169D9;
+      color: #FFF;
+    }
+
     </style>
   </head>
 
@@ -483,6 +492,88 @@ struct HTMLTemplates
     for (var i = 0; i < resizers.length; i++) {
         resizers[i].addEventListener('mousedown', initDrag, false);
     }
+
+    var listItems = document.querySelectorAll('.list-item');
+
+    function visibleListItems() {
+      var array = Array.prototype.slice.call(listItems);
+      return array.filter(function(el) { return el.offsetParent != null })
+    }
+
+    var selectedListItem;
+    for (var i = 0; i < listItems.length; i++) {
+      listItems[i].addEventListener('mousedown', listItemMouseDown, false);
+    }
+
+    function listItemMouseDown(e) {
+      selectListItem(e.target);
+    }
+
+    function selectListItem(listItem) {
+      if (selectedListItem) {
+        selectedListItem.classList.remove(\"selected\");
+      }
+
+      selectedListItem = listItem;
+      selectedListItem.classList.add(\"selected\");
+    }
+
+    function keyDown(e) {
+        e = e || window.event;
+        e.preventDefault();
+
+        var items = visibleListItems();
+        if (e.keyCode == 40) {
+          var index = Array.prototype.slice.call(visibleListItems()).indexOf(selectedListItem) + 1;
+          navigateListItems(items.slice(index, items.length));
+        } else if (e.keyCode == 38) {
+          var index = Array.prototype.slice.call(visibleListItems()).indexOf(selectedListItem) + 1;
+          navigateListItems(items.slice(0, index - 1).reverse());
+        } else if (e.keyCode == 39) {
+          unfoldCurrentListItem();
+        } else if (e.keyCode == 37) {
+          foldCurrentListItem();
+        }
+    }
+
+    function foldCurrentListItem() {
+      var dropIcon = selectedListItem.querySelector('.drop-down-icon');
+      if (dropIcon == null) {
+        return;
+      }
+
+      if (dropIcon.classList.contains(\"dropped\")) {
+        selectedListItem.querySelector('.drop-down-icon').onclick()
+      }
+    }
+
+    function unfoldCurrentListItem() {
+      var dropIcon = selectedListItem.querySelector('.drop-down-icon');
+      if (dropIcon == null) {
+        return;
+      }
+
+      if (!dropIcon.classList.contains(\"dropped\")) {
+        selectedListItem.querySelector('.drop-down-icon').onclick()
+      }
+    }
+
+    function navigateListItems(items) {
+      if (selectedListItem) {
+        for (var i = 0; i < items.length; i++) {
+          var item = items[i];
+          if (item.offsetParent) {
+            selectListItem(item);
+            return;
+          }
+        }
+      } else {
+        selectListItem(items[0]);
+      }
+    }
+
+    document.onkeydown = keyDown;
+
 
     function initDrag(e) {
       sidebar = e.target.parentElement
@@ -633,7 +724,7 @@ struct HTMLTemplates
 
   static let activity = """
   <div class=\"activity [[HAS_SUB-ACTIVITIES_CLASS]]\">
-    <p class=\"[[ACTIVITY_TYPE_CLASS]]\">
+    <p class=\"[[ACTIVITY_TYPE_CLASS]] list-item\">
       <span style=\"margin-left: [[PADDING]]px\" class=\"padding\"></span>
       <span class=\"icon left drop-down-icon\" onclick=\"toggle(this, '[[UUID]]')\"></span>
       [[TITLE]] ([[TIME]])
@@ -648,7 +739,7 @@ struct HTMLTemplates
   """
 
   static let screenshot = """
-  <p>
+  <p class=\"attachment list-item\">
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Screenshot
     <span class=\"icon preview-icon\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
@@ -657,7 +748,7 @@ struct HTMLTemplates
   """
 
   static let text = """
-  <p>
+  <p class=\"attachment list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Text
     <span class=\"icon preview-icon\" onclick=\"showLog('[[FILENAME]]')\"></span>

@@ -34,7 +34,7 @@ enum ObjectClass: String {
     var cssClass: String {
         switch self {
         case .testSummary:
-            return "test-summary"
+            return "test-summary list-item"
         case .testSummaryGroup:
             return "test-summary-group"
         case .testableSummary:
