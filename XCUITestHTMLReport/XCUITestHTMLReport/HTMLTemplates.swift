@@ -364,7 +364,6 @@ struct HTMLTemplates
     }
 
     .resizer {
-      background-color: red;
       cursor: col-resize;
       position: absolute;
       width: 6px;
