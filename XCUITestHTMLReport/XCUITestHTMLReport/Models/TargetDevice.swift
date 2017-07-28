@@ -14,7 +14,10 @@ struct TargetDevice
     var osVersion: String
     var model: String
 
-    init(dict: [String : Any]) {
+    init(dict: [String : Any])
+    {
+        Logger.substep("Parsing TargetDevice")
+        
         identifier = dict["Identifier"] as! String
         osVersion = dict["OperatingSystemVersion"] as! String
         model = dict["ModelName"] as! String

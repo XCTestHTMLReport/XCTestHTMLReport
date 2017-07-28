@@ -1,4 +1,3 @@
-
 //
 //  Attachment.swift
 //  XCUITestHTMLReport
@@ -28,18 +27,22 @@ enum AttachmentType: String {
 
 struct Attachment: HTML
 {
+    var padding = 0
     var filename: String
     var type: AttachmentType?
 
-    init(dict: [String : Any]) {
+    init(dict: [String : Any], padding: Int)
+    {
         filename = dict["Filename"] as! String
         let typeRaw = dict["UniformTypeIdentifier"] as! String
 
         if let attachmentType = AttachmentType(rawValue: typeRaw) {
             type = attachmentType
         } else {
-            print("Attachment type is not supported: \(typeRaw)")
+            Logger.warning("Attachment type is not supported: \(typeRaw). Skipping.")
         }
+
+        self.padding = padding
     }
 
     // PRAGMA MARK: - HTML
@@ -60,22 +63,10 @@ struct Attachment: HTML
     }
 
     var htmlPlaceholderValues: [String: String] {
-        if let type = type {
-            switch type {
-            case .png:
-                return [
-                    "FILENAME": filename
-                ]
-            case .text:
-                return [
-                    "FILENAME": filename
-                ]
-            case .unknwown:
-                return [String: String]()
-            }
-        }
-
-        return [String: String]()
+        return [
+            "PADDING": String(padding),
+            "FILENAME": filename
+        ]
     }
 }
 

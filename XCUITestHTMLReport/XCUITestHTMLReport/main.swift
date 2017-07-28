@@ -8,32 +8,46 @@
 
 import Foundation
 
-let arguments = Arguments(arguments: CommandLine.arguments)
+var command = Command()
+var help = BlockArgument("h", "", required: false, helpMessage: "Print usage and available options") {
+    print(command.usage)
+    exit(EXIT_SUCCESS)
+}
+var verbose = BlockArgument("v", "", required: false, helpMessage: "Provide additional logs") {
+    Logger.verbose = true
+}
+var result = ValueArgument(.path, "r", "resultBundePath", required: true, helpMessage: "Path to the result bundle")
 
-guard arguments.results != nil else {
-    print("Argument -r is missing")
+command.arguments = [help, verbose, result]
+
+if !command.isValid {
+    print(command.usage)
     exit(EXIT_FAILURE)
 }
 
-let summary = Summary(root: arguments.results!)
-let activityLogs = summary.activityLogs
+let summary = Summary(root: result.value!)
 
-do {
-    try activityLogs.write(toFile: "\(arguments.results!)/logs.txt", atomically: false, encoding: .utf8)
-}
-catch {
-    print("An error has occured while create the activity log file")
+if let activityLogs = summary.activityLogs {
+    do {
+        try activityLogs.write(toFile: "\(result.value!)/logs.txt", atomically: false, encoding: .utf8)
+    }
+    catch let e {
+        Logger.error("An error has occured while create the activity log file. Error: \(e)")
+    }
 }
 
+Logger.step("Building HTML..")
 let html = summary.html
 
 do {
-    let path = "\(arguments.results!)/index.html"
+    let path = "\(result.value!)/index.html"
+    Logger.substep("Writing report to \(path)")
+
     try html.write(toFile: path, atomically: false, encoding: .utf8)
-    print("Report successfully created at \(path)")
+    Logger.success("\nReport successfully created at \(path)")
 }
-catch {
-    print("An error has occured while creating the report")
+catch let e {
+    Logger.error("An error has occured while creating the report. Error: \(e)")
 }
 
 exit(EXIT_SUCCESS)

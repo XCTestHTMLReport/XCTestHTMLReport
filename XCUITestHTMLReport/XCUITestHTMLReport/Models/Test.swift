@@ -34,7 +34,7 @@ enum ObjectClass: String {
     var cssClass: String {
         switch self {
         case .testSummary:
-            return "test-summary"
+            return "test-summary list-item"
         case .testSummaryGroup:
             return "test-summary-group"
         case .testableSummary:
@@ -70,7 +70,7 @@ struct Test: HTML
         }
 
         if let rawActivitySummaries = dict["ActivitySummaries"] as? [[String : Any]] {
-            activities = rawActivitySummaries.map { Activity(dict: $0) }
+            activities = rawActivitySummaries.map { Activity(dict: $0, padding: 20) }
         }
 
         let rawStatus = dict["TestStatus"] as? String ?? ""
@@ -85,7 +85,7 @@ struct Test: HTML
         return [
             "UUID": uuid,
             "NAME": name,
-            "TIME": String(format: "%.2f", duration),
+            "TIME": duration.timeString,
             "SUB_TESTS": subTests?.reduce("", { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
             }) ?? "",
