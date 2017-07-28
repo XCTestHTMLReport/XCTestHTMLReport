@@ -551,6 +551,23 @@ struct HTMLTemplates
 
       selectedListItem = listItem;
       selectedListItem.classList.add(\"selected\");
+
+      var firstAttachment = selectedListItem.parentElement.querySelector('.attachment .preview-icon');
+
+      if (firstAttachment == null) {
+        hideScreenshot();
+        hideLog();
+        return;
+      }
+
+      var filename = firstAttachment.attributes[\"data\"].value;
+      var extension = filename.split('.').pop();
+      if (extension == \"txt\") {
+        showLog(filename);
+      } else {
+        showScreenshot(filename);
+      }
+
     }
 
     function keyDown(e) {
@@ -802,7 +819,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Screenshot
-    <span class=\"icon preview-icon\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
     <img class=\"screenshot\" src=\"Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\"/>
   </p>
   """
@@ -811,7 +828,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Text
-    <span class=\"icon preview-icon\" onclick=\"showLog('[[FILENAME]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showLog('[[FILENAME]]')\"></span>
   </p>
   """
 }

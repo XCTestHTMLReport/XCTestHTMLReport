@@ -547,6 +547,23 @@
 
       selectedListItem = listItem;
       selectedListItem.classList.add("selected");
+
+      var firstAttachment = selectedListItem.parentElement.querySelector('.attachment .preview-icon');
+
+      if (firstAttachment == null) {
+        hideScreenshot();
+        hideLog();
+        return;
+      }
+
+      var filename = firstAttachment.attributes["data"].value;
+      var extension = filename.split('.').pop();
+      if (extension == "txt") {
+        showLog(filename);
+      } else {
+        showScreenshot(filename);
+      }
+
     }
 
     function keyDown(e) {
