@@ -164,12 +164,12 @@
   #logs {
     display: none;
     flex: 1;
+    flex-direction: column;
   }
 
   #logs-iframe {
     border: 0;
-    height: 100%;
-    width: 100%;
+    flex: 1;
   }
 
   .icon {
@@ -287,7 +287,7 @@
     flex: 1;
   }
 
-  #tests-header {
+  #tests-header, #logs-header {
     width: 100%;
   }
 
@@ -446,25 +446,25 @@
               <li>Tests</li>
             </ul>
           </div>
-          <div class="test-summary" id="06AF45A8-BAC0-4F27-8362-EA7CC644C3BE">
+          <div class="test-summary" id="DD7F5D36-1BDD-43D5-B9A4-CD3F1252E5CE">
     <div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, '77DB2907-A415-4204-B713-A3824DA4F673')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, '6F4491C5-FA10-44B4-9608-B8F19DD0EE57')"></span>
     <span class="icon left test-icon"></span>
     All tests (25s)
   </p>
   <div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, 'C44122AB-FA4F-4871-89DF-C245D15AEE4E')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, '50C77EB3-A09D-45A2-9340-88CCC35D4671')"></span>
     <span class="icon left test-icon"></span>
     XCUITestHTMLReportSampleAppUITests.xctest (25s)
   </p>
   <div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, '9C3CBE90-5D17-4F9E-99EE-503E52F7ED38')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, '6409A3C1-9734-4019-A03B-973480913BE1')"></span>
     <span class="icon left test-icon"></span>
     FirstSuite (13s)
   </p>
@@ -686,13 +686,13 @@
 </div>
   </div>
 </div>
-  <div id="activities-9C3CBE90-5D17-4F9E-99EE-503E52F7ED38" class="activities">
+  <div id="activities-6409A3C1-9734-4019-A03B-973480913BE1" class="activities">
   
   </div>
 </div><div class="test ">
   <span class="icon left test-result-icon"></span>
   <p class="test-summary-group">
-    <span class="icon left drop-down-icon" onclick="toggle(this, 'CAA25621-B45F-49F2-8D3B-F78C0DB91334')"></span>
+    <span class="icon left drop-down-icon" onclick="toggle(this, 'EE43F3CE-3465-4FB2-8CE9-5343B6754697')"></span>
     <span class="icon left test-icon"></span>
     SecondSuite (12s)
   </p>
@@ -964,24 +964,26 @@
 </div>
   </div>
 </div>
-  <div id="activities-CAA25621-B45F-49F2-8D3B-F78C0DB91334" class="activities">
+  <div id="activities-EE43F3CE-3465-4FB2-8CE9-5343B6754697" class="activities">
   
   </div>
 </div>
-  <div id="activities-C44122AB-FA4F-4871-89DF-C245D15AEE4E" class="activities">
+  <div id="activities-50C77EB3-A09D-45A2-9340-88CCC35D4671" class="activities">
   
   </div>
 </div>
-  <div id="activities-77DB2907-A415-4204-B713-A3824DA4F673" class="activities">
+  <div id="activities-6F4491C5-FA10-44B4-9608-B8F19DD0EE57" class="activities">
   
   </div>
 </div>
 </div>
         </div>
         <div id="logs">
-          <ul class="toolbar toggle-toolbar">
-            <li class="selected">All Messages</li>
-          </ul>
+          <div id="logs-header">
+            <ul class="toolbar toggle-toolbar">
+              <li class="selected">All Messages</li>
+            </ul>
+          </div>
           <iframe id="logs-iframe" src="logs.txt"></iframe>
         </div>
       </div>
@@ -1120,14 +1122,14 @@
 
   function showLogs(el) {
     selectedElement(el);
-    showElementsWithSelector('#logs');
-    hideElementsWithSelector('#tests');
+    setDisplayToElementsWithSelector('#logs', 'flex')
+    setDisplayToElementsWithSelector('#tests', 'none')
   }
 
   function showTests(el) {
     selectedElement(el);
-    hideElementsWithSelector('#logs');
-    showElementsWithSelector('#tests');
+    setDisplayToElementsWithSelector('#logs', 'none')
+    setDisplayToElementsWithSelector('#tests', 'flex')
   }
   </script>
 </body>

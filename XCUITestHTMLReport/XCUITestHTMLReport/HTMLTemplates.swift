@@ -168,12 +168,12 @@ struct HTMLTemplates
     #logs {
       display: none;
       flex: 1;
+      flex-direction: column;
     }
 
     #logs-iframe {
       border: 0;
-      height: 100%;
-      width: 100%;
+      flex: 1;
     }
 
     .icon {
@@ -291,7 +291,7 @@ struct HTMLTemplates
       flex: 1;
     }
 
-    #tests-header {
+    #tests-header, #logs-header {
       width: 100%;
     }
 
@@ -453,9 +453,11 @@ struct HTMLTemplates
             [[TEST_SUMMARIES]]
           </div>
           <div id=\"logs\">
-            <ul class=\"toolbar toggle-toolbar\">
-              <li class=\"selected\">All Messages</li>
-            </ul>
+            <div id=\"logs-header\">
+              <ul class=\"toolbar toggle-toolbar\">
+                <li class=\"selected\">All Messages</li>
+              </ul>
+            </div>
             <iframe id=\"logs-iframe\" src=\"logs.txt\"></iframe>
           </div>
         </div>
@@ -594,14 +596,14 @@ struct HTMLTemplates
 
     function showLogs(el) {
       selectedElement(el);
-      showElementsWithSelector('#logs');
-      hideElementsWithSelector('#tests');
+      setDisplayToElementsWithSelector('#logs', 'flex')
+      setDisplayToElementsWithSelector('#tests', 'none')
     }
 
     function showTests(el) {
       selectedElement(el);
-      hideElementsWithSelector('#logs');
-      showElementsWithSelector('#tests');
+      setDisplayToElementsWithSelector('#logs', 'none')
+      setDisplayToElementsWithSelector('#tests', 'flex')
     }
     </script>
   </body>
