@@ -471,13 +471,12 @@ struct HTMLTemplates
     </div>
 
     <script type=\"text/javascript\">
-    var resizers = document.querySelectorAll('.resizer');
-    var leftSidebar = document.getElementById('left-sidebar');
-    var rightSidebar = document.getElementById('right-sidebar')
-    var sidebar;
-    var startX, startWidth, originalWidth;
-    var screenshot = document.getElementById('screenshot');
-    var iframe = document.getElementById('text-attachment');
+    var resizers = document.querySelectorAll('.resizer'),
+    leftSidebar = document.getElementById('left-sidebar'),
+    rightSidebar = document.getElementById('right-sidebar'),
+    sidebar, startX, startWidth, originalWidth,
+    screenshot = document.getElementById('screenshot'),
+    iframe = document.getElementById('text-attachment');
 
     for (var i = 0; i < resizers.length; i++) {
         resizers[i].addEventListener('mousedown', initDrag, false);
