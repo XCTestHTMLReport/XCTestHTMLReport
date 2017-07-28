@@ -45,17 +45,20 @@ struct Activity: HTML
 
         return 0.0
     }
-    var hasScreenshotData: Bool?
     var title: String
     var subActivities: [Activity]?
     var type: ActivityType?
+    var hasGlobalAttachment: Bool {
+        let hasDirecAttachment = attachments?.count ?? 0 > 0
+        let subActivitesHaveAttachments = subActivities?.reduce(false) { $0 || $1.hasGlobalAttachment } ?? false
+        return hasDirecAttachment || subActivitesHaveAttachments
+    }
     
     init(dict: [String : Any], padding: Int) {
         uuid = dict["UUID"] as! String
         startTime = dict["StartTimeInterval"] as? TimeInterval
         finishTime = dict["FinishTimeInterval"] as? TimeInterval
         title = dict["Title"] as! String
-        hasScreenshotData = dict["HasScreenshotData"] as? Bool
 
         let rawActivityType = dict["ActivityType"] as! String
         if let activityType = ActivityType(rawValue: rawActivityType) {
@@ -83,6 +86,7 @@ struct Activity: HTML
         return [
             "UUID": uuid,
             "TITLE": title,
+            "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
             "PADDING": String(padding),
             "TIME": totalTime.timeString,
             "ACTIVITY_TYPE_CLASS": type?.cssClass ?? "",
