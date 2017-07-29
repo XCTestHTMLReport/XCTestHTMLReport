@@ -9,13 +9,13 @@ Xcode-like HTML report for UI Tests
 Simply go to your iOS project and download the latest version of XCUITestHTMLReport
 
 ``` bash
-$ curl -o xchtmlreport https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/master/xchtmlreport
+$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/master/install.sh)
 ```
 
 or download a specific version
 
 ``` bash
-$ curl -o xchtmlreport https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/1.0.0/xchtmlreport
+$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/1.0.0/install.sh)
 ```
 
 ## Usage
@@ -29,7 +29,8 @@ $ xcodebuild test -workspace XCUITestHTMLReport.xcworkspace -scheme XCUITestHTML
 Then use the previously downloaded xchtmlreport tool to create the HTML report
 
 ``` bash
-$ ./xchtmlreport -r TestResults
+$ xchtmlreport -r TestResults
+
 Report successfully created at TestResults/index.html
 ```
 
