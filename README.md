@@ -12,10 +12,10 @@ Simply go to your iOS project and download the latest version of XCUITestHTMLRep
 $ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/master/install.sh)
 ```
 
-or download a specific version
+You can also specify a branch or tag
 
 ``` bash
-$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/1.0.0/install.sh)
+$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/master/install.sh) '1.0.0'
 ```
 
 ## Usage
