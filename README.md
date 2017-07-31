@@ -1,4 +1,6 @@
-# XCUITestHTMLReport
+![title](http://i.imgur.com/3eKi88j.jpg)
+
+## What is it?
 
 Xcode-like HTML report for UI Tests
 
