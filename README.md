@@ -36,7 +36,7 @@ Report successfully created at TestResults/index.html
 
 ## Contribution
 
-Please create an issue whenever you find an issue or think a feature could be a good addition to XCUITestHTMLReport. Also feel free to take a shot at these issues.
+Please create an issue whenever you find an issue or think a feature could be a good addition to XCUITestHTMLReport. Always make sure to follow the [Contributing Guidelines](https://github.com/TitouanVanBelle/XCUITestHTMLReport/blob/master/CONTRIBUTING.md). Feel free to take a shot at these issues.
 
 ## License
 
