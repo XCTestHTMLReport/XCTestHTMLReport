@@ -11,11 +11,12 @@ import Foundation
 enum AttachmentType: String {
     case unknwown = ""
     case png = "public.png"
+    case jpeg = "public.jpeg"
     case text = "public.plain-text"
 
     var cssClass: String {
         switch self {
-        case .png:
+        case .png, .jpeg:
             return "screenshot"
         case .text:
             return "text"
@@ -50,7 +51,7 @@ struct Attachment: HTML
     var htmlTemplate: String {
         if let type = type {
             switch type {
-            case .png:
+            case .png, .jpeg:
                 return HTMLTemplates.screenshot
             case .text:
                 return HTMLTemplates.text
