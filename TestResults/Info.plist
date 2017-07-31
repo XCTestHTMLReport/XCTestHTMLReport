@@ -147,7 +147,7 @@
 				<array/>
 			</dict>
 			<key>EndedTime</key>
-			<date>2017-07-27T15:37:45Z</date>
+			<date>2017-07-31T08:14:21Z</date>
 			<key>RunDestination</key>
 			<dict>
 				<key>LocalComputer</key>
@@ -215,7 +215,7 @@
 					<key>OperatingSystemVersion</key>
 					<string>11.0</string>
 					<key>OperatingSystemVersionWithBuildNumber</key>
-					<string>11.0 (15A5318e)</string>
+					<string>11.0 (15A5327g)</string>
 					<key>Platform</key>
 					<dict>
 						<key>Identifier</key>
@@ -241,7 +241,7 @@
 			<key>SchemeTask</key>
 			<string>BuildAndAction</string>
 			<key>StartedTime</key>
-			<date>2017-07-27T15:36:47Z</date>
+			<date>2017-07-31T08:12:34Z</date>
 			<key>Title</key>
 			<string>Testing workspace XCUITestHTMLReport with scheme XCUITestHTMLReportSampleApp</string>
 		</dict>
