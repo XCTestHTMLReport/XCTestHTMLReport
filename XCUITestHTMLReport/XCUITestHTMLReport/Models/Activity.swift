@@ -87,7 +87,7 @@ struct Activity: HTML
             "UUID": uuid,
             "TITLE": title,
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
-            "PADDING": String(padding),
+            "PADDING": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? String(padding + 18) : String(padding),
             "TIME": totalTime.timeString,
             "ACTIVITY_TYPE_CLASS": type?.cssClass ?? "",
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? "no-drop-down" : "",
