@@ -7,9 +7,9 @@ Xcode-like HTML report for UI Tests
 ## Features
 
 - Supports attachments:
--- .png
--- .jpeg
--- .txt
+  - .png
+  - .jpeg
+  - .txt
 - Navigate through the report with the keyboard's arrow keys
 - Filter out successful or failed tests
 - Displays information about the target device
