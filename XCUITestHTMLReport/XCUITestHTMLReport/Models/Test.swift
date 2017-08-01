@@ -56,6 +56,15 @@ struct Test: HTML
     var status: Status
     var objectClass: ObjectClass
 
+    var amountSubTests: Int {
+        if let subTests = subTests {
+            let a = subTests.reduce(0) { $0 + $1.amountSubTests }
+            return a == 0 ? subTests.count : a
+        }
+
+        return 0
+    }
+
     init(dict: [String : Any]) {
         uuid = dict["TestSummaryGUID"] as? String ?? NSUUID().uuidString
         duration = dict["Duration"] as! Double
@@ -84,7 +93,7 @@ struct Test: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "UUID": uuid,
-            "NAME": name,
+            "NAME": name + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
             "TIME": duration.timeString,
             "SUB_TESTS": subTests?.reduce("", { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
