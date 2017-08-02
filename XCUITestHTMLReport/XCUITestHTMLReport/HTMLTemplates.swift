@@ -745,30 +745,43 @@ struct HTMLTemplates
       el.classList.add('selected');
     }
 
-    function showSuccessfulScenariosOnly(el) {
-      selectedElement(el);
-      showElementsWithSelector('.test-summary.succeeded');
-      hideElementsWithSelector('.test-summary.failed');
-    }
-
     function showAllScenarios(el) {
       selectedElement(el);
       showElementsWithSelector('.test-summary.succeeded');
       showElementsWithSelector('.test-summary.failed');
+      hideSummaryGroupsIfNeeded();
+    }
+
+    function showSuccessfulScenariosOnly(el) {
+      selectedElement(el);
+      showElementsWithSelector('.test-summary.succeeded');
+      hideElementsWithSelector('.test-summary.failed');
+      hideSummaryGroupsIfNeeded();
     }
 
     function showFailedScenariosOnly(el) {
       selectedElement(el);
       showElementsWithSelector('.test-summary.failed');
       hideElementsWithSelector('.test-summary.succeeded');
+      hideSummaryGroupsIfNeeded();
+    }
 
-      var tests = Array.prototype.slice.call(document.querySelectorAll('.test'));
+    function hideSummaryGroupsIfNeeded() {
+      var testSummaryGroups = Array.prototype.slice.call(document.querySelectorAll('.test-summary-group'));
+      for (var i = 0; i < testSummaryGroups.length; i++) {
+          var testSummaryGroup = testSummaryGroups[i];
+          var children = Array.prototype.slice.call(testSummaryGroup.children);
+          var testSummaries = children.filter(function(a) { return a.classList.contains('test-summary') });
+          if (testSummaries.length == 0) {
+            continue;
+          }
 
-      for (var i = 0; i < tests.length; i++) {
-          var test = tests[i];
-
+          if (testSummaries.filter(function(a) { return a.style.display == 'block' }).length == 0) {
+            testSummaryGroup.style.display = 'none';
+          } else {
+            testSummaryGroup.style.display = 'block';
+          }
       }
-
     }
 
     function showLogs(el) {
