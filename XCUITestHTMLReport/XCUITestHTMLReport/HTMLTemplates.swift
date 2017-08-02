@@ -385,6 +385,7 @@ struct HTMLTemplates
     }
 
     #right-sidebar {
+      display: flex;
       width: 400px;
       border-left: 1px solid #BBB;
     }
@@ -428,7 +429,7 @@ struct HTMLTemplates
     #text-attachment {
       border: 0;
       width: 100%;
-      height: 100%;
+      flex: 1;
     }
 
     .list-item {
