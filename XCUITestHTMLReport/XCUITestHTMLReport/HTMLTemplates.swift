@@ -386,6 +386,7 @@ struct HTMLTemplates
 
     #right-sidebar {
       display: flex;
+      flex-direction: column;
       width: 400px;
       border-left: 1px solid #BBB;
     }
