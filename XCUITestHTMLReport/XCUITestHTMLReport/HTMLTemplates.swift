@@ -555,11 +555,12 @@ struct HTMLTemplates
       selectedListItem = listItem;
       selectedListItem.classList.add(\"selected\");
 
-      var firstAttachment = selectedListItem.parentElement.querySelector('.attachment .preview-icon');
+      var firstAttachment = selectedListItem.querySelector('.attachment .preview-icon');
 
       if (firstAttachment == null) {
         hideScreenshot();
         hideLog();
+        showAttachmentPlaceholder();
         return;
       }
 
@@ -697,6 +698,11 @@ struct HTMLTemplates
       if (attachments) {
         attachments.style.display = (attachments.style.display == 'block' ? 'none' : 'block');
       }
+    }
+
+    function showAttachmentPlaceholder() {
+      var placeholder = document.querySelector(\"#right-sidebar h2\");
+      placeholder.style.display = \"block\";
     }
 
     function hideAttachmentPlaceholder() {
