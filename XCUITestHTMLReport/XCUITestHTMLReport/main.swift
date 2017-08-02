@@ -8,6 +8,10 @@
 
 import Foundation
 
+var version = "1.2.0"
+
+print("XCUITestHTMLReport \(version)")
+
 var command = Command()
 var help = BlockArgument("h", "", required: false, helpMessage: "Print usage and available options") {
     print(command.usage)

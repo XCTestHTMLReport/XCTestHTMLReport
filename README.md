@@ -1,4 +1,6 @@
-# XCUITestHTMLReport
+![title](http://i.imgur.com/3eKi88j.jpg)
+
+## What is it?
 
 Xcode-like HTML report for UI Tests
 
@@ -17,16 +19,16 @@ Xcode-like HTML report for UI Tests
 
 ## Installation
 
-Simply go to your iOS project and download the latest version of XCUITestHTMLReport
+Simply execute the following command to download the latest version of XCUITestHTMLReport
 
 ``` bash
 $ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/master/install.sh)
 ```
 
-or download a specific version
+You can also specify a branch or tag
 
 ``` bash
-$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/1.0.0/install.sh)
+$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/master/install.sh) '1.0.0'
 ```
 
 ## Usage
