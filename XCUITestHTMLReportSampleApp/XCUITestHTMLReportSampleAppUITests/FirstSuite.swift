@@ -33,7 +33,7 @@ class FirstSuite: XCTestCase {
     }
 
     func testFirstSuiteButtonDoesNotExist() {
-        XCTAssert(!XCUIApplication().buttons["Button"].exists, "Button exists")
+        XCTAssert(XCUIApplication().buttons["Button"].exists, "Button does not exist")
     }
     
 }
