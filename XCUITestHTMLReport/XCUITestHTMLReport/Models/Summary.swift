@@ -69,7 +69,7 @@ struct Summary: HTML
             } else {
                 let logsPathFullPath = root + "/" + logsPath.first!
 
-                Logger.substep("Found \(logsPathFullPath) at path: \(logsPathFullPath)")
+                Logger.substep("Found \(activityLogsFilename) at path: \(logsPathFullPath)")
 
                 let data = NSData(contentsOfFile: logsPathFullPath)
 
@@ -77,6 +77,7 @@ struct Summary: HTML
                 let gunzippedData = data!.gunzipped()!
                 let logs = String(data: gunzippedData, encoding: .utf8)!
 
+                Logger.substep("Extracting useful activity logs")
                 let runningTestsRegex = try! NSRegularExpression(pattern: "Running tests...", options: .caseInsensitive)
                 let runningTestsMatches = runningTestsRegex.matches(in: logs, options: [], range: NSRange(location: 0, length: logs.count))
                 let lastRunninTestsMatch = runningTestsMatches.last
@@ -93,6 +94,7 @@ struct Summary: HTML
                     let range = start..<end
                     activityLogs = logs.substring(with: range)
                 } else {
+                    Logger.warning("Failed to extract activity logs")
                     activityLogs = ""
                 }
             }
