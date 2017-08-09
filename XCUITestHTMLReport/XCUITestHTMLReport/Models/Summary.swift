@@ -89,7 +89,7 @@ struct Summary: HTML
                     return
                 }
 
-                let pattern = "Test Suite '.+.xctest' (failed|passed).+\r.+seconds"
+                let pattern = "Test Suite '.+' (failed|passed).+\r.+seconds"
                 let regex = try! NSRegularExpression(pattern: pattern, options: .caseInsensitive)
                 let matches = regex.matches(in: logs, options: [], range: NSRange(location: 0, length: logs.count))
                 let lastMatch = matches.last
