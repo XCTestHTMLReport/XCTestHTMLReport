@@ -78,25 +78,34 @@ struct Summary: HTML
                 let logs = String(data: gunzippedData, encoding: .utf8)!
 
                 Logger.substep("Extracting useful activity logs")
-                let runningTestsRegex = try! NSRegularExpression(pattern: "Running tests...", options: .caseInsensitive)
+                let runningTestsPattern = "Running tests..."
+                let runningTestsRegex = try! NSRegularExpression(pattern: runningTestsPattern, options: .caseInsensitive)
                 let runningTestsMatches = runningTestsRegex.matches(in: logs, options: [], range: NSRange(location: 0, length: logs.count))
-                let lastRunninTestsMatch = runningTestsMatches.last
+                let lastRunningTestsMatch = runningTestsMatches.last
 
-                let regex = try! NSRegularExpression(pattern: "Test Suite '.+.xctest' (failed|passed).+\r.+seconds", options: .caseInsensitive)
+                guard lastRunningTestsMatch != nil else {
+                    Logger.warning("Failed to extract activity logs. Could not locate match for \"\(runningTestsPattern)\" ")
+                    activityLogs = ""
+                    return
+                }
+
+                let pattern = "Test Suite '.+.xctest' (failed|passed).+\r.+seconds"
+                let regex = try! NSRegularExpression(pattern: pattern, options: .caseInsensitive)
                 let matches = regex.matches(in: logs, options: [], range: NSRange(location: 0, length: logs.count))
                 let lastMatch = matches.last
 
-                if let matchA = lastRunninTestsMatch, let matchB = lastMatch {
-                    let startIndex = matchA.range.location
-                    let endIndex = matchB.range.location + matchB.range.length
-                    let start = logs.index(logs.startIndex, offsetBy: startIndex)
-                    let end = logs.index(logs.startIndex, offsetBy: endIndex)
-                    let range = start..<end
-                    activityLogs = logs.substring(with: range)
-                } else {
-                    Logger.warning("Failed to extract activity logs")
+                guard lastMatch != nil else {
+                    Logger.warning("Failed to extract activity logs. Could not locate match for \"\(pattern)\" ")
                     activityLogs = ""
+                    return
                 }
+
+                let startIndex = lastRunningTestsMatch!.range.location
+                let endIndex = lastMatch!.range.location + lastMatch!.range.length
+                let start = logs.index(logs.startIndex, offsetBy: startIndex)
+                let end = logs.index(logs.startIndex, offsetBy: endIndex)
+                let range = start..<end
+                activityLogs = logs.substring(with: range)
             }
         }
 
