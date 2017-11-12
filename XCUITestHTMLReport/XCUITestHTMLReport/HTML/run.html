@@ -1,0 +1,24 @@
+  <div class="run" id="device_[[DEVICE_IDENTIFIER]]">
+    <div class="tests">
+      <div class="tests-header">
+        <ul class="toolbar toggle-toolbar">
+          <li onclick="showAllScenarios(this);" class="selected">All</li>
+          <li onclick="showSuccessfulScenariosOnly(this);">Passed</li>
+          <li onclick="showFailedScenariosOnly(this);">Failed</li>
+        </ul>
+        <ul class="toolbar table-header">
+          <li>Status</li>
+          <li>Tests</li>
+        </ul>
+      </div>
+      [[TEST_SUMMARIES]]
+    </div>
+    <div id="logs">
+      <div id="logs-header">
+        <ul class="toolbar toggle-toolbar">
+          <li class="selected">All Messages</li>
+        </ul>
+      </div>
+      <iframe id="logs-iframe" src="logs-[[DEVICE_IDENTIFIER]].txt"></iframe>
+    </div>
+  </div>

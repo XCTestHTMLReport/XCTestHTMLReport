@@ -31,15 +31,6 @@ if !command.isValid {
 
 let summary = Summary(root: result.value!)
 
-if let activityLogs = summary.activityLogs {
-    do {
-        try activityLogs.write(toFile: "\(result.value!)/logs.txt", atomically: false, encoding: .utf8)
-    }
-    catch let e {
-        Logger.error("An error has occured while create the activity log file. Error: \(e)")
-    }
-}
-
 Logger.step("Building HTML..")
 let html = summary.html
 
