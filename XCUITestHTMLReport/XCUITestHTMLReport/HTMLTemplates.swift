@@ -50,16 +50,16 @@ struct HTMLTemplates
       height: 70px;
     }
 
-    #info-sections {
-      margin: 10px;
-    }
-
     #info-sections h4 {
       color: #777;
       font-size: 13px;
       font-weight: 500;
-      margin: 4px 0 10px 0;
+      margin: 16px 0 0px 10px;
       border-bottom: 1px solid #ddd;
+    }
+
+    #info-sections ul {
+      padding-left: 10px;
     }
 
     #info-sections ul li {
@@ -71,12 +71,26 @@ struct HTMLTemplates
       text-overflow: ellipsis;
     }
 
-    #info-sections ul li h3 {
-      font-size: 16px;
-      margin: 16px 0 0 0;
+    #info-sections ul.selected li {
+      color: #FFFFFF;
     }
 
-    #device-info li:nth-child(2) {
+    #info-sections ul li h3 {
+      font-size: 16px;
+      margin: 0;
+    }
+
+    .device-info {
+      margin: 0;
+      padding: 10px 0;
+      cursor: pointer;
+    }
+
+    .device-info.selected {
+      background-color: #1780FA;
+    }
+
+    .device-info li:nth-child(2) {
       margin-bottom: 10px;
     }
 
@@ -311,17 +325,26 @@ struct HTMLTemplates
       display: none;
     }
 
-    #tests {
-      display: flex;
-      flex-direction: column;
+    .run {
+      display: none;
       flex: 1;
     }
 
-    #tests-header, #logs-header {
+    .run.active {
+      display: flex;
+    }
+
+    .tests {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+    }
+
+    .tests-header, #logs-header {
       width: 100%;
     }
 
-    #tests > .summary {
+    .tests > .summary {
       overflow-y: scroll;
       width: 100%;
       flex: 1;
@@ -438,7 +461,7 @@ struct HTMLTemplates
     }
 
     .list-item.selected {
-      background-color: #0169D9;
+      background-color: #1780FA;
     }
 
     .list-item.selected,
@@ -467,40 +490,14 @@ struct HTMLTemplates
           <div class=\"resizer\"></div>
           <ul id=\"info-sections\">
             <li class=\"section\">
-              <h4>Device</h4>
-              <ul id=\"device-info\">
-                <li><h3>[[DEVICE_NAME]]</h3></li>
-                <li>iOS [[DEVICE_OS]]</li>
-                <li>Model: [[DEVICE_MODEL]]</li>
-                <li>Identifier: [[DEVICE_IDENTIFIER]]</li>
-              </ul>
+              <h4>Devices</h4>
+              [[DEVICES]]
             </li>
           <ul>
         </div>
 
         <div id=\"main-content\">
-          <div id=\"tests\">
-            <div id=\"tests-header\">
-              <ul class=\"toolbar toggle-toolbar\">
-                <li onclick=\"showAllScenarios(this);\" class=\"selected\">All</li>
-                <li onclick=\"showSuccessfulScenariosOnly(this);\">Passed</li>
-                <li onclick=\"showFailedScenariosOnly(this);\">Failed</li>
-              </ul>
-              <ul class=\"toolbar table-header\">
-                <li>Status</li>
-                <li>Tests</li>
-              </ul>
-            </div>
-            [[TEST_SUMMARIES]]
-          </div>
-          <div id=\"logs\">
-            <div id=\"logs-header\">
-              <ul class=\"toolbar toggle-toolbar\">
-                <li class=\"selected\">All Messages</li>
-              </ul>
-            </div>
-            <iframe id=\"logs-iframe\" src=\"logs.txt\"></iframe>
-          </div>
+          [[RUNS]]
         </div>
 
         <div id=\"right-sidebar\" class=\"sidebar\">
@@ -519,8 +516,7 @@ struct HTMLTemplates
     rightSidebar = document.getElementById('right-sidebar'),
     sidebar, startX, startWidth, originalWidth,
     screenshot = document.getElementById('screenshot'),
-    iframe = document.getElementById('text-attachment'),
-    scrollView = document.querySelector('.summary');
+    iframe = document.getElementById('text-attachment');
 
     for (var i = 0; i < resizers.length; i++) {
         resizers[i].addEventListener('mousedown', initDrag, false);
@@ -530,7 +526,7 @@ struct HTMLTemplates
 
     function visibleListItems() {
       var array = Array.prototype.slice.call(listItems);
-      return array.filter(function(el) { return el.offsetParent != null })
+      return array.filter(function(el) { return el.offsetParent != null; })
     }
 
     var selectedListItem;
@@ -564,14 +560,25 @@ struct HTMLTemplates
         return;
       }
 
-      var filename = firstAttachment.attributes[\"data\"].value;
-      var extension = filename.split('.').pop();
+      var path = firstAttachment.attributes[\"data\"].value;
+      var extension = path.split('.').pop();
       if (extension == \"txt\") {
-        showLog(filename);
+        showLog(path);
       } else {
-        showScreenshot(filename);
+        showScreenshot(path);
+      }
+    }
+
+    function selectDevice(deviceId, el) {
+      while (el && !el.classList.contains('device-info')) {
+        el = el.parentElement;
       }
 
+      document.querySelectorAll('.device-info.selected')[0].classList.remove(\"selected\");
+      el.classList.add(\"selected\");
+
+      document.querySelectorAll('.run.active')[0].classList.remove(\"active\");
+      document.querySelectorAll('#device_' + deviceId)[0].classList.add(\"active\");
     }
 
     function keyDown(e) {
@@ -599,7 +606,7 @@ struct HTMLTemplates
       }
 
       if (dropIcon.classList.contains(\"dropped\")) {
-        selectedListItem.querySelector('.drop-down-icon').onclick()
+        selectedListItem.querySelector('.drop-down-icon').onclick();
       }
     }
 
@@ -610,7 +617,7 @@ struct HTMLTemplates
       }
 
       if (!dropIcon.classList.contains(\"dropped\")) {
-        selectedListItem.querySelector('.drop-down-icon').onclick()
+        selectedListItem.querySelector('.drop-down-icon').onclick();
       }
     }
 
@@ -621,6 +628,7 @@ struct HTMLTemplates
           if (item.offsetParent) {
             selectListItem(item);
 
+            var scrollView = document.querySelector('.run.active .summary');
             if (!divInsideOfDiv(item, scrollView)) {
               scrollToItem(item);
             }
@@ -634,8 +642,9 @@ struct HTMLTemplates
     }
 
     function scrollToItem(item) {
-      var itemBounds = item.getBoundingClientRect();
-      var scrollBounds = scrollView.getBoundingClientRect();
+      var scrollView = document.querySelector('.run.active .summary'),
+          itemBounds = item.getBoundingClientRect(),
+          scrollBounds = scrollView.getBoundingClientRect();
 
       if (itemBounds.bottom > scrollBounds.bottom) {
         scrollView.scrollBy(0, itemBounds.bottom - scrollBounds.bottom);
@@ -656,14 +665,14 @@ struct HTMLTemplates
 
 
     function initDrag(e) {
-      sidebar = e.target.parentElement
+      sidebar = e.target.parentElement;
       startX = e.clientX;
       startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
       originalSidebarWidth = sidebar.clientWidth;
       document.documentElement.addEventListener('mousemove', doDrag, false);
       document.documentElement.addEventListener('mouseup', stopDrag, false);
 
-      document.body.classList.add('dragging')
+      document.body.classList.add('dragging');
     }
 
     function doDrag(e) {
@@ -680,7 +689,6 @@ struct HTMLTemplates
     }
 
     function stopDrag(e) {
-      console.log(\"stopDrag\");
       document.documentElement.removeEventListener('mousemove', doDrag, false);
       document.documentElement.removeEventListener('mouseup', stopDrag, false);
 
@@ -714,11 +722,11 @@ struct HTMLTemplates
       iframe.style.display = \"none\";
     }
 
-    function showLog(filename) {
+    function showLog(path) {
       hideAttachmentPlaceholder();
       hideScreenshot();
       iframe.style.display = \"block\";
-      iframe.src = \"Attachments/\" + filename;
+      iframe.src = path;
     }
 
     function hideScreenshot() {
@@ -740,11 +748,11 @@ struct HTMLTemplates
     }
 
     function hideElementsWithSelector(sel) {
-      setDisplayToElementsWithSelector(sel, 'none')
+      setDisplayToElementsWithSelector(sel, 'none');
     }
 
     function showElementsWithSelector(sel) {
-      setDisplayToElementsWithSelector(sel, 'block')
+      setDisplayToElementsWithSelector(sel, 'block');
     }
 
     function selectedElement(el) {
@@ -754,31 +762,31 @@ struct HTMLTemplates
 
     function showAllScenarios(el) {
       selectedElement(el);
-      showElementsWithSelector('.test-summary.succeeded');
-      showElementsWithSelector('.test-summary.failed');
+      showElementsWithSelector('.run.active .test-summary.succeeded');
+      showElementsWithSelector('.run.active .test-summary.failed');
       hideSummaryGroupsIfNeeded();
     }
 
     function showSuccessfulScenariosOnly(el) {
       selectedElement(el);
-      showElementsWithSelector('.test-summary.succeeded');
-      hideElementsWithSelector('.test-summary.failed');
+      showElementsWithSelector('.run.active .test-summary.succeeded');
+      hideElementsWithSelector('.run.active .test-summary.failed');
       hideSummaryGroupsIfNeeded();
     }
 
     function showFailedScenariosOnly(el) {
       selectedElement(el);
-      showElementsWithSelector('.test-summary.failed');
-      hideElementsWithSelector('.test-summary.succeeded');
+      showElementsWithSelector('.run.active .test-summary.failed');
+      hideElementsWithSelector('.run.active .test-summary.succeeded');
       hideSummaryGroupsIfNeeded();
     }
 
     function hideSummaryGroupsIfNeeded() {
-      var testSummaryGroups = Array.prototype.slice.call(document.querySelectorAll('.test-summary-group'));
+      var testSummaryGroups = Array.prototype.slice.call(document.querySelectorAll('.run.active .test-summary-group'));
       for (var i = 0; i < testSummaryGroups.length; i++) {
           var testSummaryGroup = testSummaryGroups[i];
           var children = Array.prototype.slice.call(testSummaryGroup.children);
-          var testSummaries = children.filter(function(a) { return a.classList.contains('test-summary') });
+          var testSummaries = children.filter(function(a) { return a.classList.contains('test-summary'); });
           if (testSummaries.length == 0) {
             continue;
           }
@@ -793,18 +801,58 @@ struct HTMLTemplates
 
     function showLogs(el) {
       selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'flex')
-      setDisplayToElementsWithSelector('#tests', 'none')
+      setDisplayToElementsWithSelector('#logs', 'flex');
+      setDisplayToElementsWithSelector('.tests', 'none');
     }
 
     function showTests(el) {
       selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'none')
-      setDisplayToElementsWithSelector('#tests', 'flex')
+      setDisplayToElementsWithSelector('#logs', 'none');
+      setDisplayToElementsWithSelector('.tests', 'flex');
     }
+
+    document.querySelectorAll('.device-info')[0].classList.add(\"selected\");
+    document.querySelectorAll('.run')[0].classList.add(\"active\");
+
     </script>
   </body>
   </html>
+  """
+
+  static let device = """
+    <ul class=\"device-info\" onclick=\"selectDevice('[[DEVICE_IDENTIFIER]]', this);\">
+    <li><h3>[[DEVICE_NAME]]</h3></li>
+    <li>iOS [[DEVICE_OS]]</li>
+    <li>Model: [[DEVICE_MODEL]]</li>
+    <li>Identifier: [[DEVICE_IDENTIFIER]]</li>
+  </ul>
+  """
+
+  static let run = """
+  <div class=\"run\" id=\"device_[[DEVICE_IDENTIFIER]]\">
+    <div class=\"tests\">
+      <div class=\"tests-header\">
+        <ul class=\"toolbar toggle-toolbar\">
+          <li onclick=\"showAllScenarios(this);\" class=\"selected\">All</li>
+          <li onclick=\"showSuccessfulScenariosOnly(this);\">Passed</li>
+          <li onclick=\"showFailedScenariosOnly(this);\">Failed</li>
+        </ul>
+        <ul class=\"toolbar table-header\">
+          <li>Status</li>
+          <li>Tests</li>
+        </ul>
+      </div>
+      [[TEST_SUMMARIES]]
+    </div>
+    <div id=\"logs\">
+      <div id=\"logs-header\">
+        <ul class=\"toolbar toggle-toolbar\">
+          <li class=\"selected\">All Messages</li>
+        </ul>
+      </div>
+      <iframe id=\"logs-iframe\" src=\"logs-[[DEVICE_IDENTIFIER]].txt\"></iframe>
+    </div>
+  </div>
   """
 
   static let testSummary = """
@@ -850,7 +898,7 @@ struct HTMLTemplates
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Screenshot
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
-    <img class=\"screenshot\" src=\"Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\"/>
+    <img class=\"screenshot\" src=\"[[PATH]]/Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\"/>
   </p>
   """
 
@@ -858,7 +906,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Text
-    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showLog('[[FILENAME]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[PATH]]/Attachments/[[FILENAME]]\" onclick=\"showLog('[[PATH]]/Attachments/[[FILENAME]]')\"></span>
   </p>
   """
 }

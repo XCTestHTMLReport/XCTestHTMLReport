@@ -65,7 +65,7 @@ struct Test: HTML
         return 0
     }
 
-    init(dict: [String : Any]) {
+    init(root: String, dict: [String : Any]) {
         uuid = dict["TestSummaryGUID"] as? String ?? NSUUID().uuidString
         duration = dict["Duration"] as! Double
         name = dict["TestName"] as! String
@@ -75,11 +75,11 @@ struct Test: HTML
         objectClass = ObjectClass(rawValue: objectClassRaw)!
 
         if let rawSubTests = dict["Subtests"] as? [[String : Any]] {
-            subTests = rawSubTests.map { Test(dict: $0) }
+            subTests = rawSubTests.map { Test(root: root, dict: $0) }
         }
 
         if let rawActivitySummaries = dict["ActivitySummaries"] as? [[String : Any]] {
-            activities = rawActivitySummaries.map { Activity(dict: $0, padding: 20) }
+            activities = rawActivitySummaries.map { Activity(root: root, dict: $0, padding: 20) }
         }
 
         let rawStatus = dict["TestStatus"] as? String ?? ""
