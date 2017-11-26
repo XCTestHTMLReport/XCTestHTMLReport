@@ -526,7 +526,7 @@ struct HTMLTemplates
 
     function visibleListItems() {
       var array = Array.prototype.slice.call(listItems);
-      return array.filter(function(el) { return el.offsetParent != null })
+      return array.filter(function(el) { return el.offsetParent != null; })
     }
 
     var selectedListItem;
@@ -606,7 +606,7 @@ struct HTMLTemplates
       }
 
       if (dropIcon.classList.contains(\"dropped\")) {
-        selectedListItem.querySelector('.drop-down-icon').onclick()
+        selectedListItem.querySelector('.drop-down-icon').onclick();
       }
     }
 
@@ -617,7 +617,7 @@ struct HTMLTemplates
       }
 
       if (!dropIcon.classList.contains(\"dropped\")) {
-        selectedListItem.querySelector('.drop-down-icon').onclick()
+        selectedListItem.querySelector('.drop-down-icon').onclick();
       }
     }
 
@@ -665,14 +665,14 @@ struct HTMLTemplates
 
 
     function initDrag(e) {
-      sidebar = e.target.parentElement
+      sidebar = e.target.parentElement;
       startX = e.clientX;
       startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
       originalSidebarWidth = sidebar.clientWidth;
       document.documentElement.addEventListener('mousemove', doDrag, false);
       document.documentElement.addEventListener('mouseup', stopDrag, false);
 
-      document.body.classList.add('dragging')
+      document.body.classList.add('dragging');
     }
 
     function doDrag(e) {
@@ -689,7 +689,6 @@ struct HTMLTemplates
     }
 
     function stopDrag(e) {
-      console.log(\"stopDrag\");
       document.documentElement.removeEventListener('mousemove', doDrag, false);
       document.documentElement.removeEventListener('mouseup', stopDrag, false);
 
@@ -749,11 +748,11 @@ struct HTMLTemplates
     }
 
     function hideElementsWithSelector(sel) {
-      setDisplayToElementsWithSelector(sel, 'none')
+      setDisplayToElementsWithSelector(sel, 'none');
     }
 
     function showElementsWithSelector(sel) {
-      setDisplayToElementsWithSelector(sel, 'block')
+      setDisplayToElementsWithSelector(sel, 'block');
     }
 
     function selectedElement(el) {
@@ -787,7 +786,7 @@ struct HTMLTemplates
       for (var i = 0; i < testSummaryGroups.length; i++) {
           var testSummaryGroup = testSummaryGroups[i];
           var children = Array.prototype.slice.call(testSummaryGroup.children);
-          var testSummaries = children.filter(function(a) { return a.classList.contains('test-summary') });
+          var testSummaries = children.filter(function(a) { return a.classList.contains('test-summary'); });
           if (testSummaries.length == 0) {
             continue;
           }
@@ -802,14 +801,14 @@ struct HTMLTemplates
 
     function showLogs(el) {
       selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'flex')
-      setDisplayToElementsWithSelector('.tests', 'none')
+      setDisplayToElementsWithSelector('#logs', 'flex');
+      setDisplayToElementsWithSelector('.tests', 'none');
     }
 
     function showTests(el) {
       selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'none')
-      setDisplayToElementsWithSelector('.tests', 'flex')
+      setDisplayToElementsWithSelector('#logs', 'none');
+      setDisplayToElementsWithSelector('.tests', 'flex');
     }
 
     document.querySelectorAll('.device-info')[0].classList.add(\"selected\");
