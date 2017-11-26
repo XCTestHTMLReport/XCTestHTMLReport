@@ -6,6 +6,17 @@ Xcode-like HTML report for UI Tests
 
 ![screenshot](http://i.imgur.com/oD9jsk2.jpg)
 
+## Features
+
+- Supports attachments:
+  - .png
+  - .jpeg
+  - .txt
+- Navigate through the report with the keyboard's arrow keys
+- Filter out successful or failed tests
+- Displays information about the target device
+- Displays activity logs
+
 ## Installation
 
 Simply execute the following command to download the latest version of XCUITestHTMLReport
