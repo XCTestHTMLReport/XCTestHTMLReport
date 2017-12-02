@@ -28,35 +28,14 @@ class SecondSuite: XCTestCase {
         super.tearDown()
     }
 
-    func testSecondSuiteButtonExists() {
-        XCTContext.runActivity(named: "Text Attachment") { (activity) in
-            let logs = """
-                This is a log
-                This is a log
-                This is a log
-                This is a log
-                This is a log
-                This is a log
-            """
-            let logsAttachement = XCTAttachment(string: logs)
-            logsAttachement.lifetime = .keepAlways
-            activity.add(logsAttachement)
-        }
-
-        XCTContext.runActivity(named: "Image Attachment") { (activity) in
-            let path = Bundle(for: SecondSuite.self).path(forResource: "iPhone", ofType: "png")
-            let image = UIImage(contentsOfFile: path!)!
-            let attachment = XCTAttachment(image: image)
-            attachment.lifetime = .keepAlways
-            activity.add(attachment)
-        }
-
-        XCTAssert(XCUIApplication().buttons["Button"].exists, "Button does not exist")
+    func testOne() {
+        let result = randomBool()
+        XCTAssert(result, "Test \(result ? "succeeded" : "failed")")
     }
 
-    func testSecondSuiteButtonDoesNotExist() {
-        XCTAssert(!XCUIApplication().buttons["Button"].exists, "Button exists")
+    func testTwo() {
+        let result = randomBool()
+        XCTAssert(result, "Test \(result ? "succeeded" : "failed")")
     }
-
 }
 

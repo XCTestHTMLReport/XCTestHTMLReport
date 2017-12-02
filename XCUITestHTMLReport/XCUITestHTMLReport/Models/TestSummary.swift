@@ -46,14 +46,14 @@ struct TestSummary: HTML
         return status
     }
 
-    init(dict: [String : Any])
+    init(root: String, dict: [String : Any])
     {
         Logger.substep("Parsing TestSummary")
         
         uuid = NSUUID().uuidString
         testName = dict["TestName"] as! String
         let rawTests = dict["Tests"] as! [[String: Any]]
-        tests = rawTests.map { Test(dict: $0) }
+        tests = rawTests.map { Test(root: root, dict: $0) }
     }
 
     // PRAGMA MARK: - HTML

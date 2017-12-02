@@ -30,10 +30,12 @@ struct Attachment: HTML
 {
     var padding = 0
     var filename: String
+    var path: String
     var type: AttachmentType?
 
-    init(dict: [String : Any], padding: Int)
+    init(root: String, dict: [String : Any], padding: Int)
     {
+        path = root
         filename = dict["Filename"] as! String
         let typeRaw = dict["UniformTypeIdentifier"] as! String
 
@@ -66,6 +68,7 @@ struct Attachment: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "PADDING": String(padding),
+            "PATH": path,
             "FILENAME": filename
         ]
     }

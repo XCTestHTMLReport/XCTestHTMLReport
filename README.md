@@ -4,10 +4,11 @@
 
 Xcode-like HTML report for UI Tests
 
-![screenshot](http://i.imgur.com/oD9jsk2.jpg)
+![screenshot](https://i.imgur.com/NHRzoXG.jpg)
 
 ## Features
 
+- Supports parallel testing
 - Supports attachments:
   - .png
   - .jpeg

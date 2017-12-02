@@ -8,6 +8,10 @@
 
 import XCTest
 
+func randomBool() -> Bool {
+    return arc4random_uniform(2) == 0
+}
+
 class FirstSuite: XCTestCase {
         
     override func setUp() {
@@ -27,13 +31,28 @@ class FirstSuite: XCTestCase {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
         super.tearDown()
     }
-    
-    func testFirstSuiteButtonExists() {
-        XCTAssert(XCUIApplication().buttons["Button"].exists, "Button does not exist")
+
+    func testOne() {
+        XCTContext.runActivity(named: "Text Attachment") { (activity) in
+            let logs = """
+                This is a log
+                This is a log
+                This is a log
+                This is a log
+                This is a log
+                This is a log
+            """
+            let logsAttachement = XCTAttachment(string: logs)
+            logsAttachement.lifetime = .keepAlways
+            activity.add(logsAttachement)
+        }
+
+        let result = randomBool()
+        XCTAssert(result, "Test \(result ? "succeeded" : "failed")")
     }
 
-    func testFirstSuiteButtonDoesNotExist() {
-        XCTAssert(XCUIApplication().buttons["Button"].exists, "Button does not exist")
+    func testTwo() {
+        let result = randomBool()
+        XCTAssert(result, "Test \(result ? "succeeded" : "failed")")
     }
-    
 }
