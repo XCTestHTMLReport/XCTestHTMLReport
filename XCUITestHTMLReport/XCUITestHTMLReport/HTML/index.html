@@ -558,9 +558,9 @@
 
       var path = firstAttachment.attributes["data"].value;
       var extension = path.split('.').pop();
-      var textExtension = ["txt", "crash"];
+      var textExtension = ["txt", "crash", "html"];
       if (textExtension.indexOf(extension) != -1) {
-        showLog(path);
+        showText(path);
       } else {
         showScreenshot(path);
       }
@@ -719,7 +719,7 @@
       iframe.style.display = "none";
     }
 
-    function showLog(path) {
+    function showText(path) {
       hideAttachmentPlaceholder();
       hideScreenshot();
       iframe.style.display = "block";

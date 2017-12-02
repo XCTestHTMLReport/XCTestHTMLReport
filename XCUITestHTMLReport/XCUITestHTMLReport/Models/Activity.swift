@@ -14,6 +14,7 @@ enum ActivityType: String {
     case deleteAttachment = "com.apple.dt.xctest.activity-type.deletedAttachment"
     case assertionFailure = "com.apple.dt.xctest.activity-type.testAssertionFailure"
     case userCreated = "com.apple.dt.xctest.activity-type.userCreated"
+    case attachementContainer = "com.apple.dt.xctest.activity-type.attachmentContainer"
 
     var cssClass: String {
         switch self {

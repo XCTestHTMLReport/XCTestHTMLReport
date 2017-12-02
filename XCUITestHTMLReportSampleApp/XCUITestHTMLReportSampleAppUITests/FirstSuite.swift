@@ -32,6 +32,23 @@ class FirstSuite: XCTestCase {
         super.tearDown()
     }
 
+    func testDownloadAndAttachWebData() {
+        let expectation = XCTestExpectation(description: "Download apple.com home page")
+        let url = URL(string: "https://apple.com")!
+        let dataTask = URLSession.shared.dataTask(with: url) { (data, urlResponse, error) in
+
+            let html = XCTAttachment(data: data, uniformTypeIdentifier: "public.html")
+            html.name = "HTML"
+            html.lifetime = .keepAlways
+            self.add(html)
+
+            expectation.fulfill()
+        }
+
+        dataTask.resume()
+        wait(for: [expectation], timeout: 10.0)
+    }
+
     func testOne() {
         XCTContext.runActivity(named: "Text Attachment") { (activity) in
             let logs = """
