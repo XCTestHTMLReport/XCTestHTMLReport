@@ -33,51 +33,19 @@ class FirstSuite: XCTestCase {
     }
 
     func testDownloadAndAttachWebData() {
-
-        // Create an expectation for a background download task.
         let expectation = XCTestExpectation(description: "Download apple.com home page")
-
-        // Create a URL for a web page to be downloaded.
         let url = URL(string: "https://apple.com")!
-
-        // Create a background task to download the web page.
         let dataTask = URLSession.shared.dataTask(with: url) { (data, urlResponse, error) in
 
-            // Process the download task's response, adding some of its output as attachments.
+            let html = XCTAttachment(data: data, uniformTypeIdentifier: "public.html")
+            html.name = "HTML"
+            html.lifetime = .keepAlways
+            self.add(html)
 
-            if let error = error {
-
-                XCTFail("Data failed to download with an error: \(error.localizedDescription).")
-
-            } else if let httpURLResponse = urlResponse as? HTTPURLResponse, httpURLResponse.statusCode != 200 {
-
-                // Attach the response's header fields as an XML property list.
-                let headers = XCTAttachment(plistObject: httpURLResponse.allHeaderFields)
-                headers.name = "Headers"
-                self.add(headers)
-
-                XCTFail("Unexpected status code: \(httpURLResponse.statusCode).")
-
-            } else if let data = data {
-
-                // Attach the retrieved HTML data with an appropriate UTI.
-                let html = XCTAttachment(data: data, uniformTypeIdentifier: "public.html")
-                html.name = "HTML"
-                // Keep the HTML attachment even when the test succeeds.
-                html.lifetime = .keepAlways
-                self.add(html)
-
-            }
-
-            // Fulfill the expectation to indicate that the background task has finished.
             expectation.fulfill()
-
         }
 
-        // Start the download task.
         dataTask.resume()
-
-        // Wait until the expectation is fulfilled, with a timeout of 10 seconds.
         wait(for: [expectation], timeout: 10.0)
     }
 
