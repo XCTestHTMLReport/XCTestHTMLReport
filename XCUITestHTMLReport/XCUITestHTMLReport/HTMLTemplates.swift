@@ -562,7 +562,8 @@ struct HTMLTemplates
 
       var path = firstAttachment.attributes[\"data\"].value;
       var extension = path.split('.').pop();
-      if (extension == \"txt\") {
+      var textExtension = [\"txt\", \"crash\"];
+      if (textExtension.indexOf(extension) != -1) {
         showLog(path);
       } else {
         showScreenshot(path);
