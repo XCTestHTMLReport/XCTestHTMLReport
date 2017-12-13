@@ -582,8 +582,9 @@ struct HTMLTemplates
 
       var path = firstAttachment.attributes[\"data\"].value;
       var extension = path.split('.').pop();
-      if (extension == \"txt\") {
-        showLog(path);
+      var textExtension = [\"txt\", \"crash\", \"html\"];
+      if (textExtension.indexOf(extension) != -1) {
+        showText(path);
       } else {
         showScreenshot(path);
       }
@@ -742,7 +743,7 @@ struct HTMLTemplates
       iframe.style.display = \"none\";
     }
 
-    function showLog(path) {
+    function showText(path) {
       hideAttachmentPlaceholder();
       hideScreenshot();
       iframe.style.display = \"block\";
@@ -926,7 +927,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Text
-    <span class=\"icon preview-icon\" data=\"[[PATH]]/Attachments/[[FILENAME]]\" onclick=\"showLog('[[PATH]]/Attachments/[[FILENAME]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[PATH]]/Attachments/[[FILENAME]]\" onclick=\"showText('[[PATH]]/Attachments/[[FILENAME]]')\"></span>
   </p>
   """
 }
