@@ -604,7 +604,6 @@ struct HTMLTemplates
 
     function keyDown(e) {
         e = e || window.event;
-        e.preventDefault();
 
         var items = visibleListItems();
         if (e.keyCode == 40) {
