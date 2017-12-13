@@ -401,6 +401,25 @@ struct HTMLTemplates
       border-right: 1px solid #BBB;
     }
 
+    #report-issue {
+      position: absolute;
+      padding-top: 6px;
+      bottom: 10px;
+      width: 100%;
+      text-align: center;
+      border-top: 1px solid #BBB;
+    }
+
+    #report-issue a {
+      color: #666;
+      font-weight: 400;
+      font-size: 0.8em;
+    }
+
+    #report-issue a:active {
+      color: #666;
+    }
+
     #main-content {
       position: relative;
       flex: 1;
@@ -493,7 +512,8 @@ struct HTMLTemplates
               <h4>Devices</h4>
               [[DEVICES]]
             </li>
-          <ul>
+          </ul>
+          <div id=\"report-issue\"><a href=\"https://github.com/TitouanVanBelle/XCUITestHTMLReport/blob/master/CONTRIBUTING.md#reporting-issues\">Report an issue</a></div>
         </div>
 
         <div id=\"main-content\">
