@@ -5,7 +5,7 @@ Please read it before you start participating.
 
 **Topics**
 
-* [Reporting Issues](#reporting-other-issues)
+* [Reporting Issues](#reporting-issues)
 * [Submitting Pull Requests](#submitting-pull-requests)
 
 ## Reporting Issues
