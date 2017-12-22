@@ -15,10 +15,18 @@
 		F3AB01361F2459FA00334580 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F3AB01341F2459FA00334580 /* LaunchScreen.storyboard */; };
 		F3AB01411F2459FA00334580 /* FirstSuite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB01401F2459FA00334580 /* FirstSuite.swift */; };
 		F3BBACC41F2853570069962A /* iPhone.png in Resources */ = {isa = PBXBuildFile; fileRef = F3223CEF1F26341D00BEDA4A /* iPhone.png */; };
+		F3C1FC591FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3C1FC581FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		F3AB013D1F2459FA00334580 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F3AB01201F2459FA00334580 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F3AB01271F2459FA00334580;
+			remoteInfo = XCUITestHTMLReportSampleApp;
+		};
+		F3C1FC5B1FECE3C30028EC72 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F3AB01201F2459FA00334580 /* Project object */;
 			proxyType = 1;
@@ -40,6 +48,9 @@
 		F3AB013C1F2459FA00334580 /* XCUITestHTMLReportSampleAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XCUITestHTMLReportSampleAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F3AB01401F2459FA00334580 /* FirstSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstSuite.swift; sourceTree = "<group>"; };
 		F3AB01421F2459FA00334580 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F3C1FC561FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XCUITestHTMLReportSampleAppUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F3C1FC581FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCUITestHTMLReportSampleAppUnitTests.swift; sourceTree = "<group>"; };
+		F3C1FC5A1FECE3C30028EC72 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +68,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F3C1FC531FECE3C30028EC72 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -65,6 +83,7 @@
 			children = (
 				F3AB012A1F2459FA00334580 /* XCUITestHTMLReportSampleApp */,
 				F3AB013F1F2459FA00334580 /* XCUITestHTMLReportSampleAppUITests */,
+				F3C1FC571FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests */,
 				F3AB01291F2459FA00334580 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -74,6 +93,7 @@
 			children = (
 				F3AB01281F2459FA00334580 /* XCUITestHTMLReportSampleApp.app */,
 				F3AB013C1F2459FA00334580 /* XCUITestHTMLReportSampleAppUITests.xctest */,
+				F3C1FC561FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -100,6 +120,15 @@
 				F3AB01421F2459FA00334580 /* Info.plist */,
 			);
 			path = XCUITestHTMLReportSampleAppUITests;
+			sourceTree = "<group>";
+		};
+		F3C1FC571FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests */ = {
+			isa = PBXGroup;
+			children = (
+				F3C1FC581FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests.swift */,
+				F3C1FC5A1FECE3C30028EC72 /* Info.plist */,
+			);
+			path = XCUITestHTMLReportSampleAppUnitTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,13 +169,31 @@
 			productReference = F3AB013C1F2459FA00334580 /* XCUITestHTMLReportSampleAppUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		F3C1FC551FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F3C1FC5F1FECE3C30028EC72 /* Build configuration list for PBXNativeTarget "XCUITestHTMLReportSampleAppUnitTests" */;
+			buildPhases = (
+				F3C1FC521FECE3C30028EC72 /* Sources */,
+				F3C1FC531FECE3C30028EC72 /* Frameworks */,
+				F3C1FC541FECE3C30028EC72 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F3C1FC5C1FECE3C30028EC72 /* PBXTargetDependency */,
+			);
+			name = XCUITestHTMLReportSampleAppUnitTests;
+			productName = XCUITestHTMLReportSampleAppUnitTests;
+			productReference = F3C1FC561FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
 		F3AB01201F2459FA00334580 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastSwiftUpdateCheck = 0900;
+				LastSwiftUpdateCheck = 0920;
 				LastUpgradeCheck = 0900;
 				ORGANIZATIONNAME = Tito;
 				TargetAttributes = {
@@ -155,6 +202,11 @@
 					};
 					F3AB013B1F2459FA00334580 = {
 						CreatedOnToolsVersion = 9.0;
+						TestTargetID = F3AB01271F2459FA00334580;
+					};
+					F3C1FC551FECE3C30028EC72 = {
+						CreatedOnToolsVersion = 9.2;
+						ProvisioningStyle = Automatic;
 						TestTargetID = F3AB01271F2459FA00334580;
 					};
 				};
@@ -174,6 +226,7 @@
 			targets = (
 				F3AB01271F2459FA00334580 /* XCUITestHTMLReportSampleApp */,
 				F3AB013B1F2459FA00334580 /* XCUITestHTMLReportSampleAppUITests */,
+				F3C1FC551FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests */,
 			);
 		};
 /* End PBXProject section */
@@ -194,6 +247,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				F3BBACC41F2853570069962A /* iPhone.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F3C1FC541FECE3C30028EC72 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -218,6 +278,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F3C1FC521FECE3C30028EC72 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F3C1FC591FECE3C30028EC72 /* XCUITestHTMLReportSampleAppUnitTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -225,6 +293,11 @@
 			isa = PBXTargetDependency;
 			target = F3AB01271F2459FA00334580 /* XCUITestHTMLReportSampleApp */;
 			targetProxy = F3AB013D1F2459FA00334580 /* PBXContainerItemProxy */;
+		};
+		F3C1FC5C1FECE3C30028EC72 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F3AB01271F2459FA00334580 /* XCUITestHTMLReportSampleApp */;
+			targetProxy = F3C1FC5B1FECE3C30028EC72 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -413,6 +486,40 @@
 			};
 			name = Release;
 		};
+		F3C1FC5D1FECE3C30028EC72 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = XK98WVAH5W;
+				INFOPLIST_FILE = XCUITestHTMLReportSampleAppUnitTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.2;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tito.XCUITestHTMLReportSampleAppUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/XCUITestHTMLReportSampleApp.app/XCUITestHTMLReportSampleApp";
+			};
+			name = Debug;
+		};
+		F3C1FC5E1FECE3C30028EC72 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = XK98WVAH5W;
+				INFOPLIST_FILE = XCUITestHTMLReportSampleAppUnitTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.2;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tito.XCUITestHTMLReportSampleAppUnitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/XCUITestHTMLReportSampleApp.app/XCUITestHTMLReportSampleApp";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -439,6 +546,15 @@
 			buildConfigurations = (
 				F3AB01491F2459FA00334580 /* Debug */,
 				F3AB014A1F2459FA00334580 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F3C1FC5F1FECE3C30028EC72 /* Build configuration list for PBXNativeTarget "XCUITestHTMLReportSampleAppUnitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F3C1FC5D1FECE3C30028EC72 /* Debug */,
+				F3C1FC5E1FECE3C30028EC72 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

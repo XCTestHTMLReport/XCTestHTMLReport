@@ -100,7 +100,7 @@ struct Run: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "DEVICE_IDENTIFIER": runDestination.targetDevice.identifier,
-            "TEST_SUMMARIES": testSummaries.map { $0.html }.first!
+            "TEST_SUMMARIES": testSummaries.map { $0.html }.joined()
         ]
     }
 
