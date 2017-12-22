@@ -346,6 +346,7 @@ struct HTMLTemplates
       display: flex;
       flex: 1;
       flex-direction: column;
+      overflow-y: scroll;
     }
 
     .tests-header, #logs-header {
@@ -353,7 +354,6 @@ struct HTMLTemplates
     }
 
     .tests > .summary {
-      overflow-y: scroll;
       width: 100%;
     }
 
