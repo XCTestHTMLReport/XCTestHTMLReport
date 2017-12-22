@@ -80,8 +80,7 @@ struct Run: HTML
             let endIndex = lastMatch!.range.location + lastMatch!.range.length
             let start = logs.index(logs.startIndex, offsetBy: startIndex)
             let end = logs.index(logs.startIndex, offsetBy: endIndex)
-            let range = start..<end
-            let activityLogs = logs.substring(with: range)
+            let activityLogs = logs[start..<end]
 
             do {
                 let file = "\(result.value!)/logs-\(runDestination.targetDevice.identifier).txt"
