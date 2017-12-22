@@ -244,6 +244,14 @@ struct HTMLTemplates
       display: block;
     }
 
+    .test-summary.no-drop-down .drop-down-icon {
+      display: none;
+    }
+
+    .test-summary.no-drop-down .test-icon {
+      margin-left: 22px;
+    }
+
     .test-result-icon {
       float: left;
       display: none;
@@ -347,7 +355,6 @@ struct HTMLTemplates
     .tests > .summary {
       overflow-y: scroll;
       width: 100%;
-      flex: 1;
     }
 
     .test-summary p, .test-summary-group p, .activity p {
@@ -882,7 +889,7 @@ struct HTMLTemplates
   """
 
   static let test = """
-  <div class=\"[[ITEM_CLASS]] [[ICON_CLASS]]\">
+  <div class=\"[[ITEM_CLASS]] [[ICON_CLASS]] [[HAS_ACTIVITIES_CLASS]]\">
     <span class=\"icon left test-result-icon\"></span>
     <p>
       <span class=\"icon left drop-down-icon\" onclick=\"toggle(this, '[[UUID]]')\"></span>

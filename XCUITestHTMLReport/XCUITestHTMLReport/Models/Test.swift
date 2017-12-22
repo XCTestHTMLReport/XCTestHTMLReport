@@ -98,6 +98,7 @@ struct Test: HTML
             "SUB_TESTS": subTests?.reduce("", { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
             }) ?? "",
+            "HAS_ACTIVITIES_CLASS": (activities == nil) ? "no-drop-down" : "",
             "ACTIVITIES": activities?.reduce("", { (accumulator: String, activity: Activity) -> String in
                 return accumulator + activity.html
             }) ?? "",
