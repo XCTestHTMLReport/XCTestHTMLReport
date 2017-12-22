@@ -34,7 +34,7 @@ enum ObjectClass: String {
     var cssClass: String {
         switch self {
         case .testSummary:
-            return "test-summary list-item"
+            return "test-summary"
         case .testSummaryGroup:
             return "test-summary-group"
         case .testableSummary:
@@ -103,7 +103,8 @@ struct Test: HTML
                 return accumulator + activity.html
             }) ?? "",
             "ICON_CLASS": status.cssClass,
-            "ITEM_CLASS": objectClass.cssClass
+            "ITEM_CLASS": objectClass.cssClass,
+            "LIST_ITEM_CLASS": objectClass == .testSummary ? "list-item" : ""
         ]
     }
 }
