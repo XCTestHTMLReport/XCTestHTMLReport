@@ -2,9 +2,9 @@
 
 ## What is it?
 
-Xcode-like HTML report for UI Tests
+Xcode-like HTML report for Unit and UI Tests
 
-![screenshot](https://i.imgur.com/NHRzoXG.jpg)
+![screenshot](https://i.imgur.com/yTtjLP6.png)
 
 ## Features
 
@@ -20,16 +20,16 @@ Xcode-like HTML report for UI Tests
 
 ## Installation
 
-Simply execute the following command to download the latest version of XCUITestHTMLReport
+Simply execute the following command to download the latest version of XCTestHTMLReport
 
 ``` bash
-$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/master/install.sh)
+$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/master/install.sh)
 ```
 
 You can also specify a branch or tag
 
 ``` bash
-$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLReport/master/install.sh) '1.0.0'
+$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/master/install.sh) '1.0.0'
 ```
 
 ## Usage
@@ -37,7 +37,7 @@ $ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCUITestHTMLR
 Run your UI tests using `xcodebuild` without forgetting to specify the `resultBundlePath`
 
 ``` bash
-$ xcodebuild test -workspace XCUITestHTMLReport.xcworkspace -scheme XCUITestHTMLReportSampleApp -destination 'platform=iOS Simulator,name=iPhone 7,OS=11.0' -resultBundlePath TestResults
+$ xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme XCTestHTMLReportSampleApp -destination 'platform=iOS Simulator,name=iPhone 7,OS=11.0' -resultBundlePath TestResults
 ```
 
 Then use the previously downloaded xchtmlreport tool to create the HTML report
@@ -50,8 +50,8 @@ Report successfully created at TestResults/index.html
 
 ## Contribution
 
-Please create an issue whenever you find an issue or think a feature could be a good addition to XCUITestHTMLReport. Always make sure to follow the [Contributing Guidelines](https://github.com/TitouanVanBelle/XCUITestHTMLReport/blob/master/CONTRIBUTING.md). Feel free to take a shot at these issues.
+Please create an issue whenever you find an issue or think a feature could be a good addition to XCTestHTMLReport. Always make sure to follow the [Contributing Guidelines](https://github.com/TitouanVanBelle/XCTestHTMLReport/blob/master/CONTRIBUTING.md). Feel free to take a shot at these issues.
 
 ## License
 
-XCUITestHTMLReport is [available under the MIT license](https://github.com/TitouanVanBelle/XCUITestHTMLReport/blob/master/LICENSE).
+XCTestHTMLReport is [available under the MIT license](https://github.com/TitouanVanBelle/XCTestHTMLReport/blob/master/LICENSE).
