@@ -34,7 +34,7 @@ enum ObjectClass: String {
     var cssClass: String {
         switch self {
         case .testSummary:
-            return "test-summary list-item"
+            return "test-summary"
         case .testSummaryGroup:
             return "test-summary-group"
         case .testableSummary:
@@ -98,11 +98,13 @@ struct Test: HTML
             "SUB_TESTS": subTests?.reduce("", { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
             }) ?? "",
+            "HAS_ACTIVITIES_CLASS": (activities == nil) ? "no-drop-down" : "",
             "ACTIVITIES": activities?.reduce("", { (accumulator: String, activity: Activity) -> String in
                 return accumulator + activity.html
             }) ?? "",
             "ICON_CLASS": status.cssClass,
-            "ITEM_CLASS": objectClass.cssClass
+            "ITEM_CLASS": objectClass.cssClass,
+            "LIST_ITEM_CLASS": objectClass == .testSummary ? "list-item" : ""
         ]
     }
 }
