@@ -29,7 +29,7 @@ When reporting issues, please include the following:
 
 This information will help  review and fix your issue faster.
 
-[Create an issue](https://github.com/TitouanVanBelle/XCUITestHTMLReport/issues/new)
+[Create an issue](https://github.com/TitouanVanBelle/XCTestHTMLReport/issues/new)
 
 ## Submitting Pull Requests
 
