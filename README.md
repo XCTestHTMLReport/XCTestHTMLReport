@@ -1,10 +1,10 @@
-![title](http://i.imgur.com/3eKi88j.jpg)
+![title](https://i.imgur.com/yTtjLP6.png)
 
 ## What is it?
 
 Xcode-like HTML report for Unit and UI Tests
 
-![screenshot](https://i.imgur.com/yTtjLP6.png)
+![screenshot](https://i.imgur.com/NHRzoXG.jpg)
 
 ## Features
 
