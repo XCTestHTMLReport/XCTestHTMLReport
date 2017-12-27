@@ -8,8 +8,8 @@ struct HTMLTemplates
   <head>
     <meta charset=\"utf-8\">
 
-    <title>XCUIHTMLReport</title>
-    <meta name=\"description\" content=\"XCode UI Testing HTML Report\">
+    <title>XCHTMLReport</title>
+    <meta name=\"description\" content=\"Xcode Testing HTML Report\">
 
     <style type=\"text/css\">
 
@@ -935,4 +935,3 @@ struct HTMLTemplates
   </p>
   """
 }
-
