@@ -5,14 +5,14 @@ Please read it before you start participating.
 
 **Topics**
 
-* [Reporting Issues](#reporting-other-issues)
+* [Reporting Issues](#reporting-issues)
 * [Submitting Pull Requests](#submitting-pull-requests)
 
 ## Reporting Issues
 
 A great way to contribute to the project
 is to send a detailed issue when you encounter an problem.
-I always appreciate a well-written, thorough bug reports.
+I always appreciate a well-written, thorough bug report.
 
 Check that the project issues database
 doesn't already include that problem or suggestion before submitting an issue.
@@ -28,6 +28,8 @@ When reporting issues, please include the following:
 * Any other details that would be useful in understanding the problem
 
 This information will help  review and fix your issue faster.
+
+[Create an issue](https://github.com/TitouanVanBelle/XCTestHTMLReport/issues/new)
 
 ## Submitting Pull Requests
 
