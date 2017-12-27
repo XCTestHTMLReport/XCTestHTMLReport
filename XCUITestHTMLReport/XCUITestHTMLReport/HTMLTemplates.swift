@@ -833,7 +833,7 @@ struct HTMLTemplates
 
     document.querySelectorAll('.device-info')[0].classList.add(\"selected\");
     document.querySelectorAll('.run')[0].classList.add(\"active\");
-
+    document.querySelector('body').classList.add(\"loaded\");
     </script>
   </body>
   </html>
@@ -841,10 +841,10 @@ struct HTMLTemplates
 
   static let device = """
     <ul class=\"device-info\" onclick=\"selectDevice('[[DEVICE_IDENTIFIER]]', this);\">
-    <li><h3>[[DEVICE_NAME]]</h3></li>
-    <li>iOS [[DEVICE_OS]]</li>
-    <li>Model: [[DEVICE_MODEL]]</li>
-    <li>Identifier: [[DEVICE_IDENTIFIER]]</li>
+    <li class=\"device-name\"><h3>[[DEVICE_NAME]]</h3></li>
+    <li class=\"device-os\">iOS [[DEVICE_OS]]</li>
+    <li class=\"device-model\">Model: [[DEVICE_MODEL]]</li>
+    <li class=\"device-identifier\">Identifier: [[DEVICE_IDENTIFIER]]</li>
   </ul>
   """
 

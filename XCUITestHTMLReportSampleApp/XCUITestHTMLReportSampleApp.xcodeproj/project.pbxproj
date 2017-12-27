@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F39729081F2471A7006B1EF3 /* SecondSuite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39729071F2471A7006B1EF3 /* SecondSuite.swift */; };
+		F39729081F2471A7006B1EF3 /* SuiteWithAttachements.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39729071F2471A7006B1EF3 /* SuiteWithAttachements.swift */; };
 		F3AB012C1F2459FA00334580 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB012B1F2459FA00334580 /* AppDelegate.swift */; };
 		F3AB012E1F2459FA00334580 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB012D1F2459FA00334580 /* ViewController.swift */; };
 		F3AB01311F2459FA00334580 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F3AB012F1F2459FA00334580 /* Main.storyboard */; };
 		F3AB01331F2459FA00334580 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F3AB01321F2459FA00334580 /* Assets.xcassets */; };
 		F3AB01361F2459FA00334580 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F3AB01341F2459FA00334580 /* LaunchScreen.storyboard */; };
-		F3AB01411F2459FA00334580 /* FirstSuite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB01401F2459FA00334580 /* FirstSuite.swift */; };
+		F3AB01411F2459FA00334580 /* Suite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB01401F2459FA00334580 /* Suite.swift */; };
 		F3BBACC41F2853570069962A /* iPhone.png in Resources */ = {isa = PBXBuildFile; fileRef = F3223CEF1F26341D00BEDA4A /* iPhone.png */; };
 /* End PBXBuildFile section */
 
@@ -29,7 +29,7 @@
 
 /* Begin PBXFileReference section */
 		F3223CEF1F26341D00BEDA4A /* iPhone.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = iPhone.png; sourceTree = "<group>"; };
-		F39729071F2471A7006B1EF3 /* SecondSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecondSuite.swift; sourceTree = "<group>"; };
+		F39729071F2471A7006B1EF3 /* SuiteWithAttachements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuiteWithAttachements.swift; sourceTree = "<group>"; };
 		F3AB01281F2459FA00334580 /* XCUITestHTMLReportSampleApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = XCUITestHTMLReportSampleApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F3AB012B1F2459FA00334580 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F3AB012D1F2459FA00334580 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -38,7 +38,7 @@
 		F3AB01351F2459FA00334580 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F3AB01371F2459FA00334580 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F3AB013C1F2459FA00334580 /* XCUITestHTMLReportSampleAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XCUITestHTMLReportSampleAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		F3AB01401F2459FA00334580 /* FirstSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstSuite.swift; sourceTree = "<group>"; };
+		F3AB01401F2459FA00334580 /* Suite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Suite.swift; sourceTree = "<group>"; };
 		F3AB01421F2459FA00334580 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -95,8 +95,8 @@
 			isa = PBXGroup;
 			children = (
 				F3223CEF1F26341D00BEDA4A /* iPhone.png */,
-				F3AB01401F2459FA00334580 /* FirstSuite.swift */,
-				F39729071F2471A7006B1EF3 /* SecondSuite.swift */,
+				F3AB01401F2459FA00334580 /* Suite.swift */,
+				F39729071F2471A7006B1EF3 /* SuiteWithAttachements.swift */,
 				F3AB01421F2459FA00334580 /* Info.plist */,
 			);
 			path = XCUITestHTMLReportSampleAppUITests;
@@ -213,8 +213,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F39729081F2471A7006B1EF3 /* SecondSuite.swift in Sources */,
-				F3AB01411F2459FA00334580 /* FirstSuite.swift in Sources */,
+				F39729081F2471A7006B1EF3 /* SuiteWithAttachements.swift in Sources */,
+				F3AB01411F2459FA00334580 /* Suite.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
