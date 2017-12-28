@@ -5,10 +5,10 @@ Given(/^the (.*) test is unfolded$/) do |n|
 end
 
 When(/^I click on the (.*) test$/) do |n|
-  index = 1 if n == 'first'
-  index = 2 if n == 'second'
+  index = 0 if n == 'first'
+  index = 1 if n == 'second'
 
-  find(".summary .test-summary-group .test-summary-group .test-summary-group:nth-of-type(1) .test-summary:nth-of-type(#{index})").click
+  all(".summary .test-summary")[index].click
 end
 
 When(/^I hit the (.*) arrow key$/) do |direction|
@@ -21,17 +21,21 @@ When(/^I hit the (.*) arrow key$/) do |direction|
 end
 
 Then(/^I should( not)? see the activities of the (.*) test$/) do |negate, n|
-  index = 1 if n == 'first'
-  index = 2 if n == 'second'
+  index = 0 if n == 'first'
+  index = 1 if n == 'second'
 
-  count = negate ? 0 : 1
+  test_summary = all('.summary .test-summary')[index]
 
-  expect(page).to have_selector(".summary .test-summary-group .test-summary-group .test-summary-group:nth-of-type(1) .test-summary:nth-of-type(#{index}) .activities", :count => count)
+  visible = negate ? false : true
+
+  expect(test_summary).to have_selector('.activities', :visible => visible)
 end
 
 Then(/^the (.*) test should be selected$/) do |n|
-  index = 1 if n == 'first'
-  index = 2 if n == 'second'
+  index = 0 if n == 'first'
+  index = 1 if n == 'second'
 
-  expect(page).to have_selector(".summary .test-summary-group .test-summary-group .test-summary-group:nth-of-type(1) .test-summary:nth-of-type(#{index}).selected", :count => 1)
+  test_summary = all('.summary .test-summary')[index]
+
+  expect(test_summary).to have_selector('.selected')
 end

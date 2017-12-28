@@ -15,13 +15,16 @@ When(/^I remove the filter$/) do
 end
 
 Then(/^I should only see the tests which succeeded$/) do
-  expect(page).to have_selector('.test-summary.list-item', :count => 2)
+  count = find_all('.run.active .tests .test-summary.succeeded').count
+  expect(page).to have_selector('.run.active .tests .test-summary', :count => count, :visible => true)
 end
 
 Then(/^I should only see the tests which failed$/) do
-  expect(page).to have_selector('.test-summary.list-item', :count => 3)
+  count = find_all('.run.active .tests .test-summary.failed').count
+  expect(page).to have_selector('.run.active .tests .test-summary', :count => count, :visible => true)
 end
 
 Then(/^I should see all the tests which failed and which succeeded$/) do
-  expect(page).to have_selector('.test-summary.list-item', :count => 5)
+  count = find_all('.run.active .tests .test-summary', :visible => :all).count
+  expect(page).to have_selector('.run.active .tests .test-summary', :count => count, :visible => true)
 end

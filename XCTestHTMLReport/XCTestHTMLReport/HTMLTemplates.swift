@@ -847,9 +847,9 @@ struct HTMLTemplates
   static let device = """
     <ul class=\"device-info\" onclick=\"selectDevice('[[DEVICE_IDENTIFIER]]', this);\">
     <li class=\"device-name\"><h3>[[DEVICE_NAME]]</h3></li>
-    <li class=\"device-os\">iOS [[DEVICE_OS]]</li>
-    <li class=\"device-model\">Model: [[DEVICE_MODEL]]</li>
-    <li class=\"device-identifier\">Identifier: [[DEVICE_IDENTIFIER]]</li>
+    <li class=\"device-os\"><p>iOS [[DEVICE_OS]]</p></li>
+    <li class=\"device-model\"><p>Model: [[DEVICE_MODEL]]</p></li>
+    <li class=\"device-identifier\"><p>Identifier: [[DEVICE_IDENTIFIER]]</p></li>
   </ul>
   """
 
@@ -919,7 +919,7 @@ struct HTMLTemplates
   """
 
   static let screenshot = """
-  <p class=\"attachment list-item\">
+  <p class=\"attachment image-attachement list-item\">
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Screenshot
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
@@ -928,10 +928,11 @@ struct HTMLTemplates
   """
 
   static let text = """
-  <p class=\"attachment list-item\">
+  <p class=\"attachment text-attachement list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Text
     <span class=\"icon preview-icon\" data=\"[[PATH]]/Attachments/[[FILENAME]]\" onclick=\"showText('[[PATH]]/Attachments/[[FILENAME]]')\"></span>
   </p>
   """
 }
+

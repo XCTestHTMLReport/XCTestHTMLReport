@@ -14,8 +14,3 @@ Scenario: As a user, I should be able to see HTML attachements
     Given I have opened the report
      When I click on an HTML attachement
      Then I should see the HTML attachement
-
-Scenario: As a user, I should be able to see crash reports attachements
-    Given I have opened the report
-     When I click on a crash report attachement
-     Then I should see the crash report attachement
