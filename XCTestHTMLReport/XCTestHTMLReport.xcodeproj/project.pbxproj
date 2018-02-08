@@ -65,7 +65,7 @@
 		F30667501F2A1BB900EDE682 /* StringGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringGenerator.swift; sourceTree = "<group>"; };
 		F30667511F2A1BB900EDE682 /* Style.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Style.swift; sourceTree = "<group>"; };
 		F30667521F2A1BB900EDE682 /* XcodeColorsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeColorsSupport.swift; sourceTree = "<group>"; };
-		F324B4951F22359500B5B8B4 /* XCTestHTMLReport */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = XCTestHTMLReport; sourceTree = BUILT_PRODUCTS_DIR; };
+		F324B4951F22359500B5B8B4 /* xchtmlreport */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = xchtmlreport; sourceTree = BUILT_PRODUCTS_DIR; };
 		F324B4981F22359500B5B8B4 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		F324B49F1F22383D00B5B8B4 /* Argument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Argument.swift; sourceTree = "<group>"; };
 		F340F8171F2A37B000AECEE2 /* TimeInterval+Time.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TimeInterval+Time.swift"; sourceTree = "<group>"; };
@@ -128,7 +128,7 @@
 		F324B4961F22359500B5B8B4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F324B4951F22359500B5B8B4 /* XCTestHTMLReport */,
+				F324B4951F22359500B5B8B4 /* xchtmlreport */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -223,7 +223,7 @@
 			);
 			name = XCTestHTMLReport;
 			productName = XCTestHTMLReport;
-			productReference = F324B4951F22359500B5B8B4 /* XCTestHTMLReport */;
+			productReference = F324B4951F22359500B5B8B4 /* xchtmlreport */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -425,14 +425,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
-				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/builds";
+				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/..";
 				DEVELOPMENT_TEAM = XK98WVAH5W;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = xchtmlreport;
 				SWIFT_OBJC_BRIDGING_HEADER = "XCTestHTMLReport/Libraries/XCTestHTMLReport-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 4.0;
-				SYMROOT = "$(SRCROOT)/builds";
+				SYMROOT = "$(SRCROOT)/..";
 			};
 			name = Debug;
 		};
@@ -440,13 +440,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
-				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/builds";
+				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/..";
 				DEVELOPMENT_TEAM = XK98WVAH5W;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = xchtmlreport;
 				SWIFT_OBJC_BRIDGING_HEADER = "XCTestHTMLReport/Libraries/XCTestHTMLReport-Bridging-Header.h";
 				SWIFT_VERSION = 4.0;
-				SYMROOT = "$(SRCROOT)/builds";
+				SYMROOT = "$(SRCROOT)/..";
 			};
 			name = Release;
 		};

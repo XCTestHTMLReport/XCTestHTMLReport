@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0900"
+   LastUpgradeVersion = "0920"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -10,12 +10,12 @@
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Run Script"
-               scriptText = "cp $SRCROOT/builds/XCTestHTMLReport $SRCROOT/../xchtmlreport&#10;chmod 755 $SRCROOT/../xchtmlreport">
+               scriptText = "cp $SRCROOT/../xchtmlreport /usr/local/bin/">
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"
                      BlueprintIdentifier = "F324B4941F22359500B5B8B4"
-                     BuildableName = "XCTestHTMLReport"
+                     BuildableName = "xchtmlreport"
                      BlueprintName = "XCTestHTMLReport"
                      ReferencedContainer = "container:XCTestHTMLReport.xcodeproj">
                   </BuildableReference>
@@ -83,12 +83,8 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-r ../../TestResults -v"
+            argument = "-r ../../TestResults"
             isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "-h"
-            isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>
       <AdditionalOptions>
