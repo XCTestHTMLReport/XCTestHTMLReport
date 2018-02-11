@@ -54,6 +54,21 @@ struct Activity: HTML
         let subActivitesHaveAttachments = subActivities?.reduce(false) { $0 || $1.hasGlobalAttachment } ?? false
         return hasDirecAttachment || subActivitesHaveAttachments
     }
+    var hasFailingSubActivities: Bool {
+        return subActivities?.reduce(false) { $0 || $1.type == .assertionFailure } ?? false
+    }
+    var cssClasses: String {
+        var cls = ""
+        if let type = type {
+            cls += type.cssClass
+
+            if type == .userCreated && hasFailingSubActivities {
+                cls += " activity-assertion-failure"
+            }
+        }
+
+        return cls
+    }
     
     init(root: String, dict: [String : Any], padding: Int) {
         uuid = dict["UUID"] as! String
@@ -90,7 +105,7 @@ struct Activity: HTML
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
             "PADDING": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? String(padding + 18) : String(padding),
             "TIME": totalTime.timeString,
-            "ACTIVITY_TYPE_CLASS": type?.cssClass ?? "",
+            "ACTIVITY_TYPE_CLASS": cssClasses,
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? "no-drop-down" : "",
             "SUB_ACTIVITY": subActivities?.reduce("", { (accumulator: String, activity: Activity) -> String in
                 return accumulator + activity.html
