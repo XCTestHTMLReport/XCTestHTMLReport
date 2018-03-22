@@ -858,9 +858,9 @@ struct HTMLTemplates
     <div class=\"tests\">
       <div class=\"tests-header\">
         <ul class=\"toolbar toggle-toolbar\">
-          <li onclick=\"showAllScenarios(this);\" class=\"selected\">All</li>
-          <li onclick=\"showSuccessfulScenariosOnly(this);\">Passed</li>
-          <li onclick=\"showFailedScenariosOnly(this);\">Failed</li>
+          <li onclick=\"showAllScenarios(this);\" class=\"selected\">All ([[N_OF_TESTS]])</li>
+          <li onclick=\"showSuccessfulScenariosOnly(this);\">Passed ([[N_OF_PASSED_TESTS]])</li>
+          <li onclick=\"showFailedScenariosOnly(this);\">Failed ([[N_OF_FAILED_TESTS]])</li>
         </ul>
         <ul class=\"toolbar table-header\">
           <li>Status</li>
@@ -935,3 +935,4 @@ struct HTMLTemplates
   </p>
   """
 }
+

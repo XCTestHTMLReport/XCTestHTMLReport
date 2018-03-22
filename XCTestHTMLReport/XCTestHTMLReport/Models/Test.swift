@@ -56,6 +56,20 @@ struct Test: HTML
     var status: Status
     var objectClass: ObjectClass
 
+    var allSubTests: [Test]? {
+        guard subTests != nil else {
+            return nil
+        }
+
+        return subTests!.flatMap({ (test) -> [Test]? in
+            guard test.allSubTests != nil else {
+                return [test]
+            }
+
+            return test.allSubTests
+        }).flatMap { $0 }
+    }
+
     var amountSubTests: Int {
         if let subTests = subTests {
             let a = subTests.reduce(0) { $0 + $1.amountSubTests }

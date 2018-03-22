@@ -33,7 +33,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "F324B4941F22359500B5B8B4"
-               BuildableName = "XCTestHTMLReport"
+               BuildableName = "xchtmlreport"
                BlueprintName = "XCTestHTMLReport"
                ReferencedContainer = "container:XCTestHTMLReport.xcodeproj">
             </BuildableReference>
@@ -52,7 +52,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F324B4941F22359500B5B8B4"
-            BuildableName = "XCTestHTMLReport"
+            BuildableName = "xchtmlreport"
             BlueprintName = "XCTestHTMLReport"
             ReferencedContainer = "container:XCTestHTMLReport.xcodeproj">
          </BuildableReference>
@@ -76,14 +76,14 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F324B4941F22359500B5B8B4"
-            BuildableName = "XCTestHTMLReport"
+            BuildableName = "xchtmlreport"
             BlueprintName = "XCTestHTMLReport"
             ReferencedContainer = "container:XCTestHTMLReport.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-r ../../TestResults"
+            argument = "-r TestResults"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
@@ -101,7 +101,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F324B4941F22359500B5B8B4"
-            BuildableName = "XCTestHTMLReport"
+            BuildableName = "xchtmlreport"
             BlueprintName = "XCTestHTMLReport"
             ReferencedContainer = "container:XCTestHTMLReport.xcodeproj">
          </BuildableReference>
