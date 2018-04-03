@@ -48,6 +48,18 @@ $ xchtmlreport -r TestResults
 Report successfully created at TestResults/index.html
 ```
 
+### Multiple Result Bundle Path
+
+You can also pass multiple times the -r option.
+
+``` bash
+$ xchtmlreport -r TestResults1 -r TestResults2
+
+Report successfully created at TestResults1/index.html
+```
+
+This will create only one HTML Report in the path you passed with the -r option
+
 ## Contribution
 
 Please create an issue whenever you find an issue or think a feature could be a good addition to XCTestHTMLReport. Always make sure to follow the [Contributing Guidelines](https://github.com/TitouanVanBelle/XCTestHTMLReport/blob/master/CONTRIBUTING.md). Feel free to take a shot at these issues.
