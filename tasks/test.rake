@@ -26,7 +26,7 @@ desc "Run the UI Tests"
     system "xchtmlreport -r TestResults -v"
   end
 
-  desc 'Run the UI Tests in // in multiple devices and create an HTML Report'
+  desc 'Run the UI Tests in split in multiple devices and create an HTML Report'
   task :ui_split  do
     puts "Deleting previous test results"
     system "rm -rf 'TestResults1'"
