@@ -19,6 +19,28 @@ struct Run: HTML
             return accumulator && summary.status == .success
         }) ? .success : .failure
     }
+    var allTests: [Test] {
+        let tests = testSummaries.flatMap { $0.tests }
+        let subTests = tests.flatMap { (test) -> [Test]? in
+            guard test.allSubTests != nil else {
+                return [test]
+            }
+
+            return test.allSubTests
+        }
+
+        return subTests.flatMap { $0 }
+    }
+    var numberOfTests : Int {
+        let a = allTests
+        return a.count
+    }
+    var numberOfPassedTests : Int {
+        return allTests.filter { $0.status == .success }.count
+    }
+    var numberOfFailedTests : Int {
+        return allTests.filter { $0.status == .failure }.count
+    }
 
     init(root: String, path: String)
     {
@@ -83,7 +105,7 @@ struct Run: HTML
             let activityLogs = logs[start..<end]
 
             do {
-                let file = "\(result.value!)/logs-\(runDestination.targetDevice.identifier).txt"
+                let file = "\(result.values.first!)/logs-\(runDestination.targetDevice.identifier).txt"
                 try activityLogs.write(toFile: file, atomically: false, encoding: .utf8)
             }
             catch let e {
@@ -99,6 +121,9 @@ struct Run: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "DEVICE_IDENTIFIER": runDestination.targetDevice.identifier,
+            "N_OF_TESTS": String(numberOfTests),
+            "N_OF_PASSED_TESTS": String(numberOfPassedTests),
+            "N_OF_FAILED_TESTS": String(numberOfFailedTests),
             "TEST_SUMMARIES": testSummaries.map { $0.html }.joined()
         ]
     }
