@@ -20,7 +20,7 @@ var help = BlockArgument("h", "", required: false, helpMessage: "Print usage and
 var verbose = BlockArgument("v", "", required: false, helpMessage: "Provide additional logs") {
     Logger.verbose = true
 }
-var result = ValueArgument(.path, "r", "resultBundePath", required: true, helpMessage: "Path to the result bundle")
+var result = ValueArgument(.path, "r", "resultBundePath", required: true, allowsMultiple: true, helpMessage: "Path to the result bundle")
 
 command.arguments = [help, verbose, result]
 
@@ -29,13 +29,13 @@ if !command.isValid {
     exit(EXIT_FAILURE)
 }
 
-let summary = Summary(root: result.value!)
+let summary = Summary(roots: result.values)
 
 Logger.step("Building HTML..")
 let html = summary.html
 
 do {
-    let path = "\(result.value!)/index.html"
+    let path = "\(result.values.first!)/index.html"
     Logger.substep("Writing report to \(path)")
 
     try html.write(toFile: path, atomically: false, encoding: .utf8)
