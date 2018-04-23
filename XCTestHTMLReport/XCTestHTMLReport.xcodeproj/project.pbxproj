@@ -344,7 +344,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -401,7 +401,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -426,7 +426,7 @@
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/..";
-				DEVELOPMENT_TEAM = XK98WVAH5W;
+				DEVELOPMENT_TEAM = "";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_NAME = xchtmlreport;
 				SWIFT_OBJC_BRIDGING_HEADER = "XCTestHTMLReport/Libraries/XCTestHTMLReport-Bridging-Header.h";
@@ -441,7 +441,7 @@
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/..";
-				DEVELOPMENT_TEAM = XK98WVAH5W;
+				DEVELOPMENT_TEAM = "";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_NAME = xchtmlreport;
 				SWIFT_OBJC_BRIDGING_HEADER = "XCTestHTMLReport/Libraries/XCTestHTMLReport-Bridging-Header.h";
