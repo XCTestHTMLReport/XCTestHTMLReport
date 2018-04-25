@@ -847,7 +847,7 @@ struct HTMLTemplates
 
   static let device = """
     <ul class=\"device-info\" onclick=\"selectDevice('[[DEVICE_IDENTIFIER]]', this);\">
-    <li><h3>[[DEVICE_NAME]]</h3></li>
+    <li>[[DEVICE_RESULT]]<h3>[[DEVICE_NAME]]</h3></li>
     <li>iOS [[DEVICE_OS]]</li>
     <li>Model: [[DEVICE_MODEL]]</li>
     <li>Identifier: [[DEVICE_IDENTIFIER]]</li>

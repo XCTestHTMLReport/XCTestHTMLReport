@@ -8,10 +8,33 @@
 
 import Foundation
 
+private extension Status {
+    /// e.g. <span class="icon left failure"></span>
+    var iconCssClass: String {
+        switch self {
+        case .failure:
+            return "failure"
+        case .success:
+            return "success"
+        default:
+            return ""
+        }
+    }
+
+    /// Only show icon for failures
+    var iconHTML: String {
+        guard self == .failure else {
+            return ""
+        }
+        return "<span class=\"icon left \(iconCssClass)\"></span>"
+    }
+}
+
 struct RunDestination : HTML
 {
     var name: String
     var targetDevice: TargetDevice
+    var status: Status = .unknown
 
     init(dict: [String : Any])
     {
@@ -27,6 +50,7 @@ struct RunDestination : HTML
 
     var htmlPlaceholderValues: [String: String] {
         return [
+            "DEVICE_RESULT": status.iconHTML,
             "DEVICE_NAME": name,
             "DEVICE_IDENTIFIER": targetDevice.identifier,
             "DEVICE_MODEL": targetDevice.model,
