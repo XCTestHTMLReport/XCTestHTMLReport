@@ -20,9 +20,13 @@ var help = BlockArgument("h", "", required: false, helpMessage: "Print usage and
 var verbose = BlockArgument("v", "", required: false, helpMessage: "Provide additional logs") {
     Logger.verbose = true
 }
-var result = ValueArgument(.path, "r", "resultBundePath", required: true, allowsMultiple: true, helpMessage: "Path to the result bundle")
+var junitEnabled = false
+var junit = BlockArgument("j", "junit", required: false, helpMessage: "Provide JUnit XML output") {
+    junitEnabled = true
+}
+var result = ValueArgument(.path, "r", "resultBundlePath", required: true, allowsMultiple: true, helpMessage: "Path to a result bundle (allows multiple)")
 
-command.arguments = [help, verbose, result]
+command.arguments = [help, verbose, junit, result]
 
 if !command.isValid {
     print(command.usage)
@@ -43,6 +47,20 @@ do {
 }
 catch let e {
     Logger.error("An error has occured while creating the report. Error: \(e)")
+}
+
+if junitEnabled {
+    let junitXml = summary.junit.xmlString
+    do {
+        let path = "\(result.values.first!)/report.junit"
+        Logger.substep("Writing JUnit report to \(path)")
+
+        try junitXml.write(toFile: path, atomically: false, encoding: .utf8)
+        Logger.success("\nJUnit report successfully created at \(path)")
+    }
+    catch let e {
+        Logger.error("An error has occured while creating the JUnit report. Error: \(e)")
+    }
 }
 
 exit(EXIT_SUCCESS)

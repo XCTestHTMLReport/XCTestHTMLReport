@@ -8,7 +8,7 @@
 
 import Foundation
 
-struct Summary: HTML
+struct Summary
 {
     private let filename = "action_TestSummaries.plist"
 
@@ -42,10 +42,12 @@ struct Summary: HTML
             }
         }
     }
+}
 
-    // PRAGMA MARK: - HTML
-
-    var htmlTemplate = HTMLTemplates.index
+extension Summary: HTML {
+    var htmlTemplate: String {
+        return HTMLTemplates.index
+    }
 
     var htmlPlaceholderValues: [String: String] {
         return [
@@ -58,3 +60,40 @@ struct Summary: HTML
     }
 }
 
+extension Summary: JUnitRepresentable {
+    var junit: JUnit {
+        return JUnit(summary: self)
+    }
+}
+
+extension JUnit {
+    init(summary: Summary) {
+        name = "All"
+        suites = summary.runs.map { JUnit.TestSuite(run: $0) }
+    }
+}
+
+extension JUnit.TestCase {
+    init(test: Test) {
+        let components = test.identifier.components(separatedBy: "/")
+        time = test.duration
+        name = components.last ?? ""
+        classname = components.first ?? ""
+        switch test.status {
+        case .failure:
+            state = .failed
+        case .success:
+            state = .passed
+        case .unknown:
+            state = .unknown
+        }
+    }
+}
+
+extension JUnit.TestSuite {
+    init(run: Run) {
+        name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.name + " - " + run.runDestination.targetDevice.osVersion
+        tests = run.numberOfTests
+        cases = run.allTests.map { JUnit.TestCase(test: $0) }
+    }
+}

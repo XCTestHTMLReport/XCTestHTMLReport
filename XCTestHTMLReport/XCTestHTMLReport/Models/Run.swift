@@ -84,7 +84,7 @@ struct Run: HTML
             let lastRunningTestsMatch = runningTestsMatches.last
 
             guard lastRunningTestsMatch != nil else {
-                Logger.warning("Failed to extract activity logs. Could not locate match for \"\(runningTestsPattern)\" ")
+                Logger.warning("Failed to extract activity logs from \(root). Could not locate match for \"\(runningTestsPattern)\"")
                 return
             }
 
@@ -94,7 +94,7 @@ struct Run: HTML
             let lastMatch = matches.last
 
             guard lastMatch != nil else {
-                Logger.warning("Failed to extract activity logs. Could not locate match for \"\(pattern)\" ")
+                Logger.warning("Failed to extract activity logs from \(root). Could not locate match for \"\(pattern)\" ")
                 return
             }
 
@@ -109,7 +109,7 @@ struct Run: HTML
                 try activityLogs.write(toFile: file, atomically: false, encoding: .utf8)
             }
             catch let e {
-                Logger.error("An error has occured while create the activity log file. Error: \(e)")
+                Logger.error("An error has occured while create the activity log file for \(root). Error: \(e)")
             }
         }
     }
