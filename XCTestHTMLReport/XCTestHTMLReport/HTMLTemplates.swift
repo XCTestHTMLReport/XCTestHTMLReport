@@ -407,6 +407,7 @@ struct HTMLTemplates
     #left-sidebar {
       width: 200px;
       border-right: 1px solid #BBB;
+      overflow: auto;
     }
 
     #report-issue {
