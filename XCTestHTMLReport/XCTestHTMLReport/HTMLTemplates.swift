@@ -411,8 +411,8 @@ struct HTMLTemplates
     }
 
     #report-issue {
-      position: absolute;
       padding-top: 6px;
+      padding-bottom: 10px;
       bottom: 10px;
       width: 100%;
       text-align: center;
