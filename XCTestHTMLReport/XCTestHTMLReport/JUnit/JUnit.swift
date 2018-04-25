@@ -89,3 +89,36 @@ extension JUnit.TestCase: XMLRepresentable {
         return xml
     }
 }
+
+
+extension JUnit {
+    init(summary: Summary) {
+        name = "All"
+        suites = summary.runs.map { JUnit.TestSuite(run: $0) }
+    }
+}
+
+extension JUnit.TestCase {
+    init(test: Test) {
+        let components = test.identifier.components(separatedBy: "/")
+        time = test.duration
+        name = components.last ?? ""
+        classname = components.first ?? ""
+        switch test.status {
+        case .failure:
+            state = .failed
+        case .success:
+            state = .passed
+        case .unknown:
+            state = .unknown
+        }
+    }
+}
+
+extension JUnit.TestSuite {
+    init(run: Run) {
+        name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.name + " - " + run.runDestination.targetDevice.osVersion
+        tests = run.numberOfTests
+        cases = run.allTests.map { JUnit.TestCase(test: $0) }
+    }
+}
