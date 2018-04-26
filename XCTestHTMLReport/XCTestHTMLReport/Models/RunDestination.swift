@@ -23,7 +23,8 @@ private extension Status {
 
     /// Only show icon for failures
     var iconHTML: String {
-        guard self == .failure else {
+        guard self == .failure ||
+              self == .success else {
             return ""
         }
         return "<span class=\"device-result icon left \(iconCssClass)\"></span>"
