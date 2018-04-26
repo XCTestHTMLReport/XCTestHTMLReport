@@ -50,16 +50,8 @@ struct HTMLTemplates
       height: 70px;
     }
 
-    #info-sections h4 {
-      color: #777;
-      font-size: 13px;
-      font-weight: 500;
-      margin: 16px 0 0px 10px;
-      border-bottom: 1px solid #ddd;
-    }
-
     #info-sections ul {
-      padding-left: 10px;
+      padding-left: 4px;
     }
 
     #info-sections ul li {
@@ -92,6 +84,17 @@ struct HTMLTemplates
 
     .device-info li:nth-child(2) {
       margin-bottom: 10px;
+    }
+
+    .device-os,
+    .device-identifier,
+    .device-model {
+      padding-left: 24px;
+    }
+
+    .device-info .device-result {
+      margin-top: 2px;
+      margin-right: 6px;
     }
 
     #title {
@@ -407,14 +410,28 @@ struct HTMLTemplates
     #left-sidebar {
       width: 200px;
       border-right: 1px solid #BBB;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #device-header {
+      color: #777;
+      font-size: 13px;
+      font-weight: 500;
+      margin: 16px 0 0px 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    #info-sections {
       overflow: auto;
+      flex: 1;
     }
 
     #report-issue {
       padding-top: 6px;
       padding-bottom: 10px;
-      bottom: 10px;
       width: 100%;
+      background-color: #F2F2F2;
       text-align: center;
       border-top: 1px solid #BBB;
     }
@@ -511,9 +528,9 @@ struct HTMLTemplates
       <div id=\"container\">
         <div id=\"left-sidebar\" class=\"sidebar\">
           <div class=\"resizer\"></div>
+          <h4 id=\"device-header\">Devices</h4>
           <ul id=\"info-sections\">
             <li class=\"section\">
-              <h4>Devices</h4>
               [[DEVICES]]
             </li>
           </ul>
@@ -847,10 +864,10 @@ struct HTMLTemplates
 
   static let device = """
     <ul class=\"device-info\" onclick=\"selectDevice('[[DEVICE_IDENTIFIER]]', this);\">
-    <li>[[DEVICE_RESULT]]<h3>[[DEVICE_NAME]]</h3></li>
-    <li>iOS [[DEVICE_OS]]</li>
-    <li>Model: [[DEVICE_MODEL]]</li>
-    <li>Identifier: [[DEVICE_IDENTIFIER]]</li>
+    <li>[[DEVICE_RESULT]]<h3 class=\"device-name\">[[DEVICE_NAME]]</h3></li>
+    <li class=\"device-os\">iOS [[DEVICE_OS]]</li>
+    <li class=\"device-model\">Model: [[DEVICE_MODEL]]</li>
+    <li class=\"device-identifier\">Identifier: [[DEVICE_IDENTIFIER]]</li>
   </ul>
   """
 

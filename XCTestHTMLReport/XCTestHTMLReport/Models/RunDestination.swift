@@ -26,7 +26,7 @@ private extension Status {
         guard self == .failure else {
             return ""
         }
-        return "<span class=\"icon left \(iconCssClass)\"></span>"
+        return "<span class=\"device-result icon left \(iconCssClass)\"></span>"
     }
 }
 

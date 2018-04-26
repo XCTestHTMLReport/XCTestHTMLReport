@@ -16,7 +16,6 @@ struct Summary: HTML
 
     init(roots: [String])
     {
-
         for root in roots {
             Logger.step("Parsing Test Summaries")
             let enumerator = FileManager.default.enumerator(atPath: root)
