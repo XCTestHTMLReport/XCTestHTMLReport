@@ -87,12 +87,15 @@ extension JUnit.TestSuite: XMLRepresentable {
 extension JUnit.TestCase: XMLRepresentable {
     /// e.g. <testcase classname='AccessTests' name='testThatThingsThatShouldBePublicArePublic-iPhone8' time='0.007'/>
     var xmlString: String {
-        var xml = "    <testcase classname='\(classname)' name='\(name)' time='\(time)'"
+        let timeString = String(format: "%.02f", time)
+        var xml = "    <testcase classname='\(classname)' name='\(name)' time='\(timeString)'"
         if state == .failed {
             xml += ">\n"
+            xml += "      <failure>\n"
             results.forEach { (result) in
                 xml += result.xmlString
             }
+            xml += "      </failure>\n"
             xml += "    </testcase>\n"
         } else {
             xml += "/>\n"
@@ -106,7 +109,7 @@ extension JUnit.TestResult: XMLRepresentable {
         switch state {
         case .failed:
             // TODO: The title should probably be XML escaped
-            return "      <failure>\(title)</failure>\n"
+            return "        \(title)\n"
         default:
             return ""
         }
