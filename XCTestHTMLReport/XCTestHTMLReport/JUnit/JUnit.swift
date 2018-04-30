@@ -122,11 +122,11 @@ extension JUnit {
 }
 
 extension JUnit.TestCase {
-    init(test: Test) {
+    init(run: Run, test: Test) {
         let components = test.identifier.components(separatedBy: "/")
         time = test.duration
         name = components.last ?? ""
-        classname = components.first ?? ""
+        classname = (components.first ?? "") + " - " + run.runDestination.deviceInfo
         switch test.status {
         case .failure:
             state = .failed
@@ -152,8 +152,14 @@ extension JUnit.TestResult {
 
 extension JUnit.TestSuite {
     init(run: Run) {
-        name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.name + " - " + run.runDestination.targetDevice.osVersion
+        name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.deviceInfo
         tests = run.numberOfTests
-        cases = run.allTests.map { JUnit.TestCase(test: $0) }
+        cases = run.allTests.map { JUnit.TestCase(run: run, test: $0) }
+    }
+}
+
+extension RunDestination {
+    var deviceInfo: String {
+        return name + " - " + targetDevice.osVersion
     }
 }
