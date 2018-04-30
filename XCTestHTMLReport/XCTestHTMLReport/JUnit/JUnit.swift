@@ -47,6 +47,15 @@ struct JUnit {
         var name: String
         var time: TimeInterval
         var state: State
+        var results: [TestResult]
+    }
+    struct TestResult {
+        enum State {
+            case unknown
+            case failed
+        }
+        var title: String
+        var state: State
     }
 }
 
@@ -81,12 +90,26 @@ extension JUnit.TestCase: XMLRepresentable {
         var xml = "    <testcase classname='\(classname)' name='\(name)' time='\(time)'"
         if state == .failed {
             xml += ">\n"
-            xml += "      <failure/>\n"
+            results.forEach { (result) in
+                xml += result.xmlString
+            }
             xml += "    </testcase>\n"
         } else {
             xml += "/>\n"
         }
         return xml
+    }
+}
+
+extension JUnit.TestResult: XMLRepresentable {
+    var xmlString: String {
+        switch state {
+        case .failed:
+            // TODO: The title should probably be XML escaped
+            return "      <failure>\(title)</failure>\n"
+        default:
+            return ""
+        }
     }
 }
 
@@ -110,6 +133,18 @@ extension JUnit.TestCase {
         case .success:
             state = .passed
         case .unknown:
+            state = .unknown
+        }
+        results = test.activities?.map { JUnit.TestResult(activity: $0) } ?? []
+    }
+}
+
+extension JUnit.TestResult {
+    init(activity: Activity) {
+        title = activity.title
+        if activity.type == .assertionFailure {
+            state = .failed
+        } else {
             state = .unknown
         }
     }
