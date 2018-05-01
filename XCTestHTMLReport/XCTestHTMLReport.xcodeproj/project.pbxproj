@@ -53,6 +53,14 @@
 		B12D2A9F1FC69B0700DE78C6 /* NSData+GZIP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSData+GZIP.h"; sourceTree = "<group>"; };
 		B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSData+GZIP.m"; sourceTree = "<group>"; };
 		B12D2AA21FCB257500DE78C6 /* String+Path.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Path.swift"; sourceTree = "<group>"; };
+		D980EDC82091076300CABFE7 /* activity.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = activity.html; sourceTree = "<group>"; };
+		D980EDC92091076300CABFE7 /* text.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = text.html; sourceTree = "<group>"; };
+		D980EDCA2091076300CABFE7 /* run.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = run.html; sourceTree = "<group>"; };
+		D980EDCB2091076300CABFE7 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
+		D980EDCC2091076300CABFE7 /* screenshot.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = screenshot.html; sourceTree = "<group>"; };
+		D980EDCD2091076300CABFE7 /* test_summary.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = test_summary.html; sourceTree = "<group>"; };
+		D980EDCE2091076300CABFE7 /* test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = test.html; sourceTree = "<group>"; };
+		D980EDCF2091076300CABFE7 /* device.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = device.html; sourceTree = "<group>"; };
 		F30667371F2A0DE900EDE682 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		F30667471F2A1BB900EDE682 /* BackgroundColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundColor.swift; sourceTree = "<group>"; };
 		F30667481F2A1BB900EDE682 /* CodesParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodesParser.swift; sourceTree = "<group>"; };
@@ -71,19 +79,14 @@
 		F340F8171F2A37B000AECEE2 /* TimeInterval+Time.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TimeInterval+Time.swift"; sourceTree = "<group>"; };
 		F34A8F0C1F29934F00831771 /* Command.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Command.swift; sourceTree = "<group>"; };
 		F353A1461F9B454D00E5A528 /* Run.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Run.swift; sourceTree = "<group>"; };
-		F39729091F24759D006B1EF3 /* screenshot.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = screenshot.html; sourceTree = "<group>"; };
 		F3AB011A1F23650500334580 /* Activity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Activity.swift; sourceTree = "<group>"; };
 		F3AB011C1F23659D00334580 /* Attachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Attachment.swift; sourceTree = "<group>"; };
-		F3AB011E1F2366A100334580 /* activity.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = activity.html; sourceTree = "<group>"; };
 		F3AB014C1F24600B00334580 /* HTMLTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLTemplates.swift; sourceTree = "<group>"; };
 		F3B7EE691F2242D200E19B57 /* RunDestination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunDestination.swift; sourceTree = "<group>"; };
 		F3B7EE6B1F2242DC00E19B57 /* Summary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Summary.swift; sourceTree = "<group>"; };
 		F3B7EE6D1F22449100E19B57 /* TargetDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetDevice.swift; sourceTree = "<group>"; };
 		F3B7EE6F1F2247FA00E19B57 /* TestSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestSummary.swift; sourceTree = "<group>"; };
 		F3B7EE711F224A4200E19B57 /* Test.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Test.swift; sourceTree = "<group>"; };
-		F3B7EE7A1F22F1D800E19B57 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
-		F3B7EE7B1F233A7B00E19B57 /* test.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = test.html; sourceTree = "<group>"; };
-		F3B7EE7C1F233A8E00E19B57 /* test_summary.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = test_summary.html; sourceTree = "<group>"; };
 		F3B7EE7D1F233B9C00E19B57 /* HTML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTML.swift; sourceTree = "<group>"; };
 		F3C058A01F25E74C00EF51E1 /* XCTestHTMLReport-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "XCTestHTMLReport-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -99,6 +102,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D980EDC72091076300CABFE7 /* HTML */ = {
+			isa = PBXGroup;
+			children = (
+				D980EDC82091076300CABFE7 /* activity.html */,
+				D980EDC92091076300CABFE7 /* text.html */,
+				D980EDCA2091076300CABFE7 /* run.html */,
+				D980EDCB2091076300CABFE7 /* index.html */,
+				D980EDCC2091076300CABFE7 /* screenshot.html */,
+				D980EDCD2091076300CABFE7 /* test_summary.html */,
+				D980EDCE2091076300CABFE7 /* test.html */,
+				D980EDCF2091076300CABFE7 /* device.html */,
+			);
+			path = HTML;
+			sourceTree = "<group>";
+		};
 		F30667461F2A1BB900EDE682 /* Rainbow */ = {
 			isa = PBXGroup;
 			children = (
@@ -139,8 +157,8 @@
 				F324B4981F22359500B5B8B4 /* main.swift */,
 				F3AB014C1F24600B00334580 /* HTMLTemplates.swift */,
 				F30667371F2A0DE900EDE682 /* Logger.swift */,
+				D980EDC72091076300CABFE7 /* HTML */,
 				F340F8161F2A37A100AECEE2 /* Extensions */,
-				F3B7EE791F22F1D800E19B57 /* HTML */,
 				F3C0589F1F25E73C00EF51E1 /* Libraries */,
 				F3AB014B1F245F2A00334580 /* Models */,
 				F34A8F0B1F29900900831771 /* Protocols */,
@@ -180,18 +198,6 @@
 				F3B7EE6F1F2247FA00E19B57 /* TestSummary.swift */,
 			);
 			path = Models;
-			sourceTree = "<group>";
-		};
-		F3B7EE791F22F1D800E19B57 /* HTML */ = {
-			isa = PBXGroup;
-			children = (
-				F39729091F24759D006B1EF3 /* screenshot.html */,
-				F3AB011E1F2366A100334580 /* activity.html */,
-				F3B7EE7C1F233A8E00E19B57 /* test_summary.html */,
-				F3B7EE7B1F233A7B00E19B57 /* test.html */,
-				F3B7EE7A1F22F1D800E19B57 /* index.html */,
-			);
-			path = HTML;
 			sourceTree = "<group>";
 		};
 		F3C0589F1F25E73C00EF51E1 /* Libraries */ = {
@@ -344,7 +350,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -401,7 +407,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_IDENTITY = "";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -426,7 +432,7 @@
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/..";
-				DEVELOPMENT_TEAM = XK98WVAH5W;
+				DEVELOPMENT_TEAM = "";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_NAME = xchtmlreport;
 				SWIFT_OBJC_BRIDGING_HEADER = "XCTestHTMLReport/Libraries/XCTestHTMLReport-Bridging-Header.h";
@@ -441,7 +447,7 @@
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CONFIGURATION_BUILD_DIR = "$(SRCROOT)/..";
-				DEVELOPMENT_TEAM = XK98WVAH5W;
+				DEVELOPMENT_TEAM = "";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				PRODUCT_NAME = xchtmlreport;
 				SWIFT_OBJC_BRIDGING_HEADER = "XCTestHTMLReport/Libraries/XCTestHTMLReport-Bridging-Header.h";

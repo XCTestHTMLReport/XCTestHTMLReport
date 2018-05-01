@@ -58,6 +58,7 @@ struct Run: HTML
 
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
         testSummaries = testableSummaries.map { TestSummary(root: path.dropLastPathComponent(), dict: $0) }
+        runDestination.status = status
 
         Logger.substep("Parsing Activity Logs")
         let parentDirectory = fullpath.dropLastPathComponent()
