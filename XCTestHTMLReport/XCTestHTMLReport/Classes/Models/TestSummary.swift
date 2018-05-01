@@ -17,6 +17,10 @@ struct TestSummary: HTML
         var currentTests = tests
         var status: Status = .unknown
 
+        if currentTests.count == 0 {
+            return .success
+        }
+
         while status == .unknown {
             status = currentTests.reduce(.unknown, { (accumulator: Status, test: Test) -> Status in
                 if accumulator == .unknown {

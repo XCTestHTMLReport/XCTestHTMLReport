@@ -81,7 +81,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "-r TestResults -j -v"
+            argument = "-r TestResults -v"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
