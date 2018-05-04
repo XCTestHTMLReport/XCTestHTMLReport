@@ -50,6 +50,7 @@ catch let e {
 }
 
 if junitEnabled {
+    Logger.step("Building JUnit..")
     let junitXml = summary.junit.xmlString
     do {
         let path = "\(result.values.first!)/report.junit"
