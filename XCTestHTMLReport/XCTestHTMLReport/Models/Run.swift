@@ -57,7 +57,7 @@ struct Run: HTML
         runDestination = RunDestination(dict: dict!["RunDestination"] as! [String : Any])
 
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
-        testSummaries = testableSummaries.map { TestSummary(root: path.dropLastPathComponent(), dict: $0) }
+        testSummaries = testableSummaries.map { TestSummary(root: root + "/" + path.dropLastPathComponent(), dict: $0) }
         runDestination.status = status
 
         Logger.substep("Parsing Activity Logs")
