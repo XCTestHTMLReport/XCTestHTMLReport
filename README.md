@@ -20,6 +20,20 @@ Xcode-like HTML report for Unit and UI Tests
 
 ## Installation
 
+### Homebrew
+
+Install via [Homebrew](https://brew.sh/).
+
+```bash
+# Install latest stable version
+$ brew install TitouanVanBelle/XCTestHTMLReport/xchtmlreport
+
+# Install latest master branch
+$ brew install --HEAD TitouanVanBelle/XCTestHTMLReport/xchtmlreport
+```
+
+### Alternate
+
 Simply execute the following command to download the latest version of XCTestHTMLReport
 
 ``` bash
