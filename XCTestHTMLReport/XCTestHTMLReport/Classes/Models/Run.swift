@@ -57,7 +57,7 @@ struct Run: HTML
         runDestination = RunDestination(dict: dict!["RunDestination"] as! [String : Any])
 
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
-        testSummaries = testableSummaries.map { TestSummary(root: path.dropLastPathComponent(), dict: $0) }
+        testSummaries = testableSummaries.map { TestSummary(root: root + "/" + path.dropLastPathComponent(), dict: $0) }
         runDestination.status = status
 
         Logger.substep("Parsing Activity Logs")
@@ -79,10 +79,10 @@ struct Run: HTML
             let logs = String(data: gunzippedData, encoding: .utf8)!
 
             Logger.substep("Extracting useful activity logs")
-            let runningTestsPattern = "Running tests..."
+            let runningTestsPattern = "Test Suite '.+' started at"
             let runningTestsRegex = try! NSRegularExpression(pattern: runningTestsPattern, options: .caseInsensitive)
             let runningTestsMatches = runningTestsRegex.matches(in: logs, options: [], range: NSRange(location: 0, length: logs.count))
-            let lastRunningTestsMatch = runningTestsMatches.last
+            let lastRunningTestsMatch = runningTestsMatches.first
 
             guard lastRunningTestsMatch != nil else {
                 Logger.warning("Failed to extract activity logs from \(root). Could not locate match for \"\(runningTestsPattern)\"")

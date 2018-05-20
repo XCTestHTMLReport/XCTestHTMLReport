@@ -14,6 +14,20 @@ desc "Run the UI Tests"
     system "xchtmlreport -r TestResults -v"
   end
 
+  desc 'Run the UI Tests and create an HTML Report'
+  task :ui_twice  do
+    puts "Deleting previous test results"
+    system "rm -rf 'TestResultsA'"
+    system "rm -rf 'TestResultsB'"
+
+    puts "Running tests"
+    system "xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme XCTestHTMLReportSampleApp -destination 'platform=iOS Simulator,name=iPhone 8,OS=11.3' -verbose -resultBundlePath TestResultsA | xcpretty"
+    system "xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme XCTestHTMLReportSampleApp -destination 'platform=iOS Simulator,name=iPhone 8 Plus,OS=11.3' -verbose -resultBundlePath TestResultsB | xcpretty"
+
+    puts "Generating report"
+    system "xchtmlreport -r TestResultsA -r TestResultsB -v"
+  end
+
   desc 'Run the UI Tests in // in multiple devices and create an HTML Report'
   task :ui_parallel  do
     puts "Deleting previous test results"

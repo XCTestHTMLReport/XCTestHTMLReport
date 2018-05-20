@@ -82,6 +82,10 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "-r TestResults -v"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-r TestResultsA -r TestResultsB -v"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
