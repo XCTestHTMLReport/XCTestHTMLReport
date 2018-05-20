@@ -1,8 +1,8 @@
 class Xchtmlreport < Formula
   desc "XCTestHTMLReport: Xcode-like HTML report for Unit and UI Tests"
   homepage "https://github.com/TitouanVanBelle/XCTestHTMLReport"
-  url "https://github.com/TitouanVanBelle/XCTestHTMLReport/archive/1.5.0.tar.gz"
-  sha256 "ab8d917c867769693510de50f31d05bd6209875efe29fc1cbdfd344ce5c2ed88"
+  url "https://github.com/TitouanVanBelle/XCTestHTMLReport/archive/1.6.0.tar.gz"
+  sha256 "2517d3a65407433f78b4a712eb6f0804475e0e9a3a0abc49a277ef6fa1442658"
   head "https://github.com/TitouanVanBelle/XCTestHTMLReport.git"
 
   def install
