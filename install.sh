@@ -1,20 +1,27 @@
 #!/bin/bash
 
-BRANCH=$1
+set -e
 
-if [ -z $BRANCH ] ; then
-BRANCH="master"
+VERSION=$1
+
+if [ -z $VERSION ] ; then
+VERSION="1.6.0"
 fi
 
-printf "Downloading xchtmlreport from $BRANCH\n"
+OUT_ZIP="xchtmlreport.zip"
 
-CURL=$(curl -s -w "%{http_code}" -o xchtmlreport https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/$BRANCH/xchtmlreport)
+printf "Downloading xchtmlreport $VERSION\n"
 
-if [ $CURL != "200" ]; then
+
+CURL=$(curl -L -s -w "%{http_code}" -o $OUT_ZIP https://github.com/TitouanVanBelle/XCTestHTMLReport/releases/download/$VERSION/xchtmlreport-$VERSION.zip)
+
+if [ ! -f $OUT_PATH ]; then
   printf '\e[1;31m%-6s\e[m' "Failed to download XCTestHTMLReport. Make sure the version you're trying to download exists."
   printf '\n'
   exit 1
 fi
+
+unzip $OUT_ZIP
 
 chmod 755 xchtmlreport
 mv xchtmlreport /usr/local/bin/
