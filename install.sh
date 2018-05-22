@@ -26,6 +26,8 @@ unzip $OUT_ZIP
 chmod 755 xchtmlreport
 mv xchtmlreport /usr/local/bin/
 
+rm $OUT_ZIP
+
 printf '\e[1;32m%-6s\e[m' "Successully installed XCTestHTMLReport. Execute xchtmlreport -h for help."
 printf '\n'
 exit 0
