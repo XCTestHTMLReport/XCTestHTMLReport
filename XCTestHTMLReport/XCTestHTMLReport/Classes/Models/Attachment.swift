@@ -37,7 +37,7 @@ struct Attachment: HTML
 
     init(root: String, dict: [String : Any], padding: Int)
     {
-        path = root
+        path = "\(FileManager.default.currentDirectoryPath)/\(root)"
         filename = dict["Filename"] as! String
         let typeRaw = dict["UniformTypeIdentifier"] as! String
 

@@ -944,7 +944,7 @@ struct HTMLTemplates
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     Screenshot
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
-    <img class=\"screenshot\" src=\"../[[PATH]]/Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\"/>
+    <img class=\"screenshot\" src=\"[[PATH]]/Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\"/>
   </p>
   """
 
