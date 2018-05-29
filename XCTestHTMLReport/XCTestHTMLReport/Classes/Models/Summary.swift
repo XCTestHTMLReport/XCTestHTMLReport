@@ -16,6 +16,7 @@ struct Summary
 
     init(roots: [String])
     {
+        var indexHTMLRoot = roots[0]
         for root in roots {
             Logger.step("Parsing Test Summaries")
             let enumerator = FileManager.default.enumerator(atPath: root)
@@ -36,7 +37,7 @@ struct Summary
             }
 
             for path in plistPath {
-                let run = Run(root: root, path: path)
+                let run = Run(root: root, path: path, indexHTMLRoot: indexHTMLRoot)
                 runs.append(run)
             }
         }
