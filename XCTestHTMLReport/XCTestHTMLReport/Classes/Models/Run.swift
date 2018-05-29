@@ -42,7 +42,7 @@ struct Run: HTML
         return allTests.filter { $0.status == .failure }.count
     }
 
-    init(root: String, path: String)
+    init(root: String, path: String, indexHTMLRoot: String)
     {
         let fullpath = root + "/" + path
         Logger.step("Parsing summary")
@@ -56,8 +56,16 @@ struct Run: HTML
 
         runDestination = RunDestination(dict: dict!["RunDestination"] as! [String : Any])
 
+        var screenshotsPath = ""
+        if root == indexHTMLRoot {
+            screenshotsPath = path.dropLastPathComponent()
+        } else {
+            let pathComponents = (indexHTMLRoot as NSString).pathComponents
+            screenshotsPath = String(repeating: "../", count: pathComponents.count) + root + "/" + path.dropLastPathComponent()
+        }
+
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
-        testSummaries = testableSummaries.map { TestSummary(root: root + "/" + path.dropLastPathComponent(), dict: $0) }
+        testSummaries = testableSummaries.map { TestSummary(screenshotsPath: screenshotsPath, dict: $0) }
         runDestination.status = status
 
         Logger.substep("Parsing Activity Logs")
@@ -69,7 +77,6 @@ struct Run: HTML
         if !FileManager.default.fileExists(atPath: logsPath) {
             Logger.warning("Failed to find \(activityLogsFilename) in \(parentDirectory). Not appending activity logs to report.")
         } else {
-
             Logger.substep("Found \(logsPath)")
 
             let data = NSData(contentsOfFile: logsPath)

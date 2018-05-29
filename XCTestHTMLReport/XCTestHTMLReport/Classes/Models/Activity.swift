@@ -70,7 +70,7 @@ struct Activity: HTML
         return cls
     }
     
-    init(root: String, dict: [String : Any], padding: Int) {
+    init(screenshotsPath: String, dict: [String : Any], padding: Int) {
         uuid = dict["UUID"] as! String
         startTime = dict["StartTimeInterval"] as? TimeInterval
         finishTime = dict["FinishTimeInterval"] as? TimeInterval
@@ -84,11 +84,11 @@ struct Activity: HTML
         }
 
         if let rawAttachments = dict["Attachments"] as? [[String : Any]] {
-            attachments = rawAttachments.map { Attachment(root: root, dict: $0, padding: padding + 16) }
+            attachments = rawAttachments.map { Attachment(screenshotsPath: screenshotsPath, dict: $0, padding: padding + 16) }
         }
 
         if let rawSubActivities = dict["SubActivities"] as? [[String : Any]] {
-            subActivities = rawSubActivities.map { Activity(root: root, dict: $0, padding: padding + 10) }
+            subActivities = rawSubActivities.map { Activity(screenshotsPath: screenshotsPath, dict: $0, padding: padding + 10) }
         }
 
         self.padding = padding
