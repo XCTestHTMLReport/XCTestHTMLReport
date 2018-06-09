@@ -13,6 +13,10 @@ struct Summary
     private let filename = "action_TestSummaries.plist"
 
     var runs = [Run]()
+    
+    var totalNumberOfPassedTests = 0
+    var totalNumberOfFailedTests = 0
+    var totalNumberOfTests = 0
 
     init(roots: [String])
     {
@@ -39,8 +43,16 @@ struct Summary
             for path in plistPath {
                 let run = Run(root: root, path: path, indexHTMLRoot: indexHTMLRoot)
                 runs.append(run)
+                totalNumberOfPassedTests += run.numberOfPassedTests
+                totalNumberOfFailedTests += run.numberOfFailedTests
+                totalNumberOfTests += run.numberOfTests
             }
         }
+        
+        Logger.step("Summary result")
+        Logger.substep("Total number of tests: \(totalNumberOfTests)")
+        Logger.substep("Total number of passed tests: \(totalNumberOfPassedTests)")
+        Logger.substep("Total number of failed tests: \(totalNumberOfFailedTests)")
     }
 }
 
