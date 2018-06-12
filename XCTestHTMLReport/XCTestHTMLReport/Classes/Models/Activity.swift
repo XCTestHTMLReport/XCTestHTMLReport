@@ -55,7 +55,9 @@ struct Activity: HTML
         return hasDirecAttachment || subActivitesHaveAttachments
     }
     var hasFailingSubActivities: Bool {
-        return subActivities?.reduce(false) { $0 || $1.type == .assertionFailure } ?? false
+		guard let subActivities = subActivities else { return false }
+
+		return subActivities.reduce(false) { $0 || $1.type == .assertionFailure || $1.hasFailingSubActivities }
     }
     var cssClasses: String {
         var cls = ""
