@@ -26,10 +26,10 @@ Install via [Homebrew](https://brew.sh/).
 
 ```bash
 # Install latest stable version
-$ brew install TitouanVanBelle/XCTestHTMLReport/xchtmlreport
+$ brew install https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/develop/xchtmlreport.rb
 
 # Install latest master branch
-$ brew install --HEAD TitouanVanBelle/XCTestHTMLReport/xchtmlreport
+$ brew install --HEAD https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/develop/xchtmlreport.rb
 ```
 
 ### Alternate
