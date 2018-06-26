@@ -118,7 +118,7 @@ struct Test: HTML
             }) ?? "",
             "ICON_CLASS": status.cssClass,
             "ITEM_CLASS": objectClass.cssClass,
-            "LIST_ITEM_CLASS": objectClass == .testSummary ? "list-item" : ""
+			"LIST_ITEM_CLASS": objectClass == .testSummary ? (status == .failure ? "list-item-failed" : "list-item") : ""
         ]
     }
 }

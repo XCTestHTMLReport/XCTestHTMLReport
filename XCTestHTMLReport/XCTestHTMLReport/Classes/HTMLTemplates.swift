@@ -364,7 +364,6 @@ struct HTMLTemplates
     }
 
     .test-summary p, .test-summary-group p, .activity p {
-      color: #111;
       font-size: 12px;
       padding: 4px 4px 4px 52px;
       border-bottom: 1px solid #EEE;
@@ -502,6 +501,14 @@ struct HTMLTemplates
       border: 0;
       width: 100%;
       flex: 1;
+    }
+
+    .list-item {
+      color: #111;
+    }
+
+    .list-item-failed {
+      color: red;
     }
 
     .list-item.selected {
