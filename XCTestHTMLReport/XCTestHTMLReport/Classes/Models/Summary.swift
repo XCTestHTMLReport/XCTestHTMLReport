@@ -16,7 +16,7 @@ struct Summary
 
     init(roots: [String])
     {
-        var indexHTMLRoot = roots[0]
+        let indexHTMLRoot = roots[0]
         for root in roots {
             Logger.step("Parsing Test Summaries")
             let enumerator = FileManager.default.enumerator(atPath: root)
