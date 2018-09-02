@@ -63,6 +63,6 @@ class Test < Thor
     Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone X,OS=11.4' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
 
     Print.step "Generating report"
-    Cmd.new("xchtmlreport -r TestResultsA TestResultsB -v").run
+    Cmd.new("xchtmlreport -r TestResultsA -r TestResultsB -v").run
   end
 end

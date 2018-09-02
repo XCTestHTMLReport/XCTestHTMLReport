@@ -60,8 +60,19 @@ struct Run: HTML
         if root == indexHTMLRoot {
             screenshotsPath = path.dropLastPathComponent()
         } else {
-            let pathComponents = (indexHTMLRoot as NSString).pathComponents
-            screenshotsPath = String(repeating: "../", count: pathComponents.count) + root + "/" + path.dropLastPathComponent()
+            var indexDiff = 0;
+            let pathComponentsA = (indexHTMLRoot as NSString).pathComponents
+            let pathComponentsB = (root as NSString).pathComponents
+
+            for index in 0..<min(pathComponentsA.count, pathComponentsB.count) {
+                if pathComponentsA[index] == pathComponentsB[index] {
+                    indexDiff += 1
+                } else {
+                    break;
+                }
+            }
+
+            screenshotsPath = String(repeating: "../", count: pathComponentsB[indexDiff...].count) + pathComponentsB[indexDiff...].joined(separator: "/")
         }
 
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
