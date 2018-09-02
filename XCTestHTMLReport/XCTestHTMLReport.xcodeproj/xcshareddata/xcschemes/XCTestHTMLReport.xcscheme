@@ -85,7 +85,7 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-r TestResultsA -r TestResultsB -v"
+            argument = "-r TestResultsA TestResultsB -v"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
