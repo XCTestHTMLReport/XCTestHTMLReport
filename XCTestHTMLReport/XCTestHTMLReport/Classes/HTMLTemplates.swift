@@ -507,7 +507,7 @@ struct HTMLTemplates
       color: #111;
     }
 
-    .list-item-failed {
+    .list-item.list-item-failed {
       color: red;
     }
 

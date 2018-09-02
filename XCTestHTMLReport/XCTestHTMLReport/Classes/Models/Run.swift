@@ -21,7 +21,7 @@ struct Run: HTML
     }
     var allTests: [Test] {
         let tests = testSummaries.flatMap { $0.tests }
-        let subTests = tests.flatMap { (test) -> [Test]? in
+        let subTests = tests.compactMap { (test) -> [Test]? in
             guard test.allSubTests != nil else {
                 return [test]
             }

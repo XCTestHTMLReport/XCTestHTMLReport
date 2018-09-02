@@ -4,7 +4,7 @@
 //
 //  Created by Wei Wang on 15/12/23.
 //
-//  Copyright (c) 2015 Wei Wang <onevcat@gmail.com>
+//  Copyright (c) 2018 Wei Wang <onevcat@gmail.com>
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -30,53 +30,56 @@ protocol ModesExtractor {
 }
 
 struct ConsoleModesExtractor: ModesExtractor {
-    typealias ResultType = UInt8
     func extract(_ string: String) -> (codes: [UInt8], text: String) {
         let token = ControlCode.CSI
-        
-        var index = string.index(string.startIndex, offsetBy: token.characters.count)
+
+        var index = string.index(string.startIndex, offsetBy: token.count)
         var codesString = ""
-        while string.characters[index] != "m" {
-            codesString.append(string.characters[index])
+        while string[index] != "m" {
+            codesString.append(string[index])
             index = string.index(after: index)
         }
-        
-        let codes = codesString.characters.split(separator: ";", maxSplits: Int.max, omittingEmptySubsequences: false).flatMap { UInt8(String($0)) }
+        #if swift(>=4.1)
+        let codes = codesString.split(separator: ";", omittingEmptySubsequences: false)
+            .compactMap { UInt8($0) }
+        #else
+        let codes = codesString.split(separator: ";", omittingEmptySubsequences: false)
+        .flatMap { UInt8($0) }
+        #endif
         let startIndex = string.index(after: index)
-        let endIndex = string.index(string.endIndex, offsetBy: -"\(token)0m".characters.count)
-        let text = String(string.characters[startIndex ..< endIndex])
-        
+        let endIndex = string.index(string.endIndex, offsetBy: -"\(token)0m".count)
+        let text = String(string[startIndex ..< endIndex])
+
         return (codes, text)
     }
 }
 
 struct XcodeColorsModesExtractor: ModesExtractor {
-    typealias ResultType = String
     func extract(_ string: String) -> (codes: [String], text: String) {
         let token = ControlCode.CSI
         var index = string.startIndex
-        
+
         var codes = [String]()
-        
-        var outer = String(string.characters[index]) //Start index should be the ESC control code
+
+        var outer = String(string[index]) //Start index should be the ESC control code
         while outer == ControlCode.ESC {
             var codesString = ""
-            index = string.index(index, offsetBy: token.characters.count)
-            
-            while string.characters[index] != ";" {
-                codesString.append(string.characters[index])
+            index = string.index(index, offsetBy: token.count)
+
+            while string[index] != ";" {
+                codesString.append(string[index])
                 index = string.index(after: index)
             }
-            
+
             codes.append(codesString)
             index = string.index(after: index)
-            outer = String(string.characters[index])
+            outer = String(string[index])
         }
-        
+
         let startIndex = index
-        let endIndex = string.index(string.endIndex, offsetBy: -"\(token);".characters.count)
-        let text = String(string.characters[startIndex ..< endIndex])
-        
+        let endIndex = string.index(string.endIndex, offsetBy: -"\(token);".count)
+        let text = String(string[startIndex ..< endIndex])
+
         return (codes, text)
     }
 }

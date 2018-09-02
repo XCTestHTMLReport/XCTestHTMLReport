@@ -13,7 +13,7 @@ struct Command
     var arguments: [Argument]!
 
     var isValid: Bool {
-        let flagIndexes = CommandLine.arguments.enumerated().map { $0.element.first == "-" ? $0.offset : nil }.flatMap { $0 }
+        let flagIndexes = CommandLine.arguments.enumerated().map { $0.element.first == "-" ? $0.offset : nil }.compactMap { $0 }
 
         for index in 0..<arguments.count {
             let argument = arguments[index]
