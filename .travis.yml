@@ -5,4 +5,3 @@ before_script:
   - bundle install
 script:
   - set -o pipefail
-  - bundle exec rake test:ui test:ui_parallel test:ui_split
