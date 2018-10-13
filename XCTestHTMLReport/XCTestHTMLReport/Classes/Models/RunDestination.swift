@@ -53,7 +53,7 @@ struct RunDestination : HTML
         return [
             "DEVICE_RESULT": status.iconHTML,
             "DEVICE_NAME": name,
-            "DEVICE_IDENTIFIER": targetDevice.identifier,
+            "DEVICE_IDENTIFIER": targetDevice.uniqueIdentifier,
             "DEVICE_MODEL": targetDevice.model,
             "DEVICE_OS": targetDevice.osVersion,
         ]
