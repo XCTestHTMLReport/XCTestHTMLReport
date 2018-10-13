@@ -14,7 +14,7 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsA').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone 8,OS=11.4' -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone 8,OS=12.0' -resultBundlePath TestResultsA | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("xchtmlreport -r TestResultsA -v").run
@@ -29,8 +29,8 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsB').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone 8,OS=11.4' -resultBundlePath TestResultsA | xcpretty").run
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone 8 Plus,OS=11.4' -resultBundlePath TestResultsB | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone 8,OS=12.0' -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone 8 Plus,OS=12.0' -resultBundlePath TestResultsB | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("xchtmlreport -r TestResultsA -r TestResultsB -v").run
@@ -44,7 +44,7 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsA').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone X,OS=11.4' -destination 'platform=iOS Simulator,name=iPhone 7,OS=11.4' -destination 'platform=iOS Simulator,name=iPhone 8,OS=11.4' -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone X,OS=12.0' -destination 'platform=iOS Simulator,name=iPhone 7,OS=12.0' -destination 'platform=iOS Simulator,name=iPhone 8,OS=12.0' -resultBundlePath TestResultsA | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("xchtmlreport -r TestResultsA -v").run
@@ -59,8 +59,24 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsB').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone 8,OS=11.4' -only-testing:XCTestHTMLReportSampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone X,OS=11.4' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone 8,OS=12.0' -only-testing:XCTestHTMLReportSampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone X,OS=12.0' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
+
+    Print.step "Generating report"
+    Cmd.new("xchtmlreport -r TestResultsA -r TestResultsB -v").run
+  end
+
+  desc 'same_device', 'Runs UI and Unit tests in the same device'
+  def same_device
+    Print.info 'Running UI in the same device'
+
+    Print.step "Deleting previous test results"
+    Cmd.new('rm -rf TestResultsA').run
+    Cmd.new('rm -rf TestResultsB').run
+
+    Print.step "Running tests"
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone X,OS=12.0' -only-testing:XCTestHTMLReportSampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone X,OS=12.0' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("xchtmlreport -r TestResultsA -r TestResultsB -v").run
