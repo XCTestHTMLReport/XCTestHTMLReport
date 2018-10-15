@@ -139,7 +139,7 @@ struct Run: HTML
 
     var htmlPlaceholderValues: [String: String] {
         return [
-            "DEVICE_IDENTIFIER": runDestination.targetDevice.identifier,
+            "DEVICE_IDENTIFIER": runDestination.targetDevice.uniqueIdentifier,
             "N_OF_TESTS": String(numberOfTests),
             "N_OF_PASSED_TESTS": String(numberOfPassedTests),
             "N_OF_FAILED_TESTS": String(numberOfFailedTests),
