@@ -103,7 +103,7 @@ struct Activity: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "UUID": uuid,
-            "TITLE": title,
+            "TITLE": title.escapeXml(),
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
             "PADDING": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? String(padding + 18) : String(padding),
             "TIME": totalTime.timeString,

@@ -61,7 +61,7 @@ extension JUnitReport: XMLRepresentable
         xml += "<testsuites name='\(name)' tests='\(tests)' failures='\(failures)'>\n"
 
         suites.forEach { (suite) in
-            xml += suite.xmlString
+            xml += suite.xmlString.escapeXml()
         }
 
         xml += "</testsuites>\n"
@@ -77,7 +77,7 @@ extension JUnitReport.TestSuite: XMLRepresentable
         var xml = "  <testsuite name='\(name)' tests='\(tests)' failures='\(failures)'>\n"
 
         cases.forEach { (testcase) in
-            xml += testcase.xmlString
+            xml += testcase.xmlString.escapeXml()
         }
 
         xml += "  </testsuite>\n"
@@ -98,7 +98,7 @@ extension JUnitReport.TestCase: XMLRepresentable
             xml += "      <failure>\n"
 
             results.forEach { (result) in
-                xml += result.xmlString
+                xml += result.xmlString.escapeXml()
             }
 
             xml += "      </failure>\n"
@@ -116,8 +116,7 @@ extension JUnitReport.TestResult: XMLRepresentable
     var xmlString: String {
         switch state {
         case .failed:
-            // TODO: The title should probably be XML escaped
-            return "        \(title)\n"
+            return "        \(title.escapeXml())\n"
         default:
             return ""
         }
