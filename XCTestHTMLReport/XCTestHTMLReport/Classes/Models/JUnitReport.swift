@@ -61,7 +61,7 @@ extension JUnitReport: XMLRepresentable
         xml += "<testsuites name='\(name)' tests='\(tests)' failures='\(failures)'>\n"
 
         suites.forEach { (suite) in
-            xml += suite.xmlString.escapeXml()
+            xml += suite.xmlString
         }
 
         xml += "</testsuites>\n"
@@ -77,7 +77,7 @@ extension JUnitReport.TestSuite: XMLRepresentable
         var xml = "  <testsuite name='\(name)' tests='\(tests)' failures='\(failures)'>\n"
 
         cases.forEach { (testcase) in
-            xml += testcase.xmlString.escapeXml()
+            xml += testcase.xmlString
         }
 
         xml += "  </testsuite>\n"
@@ -98,7 +98,7 @@ extension JUnitReport.TestCase: XMLRepresentable
             xml += "      <failure>\n"
 
             results.forEach { (result) in
-                xml += result.xmlString.escapeXml()
+                xml += result.xmlString
             }
 
             xml += "      </failure>\n"
