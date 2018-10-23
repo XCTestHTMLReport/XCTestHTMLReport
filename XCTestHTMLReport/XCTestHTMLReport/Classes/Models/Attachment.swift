@@ -28,12 +28,39 @@ enum AttachmentType: String {
     }
 }
 
+enum Name: RawRepresentable {
+    enum Constant: String {
+        case kXCTAttachmentLegacyScreenImageData = "kXCTAttachmentLegacyScreenImageData"
+    }
+    
+    case constant(Constant)
+    case custom(String)
+    
+    var rawValue: String {
+        switch self {
+        case .constant(let constant):
+            return constant.rawValue
+        case .custom(let rawValue):
+            return rawValue
+        }
+    }
+    
+    init(rawValue: String) {
+        if let constant = Constant(rawValue: rawValue) {
+            self = .constant(constant)
+        }
+        
+        self = .custom(rawValue)
+    }
+}
+
 struct Attachment: HTML
 {
     var padding = 0
     var filename: String
     var path: String
     var type: AttachmentType?
+    var name: Name?
 
     init(screenshotsPath: String, dict: [String : Any], padding: Int)
     {
@@ -46,10 +73,36 @@ struct Attachment: HTML
         } else {
             Logger.warning("Attachment type is not supported: \(typeRaw). Skipping.")
         }
+        
+        if let name = dict["Name"] as? String {
+            self.name = Name(rawValue: name)
+        }
 
         self.padding = padding
     }
 
+    var fallbackDisplayName: String {
+        guard let type = type else { return "Attachment" }
+        
+        switch type {
+        case .png, .jpeg:
+            return "Screenshot"
+        case .text, .html, .data:
+            return "File"
+        case .unknwown:
+            return "Attachment"
+        }
+    }
+    
+    var displayName: String {
+        switch name {
+        case .some(.custom(let customName)):
+            return customName
+        default:
+            return fallbackDisplayName
+        }
+    }
+    
     // PRAGMA MARK: - HTML
 
     var htmlTemplate: String {
@@ -71,7 +124,8 @@ struct Attachment: HTML
         return [
             "PADDING": String(padding),
             "PATH": path,
-            "FILENAME": filename
+            "FILENAME": filename,
+            "NAME": displayName
         ]
     }
 }
