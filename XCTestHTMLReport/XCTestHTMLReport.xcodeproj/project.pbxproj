@@ -7,8 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0994F3C92175C16A003988B4 /* String+Path.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0994F3C82175C16A003988B4 /* String+Path.swift */; };
+		0994F3CB2175C1B7003988B4 /* String+Xml.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0994F3CA2175C1B7003988B4 /* String+Xml.swift */; };
 		B12D2AA11FC69B0700DE78C6 /* NSData+GZIP.m in Sources */ = {isa = PBXBuildFile; fileRef = B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */; };
-		B12D2AA31FCB257500DE78C6 /* String+Path.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12D2AA21FCB257500DE78C6 /* String+Path.swift */; };
 		D980EDD4209123E400CABFE7 /* JUnitReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D980EDD3209123DB00CABFE7 /* JUnitReport.swift */; };
 		F30667381F2A0DE900EDE682 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30667371F2A0DE900EDE682 /* Logger.swift */; };
 		F30667541F2A1BE200EDE682 /* StringGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30667501F2A1BB900EDE682 /* StringGenerator.swift */; };
@@ -53,9 +54,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0994F3C82175C16A003988B4 /* String+Path.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Path.swift"; sourceTree = "<group>"; };
+		0994F3CA2175C1B7003988B4 /* String+Xml.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Xml.swift"; sourceTree = "<group>"; };
 		B12D2A9F1FC69B0700DE78C6 /* NSData+GZIP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSData+GZIP.h"; sourceTree = "<group>"; };
 		B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSData+GZIP.m"; sourceTree = "<group>"; };
-		B12D2AA21FCB257500DE78C6 /* String+Path.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Path.swift"; sourceTree = "<group>"; };
 		D980EDD3209123DB00CABFE7 /* JUnitReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JUnitReport.swift; sourceTree = "<group>"; };
 		F30667371F2A0DE900EDE682 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		F30667471F2A1BB900EDE682 /* BackgroundColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundColor.swift; sourceTree = "<group>"; };
@@ -192,7 +194,8 @@
 			isa = PBXGroup;
 			children = (
 				F340F8171F2A37B000AECEE2 /* TimeInterval+Time.swift */,
-				B12D2AA21FCB257500DE78C6 /* String+Path.swift */,
+				0994F3C82175C16A003988B4 /* String+Path.swift */,
+				0994F3CA2175C1B7003988B4 /* String+Xml.swift */,
 			);
 			path = Extensions;
 			sourceTree = "<group>";
@@ -315,7 +318,6 @@
 				F3AB011B1F23650500334580 /* Activity.swift in Sources */,
 				F3B7EE7E1F233B9C00E19B57 /* HTML.swift in Sources */,
 				F3AB014D1F24600B00334580 /* HTMLTemplates.swift in Sources */,
-				B12D2AA31FCB257500DE78C6 /* String+Path.swift in Sources */,
 				F3B7EE6E1F22449100E19B57 /* TargetDevice.swift in Sources */,
 				D980EDD4209123E400CABFE7 /* JUnitReport.swift in Sources */,
 				F3B7EE701F2247FA00E19B57 /* TestSummary.swift in Sources */,
@@ -343,6 +345,8 @@
 				F30667621F2A1BEC00EDE682 /* ModesExtractor.swift in Sources */,
 				F30667541F2A1BE200EDE682 /* StringGenerator.swift in Sources */,
 				F3B7EE6A1F2242D200E19B57 /* RunDestination.swift in Sources */,
+				0994F3CB2175C1B7003988B4 /* String+Xml.swift in Sources */,
+				0994F3C92175C16A003988B4 /* String+Path.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
