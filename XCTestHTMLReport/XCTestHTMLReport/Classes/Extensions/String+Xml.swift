@@ -7,9 +7,8 @@
 //
 
 extension String {
-    func escapeXml() -> String
-    {
-        return self.replacingOccurrences(of: "&", with: "&amp;")
+    var stringByEscapingXMLChars: String {
+        return replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
