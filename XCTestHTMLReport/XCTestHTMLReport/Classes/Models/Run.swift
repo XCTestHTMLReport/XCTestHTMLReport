@@ -124,7 +124,7 @@ struct Run: HTML
             let activityLogs = logs[start..<end]
 
             do {
-                let file = "\(result.values.first!)/logs-\(runDestination.targetDevice.identifier).txt"
+                let file = "\(result.values.first!)/logs-\(runDestination.targetDevice.uniqueIdentifier).txt"
                 try activityLogs.write(toFile: file, atomically: false, encoding: .utf8)
             }
             catch let e {
