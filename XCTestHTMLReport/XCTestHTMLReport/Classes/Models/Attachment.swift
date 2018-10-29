@@ -28,7 +28,7 @@ enum AttachmentType: String {
     }
 }
 
-enum Name: RawRepresentable {
+enum AttachmentName: RawRepresentable {
     enum Constant: String {
         case kXCTAttachmentLegacyScreenImageData = "kXCTAttachmentLegacyScreenImageData"
     }
@@ -60,7 +60,7 @@ struct Attachment: HTML
     var filename: String
     var path: String
     var type: AttachmentType?
-    var name: Name?
+    var name: AttachmentName?
 
     init(screenshotsPath: String, dict: [String : Any], padding: Int)
     {
@@ -75,7 +75,7 @@ struct Attachment: HTML
         }
         
         if let name = dict["Name"] as? String {
-            self.name = Name(rawValue: name)
+            self.name = AttachmentName(rawValue: name)
         }
 
         self.padding = padding
