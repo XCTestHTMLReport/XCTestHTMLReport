@@ -48,6 +48,7 @@ enum AttachmentName: RawRepresentable {
     init(rawValue: String) {
         if let constant = Constant(rawValue: rawValue) {
             self = .constant(constant)
+            return
         }
         
         self = .custom(rawValue)
