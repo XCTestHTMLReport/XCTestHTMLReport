@@ -116,8 +116,7 @@ extension JUnitReport.TestResult: XMLRepresentable
     var xmlString: String {
         switch state {
         case .failed:
-            // TODO: The title should probably be XML escaped
-            return "        \(title)\n"
+            return "        \(title.stringByEscapingXMLChars)\n"
         default:
             return ""
         }
