@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4C70D369219747FD0003015D /* TestScreenshotFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C70D368219747FD0003015D /* TestScreenshotFlow.swift */; };
 		B12D2AA11FC69B0700DE78C6 /* NSData+GZIP.m in Sources */ = {isa = PBXBuildFile; fileRef = B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */; };
 		B12D2AA31FCB257500DE78C6 /* String+Path.swift in Sources */ = {isa = PBXBuildFile; fileRef = B12D2AA21FCB257500DE78C6 /* String+Path.swift */; };
 		D980EDD4209123E400CABFE7 /* JUnitReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D980EDD3209123DB00CABFE7 /* JUnitReport.swift */; };
@@ -53,6 +54,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4C70D368219747FD0003015D /* TestScreenshotFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestScreenshotFlow.swift; sourceTree = "<group>"; };
 		B12D2A9F1FC69B0700DE78C6 /* NSData+GZIP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSData+GZIP.h"; sourceTree = "<group>"; };
 		B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSData+GZIP.m"; sourceTree = "<group>"; };
 		B12D2AA21FCB257500DE78C6 /* String+Path.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Path.swift"; sourceTree = "<group>"; };
@@ -221,6 +223,7 @@
 				F3B7EE6D1F22449100E19B57 /* TargetDevice.swift */,
 				F3B7EE711F224A4200E19B57 /* Test.swift */,
 				F3B7EE6F1F2247FA00E19B57 /* TestSummary.swift */,
+				4C70D368219747FD0003015D /* TestScreenshotFlow.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -321,6 +324,7 @@
 				F3B7EE701F2247FA00E19B57 /* TestSummary.swift in Sources */,
 				F3B7EE6C1F2242DC00E19B57 /* Summary.swift in Sources */,
 				F306675E1F2A1BEC00EDE682 /* BackgroundColor.swift in Sources */,
+				4C70D369219747FD0003015D /* TestScreenshotFlow.swift in Sources */,
 				B12D2AA11FC69B0700DE78C6 /* NSData+GZIP.m in Sources */,
 				F3AB011D1F23659D00334580 /* Attachment.swift in Sources */,
 				F324B4A01F22383D00B5B8B4 /* Argument.swift in Sources */,

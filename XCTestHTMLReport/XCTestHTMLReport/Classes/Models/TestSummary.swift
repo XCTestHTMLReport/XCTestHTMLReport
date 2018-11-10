@@ -65,9 +65,7 @@ struct TestSummary: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "UUID": uuid,
-            "TESTS": tests.reduce("", { (accumulator: String, test: Test) -> String in
-                return accumulator + test.html
-            })
+            "TESTS": tests.accumulateHTMLAsString
         ]
     }
 }

@@ -14,6 +14,16 @@ protocol HTML
     var htmlPlaceholderValues: [String: String] { get }
 }
 
+extension Sequence where Element : HTML {
+
+    var accumulateHTMLAsString: String {
+        return reduce("", { (accumulator: String, element: HTML) -> String in
+            return accumulator + element.html
+        })
+    }
+
+}
+
 extension HTML
 {
     var html: String {

@@ -50,6 +50,18 @@ struct Attachment: HTML
         self.padding = padding
     }
 
+    var isScreenshot: Bool {
+        if let type = type {
+            switch type {
+            case .png, .jpeg:
+                return true
+            default:
+                return false
+            }
+        }
+        return false
+    }
+
     // PRAGMA MARK: - HTML
 
     var htmlTemplate: String {
