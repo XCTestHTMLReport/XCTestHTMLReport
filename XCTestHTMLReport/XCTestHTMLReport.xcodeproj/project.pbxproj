@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0994F3C92175C16A003988B4 /* String+Path.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0994F3C82175C16A003988B4 /* String+Path.swift */; };
 		0994F3CB2175C1B7003988B4 /* String+Xml.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0994F3CA2175C1B7003988B4 /* String+Xml.swift */; };
+		4C17A71D21B16A2300585DFB /* JoinedRuns.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C17A71C21B16A2300585DFB /* JoinedRuns.swift */; };
 		B12D2AA11FC69B0700DE78C6 /* NSData+GZIP.m in Sources */ = {isa = PBXBuildFile; fileRef = B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */; };
 		D980EDD4209123E400CABFE7 /* JUnitReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D980EDD3209123DB00CABFE7 /* JUnitReport.swift */; };
 		F30667381F2A0DE900EDE682 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30667371F2A0DE900EDE682 /* Logger.swift */; };
@@ -56,6 +57,7 @@
 /* Begin PBXFileReference section */
 		0994F3C82175C16A003988B4 /* String+Path.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Path.swift"; sourceTree = "<group>"; };
 		0994F3CA2175C1B7003988B4 /* String+Xml.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Xml.swift"; sourceTree = "<group>"; };
+		4C17A71C21B16A2300585DFB /* JoinedRuns.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinedRuns.swift; sourceTree = "<group>"; };
 		B12D2A9F1FC69B0700DE78C6 /* NSData+GZIP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSData+GZIP.h"; sourceTree = "<group>"; };
 		B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSData+GZIP.m"; sourceTree = "<group>"; };
 		D980EDD3209123DB00CABFE7 /* JUnitReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JUnitReport.swift; sourceTree = "<group>"; };
@@ -224,6 +226,7 @@
 				F3B7EE6D1F22449100E19B57 /* TargetDevice.swift */,
 				F3B7EE711F224A4200E19B57 /* Test.swift */,
 				F3B7EE6F1F2247FA00E19B57 /* TestSummary.swift */,
+				4C17A71C21B16A2300585DFB /* JoinedRuns.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -337,6 +340,7 @@
 				F30667611F2A1BEC00EDE682 /* ControlCode.swift in Sources */,
 				F3B7EE721F224A4200E19B57 /* Test.swift in Sources */,
 				F353A1471F9B454D00E5A528 /* Run.swift in Sources */,
+				4C17A71D21B16A2300585DFB /* JoinedRuns.swift in Sources */,
 				F30667641F2A1BEC00EDE682 /* Rainbow.swift in Sources */,
 				F30667551F2A1BE200EDE682 /* Style.swift in Sources */,
 				F30667651F2A1BEC00EDE682 /* String+Rainbow.swift in Sources */,
