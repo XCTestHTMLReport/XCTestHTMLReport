@@ -26,10 +26,10 @@ Install via [Homebrew](https://brew.sh/).
 
 ```bash
 # Install latest stable version
-$ brew install https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/develop/xchtmlreport.rb
+$ brew install https://raw.githubusercontent.com/applidum/XCTestHTMLReport/develop_ad/xchtmlreport.rb
 
 # Install latest master branch
-$ brew install --HEAD https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/develop/xchtmlreport.rb
+$ brew install --HEAD https://raw.githubusercontent.com/applidum/XCTestHTMLReport/develop_ad/xchtmlreport.rb
 ```
 
 ### Alternate
@@ -37,13 +37,13 @@ $ brew install --HEAD https://raw.githubusercontent.com/TitouanVanBelle/XCTestHT
 Simply execute the following command to download the latest version of XCTestHTMLReport
 
 ``` bash
-$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/master/install.sh)
+$ curl -s https://raw.githubusercontent.com/applidium/XCTestHTMLReport/develop_ad/install.sh | sh
 ```
 
 You can also specify a branch or tag
 
 ``` bash
-$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/master/install.sh) '1.0.0'
+$ curl -s https://raw.githubusercontent.com/applidium/XCTestHTMLReport/develop_ad/install.sh '1.0.0' | sh
 ```
 
 ## Usage
@@ -76,7 +76,7 @@ This will create only one HTML Report in the path you passed with the -r option
 
 ## Contribution
 
-Please create an issue whenever you find an issue or think a feature could be a good addition to XCTestHTMLReport. Always make sure to follow the [Contributing Guidelines](https://github.com/TitouanVanBelle/XCTestHTMLReport/blob/master/CONTRIBUTING.md). Feel free to take a shot at these issues.
+Please create an issue whenever you find an issue or think a feature could be a good addition to XCTestHTMLReport. Always make sure to follow the [Contributing Guidelines](https://github.com/applidium/XCTestHTMLReport/blob/master/CONTRIBUTING.md). Feel free to take a shot at these issues.
 
 ## License
 
