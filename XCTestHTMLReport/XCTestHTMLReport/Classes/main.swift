@@ -20,13 +20,17 @@ var help = BlockArgument("h", "", required: false, helpMessage: "Print usage and
 var verbose = BlockArgument("v", "", required: false, helpMessage: "Provide additional logs") {
     Logger.verbose = true
 }
+var includeRunDestinationInfo = true
+var runDestinationInfo = BlockArgument("e", "exclude-run-destination-info", required: false, helpMessage: "Removes the run destination info from the generated XML") {
+    includeRunDestinationInfo = false
+}
 var junitEnabled = false
 var junit = BlockArgument("j", "junit", required: false, helpMessage: "Provide JUnit XML output") {
     junitEnabled = true
 }
 var result = ValueArgument(.path, "r", "resultBundlePath", required: true, allowsMultiple: true, helpMessage: "Path to a result bundle (allows multiple)")
 
-command.arguments = [help, verbose, junit, result]
+command.arguments = [help, verbose, junit, runDestinationInfo, result]
 
 if !command.isValid {
     print(command.usage)
@@ -51,7 +55,7 @@ catch let e {
 
 if junitEnabled {
     Logger.step("Building JUnit..")
-    let junitXml = summary.junit.xmlString
+    let junitXml = summary.junit(includeRunDestinationInfo: includeRunDestinationInfo).xmlString
     do {
         let path = "\(result.values.first!)/report.junit"
         Logger.substep("Writing JUnit report to \(path)")

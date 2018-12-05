@@ -63,7 +63,7 @@ extension Summary: HTML
 
 extension Summary: JUnitRepresentable
 {
-    var junit: JUnitReport {
-        return JUnitReport(summary: self)
+    func junit(includeRunDestinationInfo: Bool) -> JUnitReport {
+        return JUnitReport(summary: self, includeRunDestinationInfo: includeRunDestinationInfo)
     }
 }

@@ -126,21 +126,23 @@ extension JUnitReport.TestResult: XMLRepresentable
 
 extension JUnitReport
 {
-    init(summary: Summary)
+    init(summary: Summary, includeRunDestinationInfo: Bool)
     {
         name = "All"
-        suites = summary.runs.map { JUnitReport.TestSuite(run: $0) }
+        suites = summary.runs.map { JUnitReport.TestSuite(run: $0, includeRunDestinationInfo: includeRunDestinationInfo) }
     }
 }
 
 extension JUnitReport.TestCase
 {
-    init(run: Run, test: Test)
+    init(run: Run, test: Test, includeRunDestinationInfo: Bool)
     {
         let components = test.identifier.components(separatedBy: "/")
         time = test.duration
         name = components.last ?? ""
-        classname = (components.first ?? "") + " - " + run.runDestination.deviceInfo
+
+        let baseClassname = components.first ?? ""
+        classname = includeRunDestinationInfo ? baseClassname + " - " + run.runDestination.deviceInfo : baseClassname
 
         switch test.status {
         case .failure:
@@ -171,11 +173,12 @@ extension JUnitReport.TestResult
 
 extension JUnitReport.TestSuite
 {
-    init(run: Run)
+    init(run: Run, includeRunDestinationInfo: Bool)
     {
-        name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.deviceInfo
+        let baseName = run.testSummaries.first?.testName ?? ""
+        name = includeRunDestinationInfo ? baseName + " - " + run.runDestination.deviceInfo : baseName
         tests = run.numberOfTests
-        cases = run.allTests.map { JUnitReport.TestCase(run: run, test: $0) }
+        cases = run.allTests.map { JUnitReport.TestCase(run: run, test: $0, includeRunDestinationInfo: includeRunDestinationInfo) }
     }
 }
 
