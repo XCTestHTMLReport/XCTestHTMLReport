@@ -56,27 +56,8 @@ struct Run: HTML
 
         runDestination = RunDestination(dict: dict!["RunDestination"] as! [String : Any])
 
-        var screenshotsPath = ""
-        if root == indexHTMLRoot {
-            screenshotsPath = path.dropLastPathComponent()
-        } else {
-            var indexDiff = 0;
-            let pathComponentsA = (indexHTMLRoot as NSString).pathComponents
-            let pathComponentsB = (root as NSString).pathComponents
-
-            for index in 0..<min(pathComponentsA.count, pathComponentsB.count) {
-                if pathComponentsA[index] == pathComponentsB[index] {
-                    indexDiff += 1
-                } else {
-                    break;
-                }
-            }
-
-            screenshotsPath = String(repeating: "../", count: pathComponentsB[indexDiff...].count) + pathComponentsB[indexDiff...].joined(separator: "/")
-        }
-
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
-        testSummaries = testableSummaries.map { TestSummary(screenshotsPath: screenshotsPath, dict: $0) }
+        testSummaries = testableSummaries.map { TestSummary(dict: $0) }
         runDestination.status = status
 
         Logger.substep("Parsing Activity Logs")
