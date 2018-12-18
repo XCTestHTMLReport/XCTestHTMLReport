@@ -16,14 +16,14 @@ struct TestSummary: HTML
     var status: Status {
         let currentTests = tests
         var status: Status = .unknown
-
-        if currentTests.count == 0 {
-            return .success
-        }
         
         var currentSubtests: [Test] = []
         for test in currentTests {
-            currentSubtests += test.rootSubtests()
+            currentSubtests += test.allTestSummaries()
+        }
+        
+        if currentSubtests.count == 0 {
+            return .success
         }
 
         status = currentSubtests.reduce(.unknown, { (accumulator: Status, test: Test) -> Status in
@@ -70,13 +70,16 @@ struct TestSummary: HTML
 }
 
 extension Test {
-    func rootSubtests() -> [Test] {
-        guard let subTests = self.subTests, subTests.isEmpty == false else {
+    func allTestSummaries() -> [Test] {
+        if self.objectClass == .testSummary {
             return [self]
+        }
+        guard let subTests = self.subTests, subTests.isEmpty == false else {
+            return []
         }
         var testsToReturn: [Test] = []
         for test in subTests {
-            testsToReturn += test.rootSubtests()
+            testsToReturn += test.allTestSummaries()
         }
         return testsToReturn
     }
