@@ -14,14 +14,19 @@ struct TestSummary: HTML
     var testName: String
     var tests: [Test]
     var status: Status {
-        var currentTests = tests
+        let currentTests = tests
         var status: Status = .unknown
 
         if currentTests.count == 0 {
             return .success
         }
+        
+        var currentSubtests: [Test] = []
+        for test in currentTests {
+            currentSubtests += test.rootSubtests()
+        }
 
-        status = currentTests.reduce(.unknown, { (accumulator: Status, test: Test) -> Status in
+        status = currentSubtests.reduce(.unknown, { (accumulator: Status, test: Test) -> Status in
             if accumulator == .unknown {
                 return test.status
             }
@@ -35,14 +40,6 @@ struct TestSummary: HTML
             }
 
             return .unknown
-        })
-
-        currentTests = currentTests.reduce([], { (accumulator: [Test], test: Test) -> [Test] in
-            if let subTests = test.subTests {
-                return accumulator + subTests
-            }
-
-            return accumulator
         })
 
         return status
@@ -69,5 +66,18 @@ struct TestSummary: HTML
                 return accumulator + test.html
             })
         ]
+    }
+}
+
+extension Test {
+    func rootSubtests() -> [Test] {
+        guard let subTests = self.subTests, subTests.isEmpty == false else {
+            return [self]
+        }
+        var testsToReturn: [Test] = []
+        for test in subTests {
+            testsToReturn += test.rootSubtests()
+        }
+        return testsToReturn
     }
 }
