@@ -533,6 +533,7 @@ struct HTMLTemplates
         <ul id=\"test-log-toolbar\" class=\"toolbar centered-toolbar toggle-toolbar\">
           <li class=\"selected\" onclick=\"showTests(this);\">Tests</li>
           <li onclick=\"showLogs(this);\">Logs</li>
+          <li onclick=\"showDesignReview(this);\">Design Review</li>
         </ul>
       </header>
       <div id=\"container\">
@@ -854,14 +855,26 @@ struct HTMLTemplates
 
     function showLogs(el) {
       selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'flex');
       setDisplayToElementsWithSelector('.tests', 'none');
+      setDisplayToElementsWithSelector('#logs', 'flex');
+      setDisplayToElementsWithSelector('#design-review', 'none');
+      setDisplayToElementsWithSelector('#right-sidebar', 'none');
     }
 
     function showTests(el) {
       selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'none');
       setDisplayToElementsWithSelector('.tests', 'flex');
+      setDisplayToElementsWithSelector('#logs', 'none');
+      setDisplayToElementsWithSelector('#design-review', 'none');
+      setDisplayToElementsWithSelector('#right-sidebar', 'flex');
+    }
+
+    function showDesignReview(el) {
+        selectedElement(el);
+        setDisplayToElementsWithSelector('.tests', 'none');
+        setDisplayToElementsWithSelector('#logs', 'none');
+        setDisplayToElementsWithSelector('#design-review', 'flex');
+        setDisplayToElementsWithSelector('#right-sidebar', 'none');
     }
 
     document.querySelectorAll('.device-info')[0].classList.add(\"selected\");
@@ -904,6 +917,9 @@ struct HTMLTemplates
         </ul>
       </div>
       <iframe id=\"logs-iframe\" src=\"logs-[[DEVICE_IDENTIFIER]].txt\"></iframe>
+    </div>
+    <div id=\"design-review\">
+        [[TEST_DESIGN_REVIEW]]
     </div>
   </div>
   """
