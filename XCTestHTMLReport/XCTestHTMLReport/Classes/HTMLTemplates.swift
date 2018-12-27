@@ -930,6 +930,12 @@ struct HTMLTemplates
   </div>
   """
 
+  static let testDesignReview = """
+  <div class=\"design_review\" id=\"[[UUID]]\">
+      [[DESIGN_REVIEW_SCREENSHOTS]]
+  </div>
+  """
+
   static let test = """
   <div class=\"[[ITEM_CLASS]] [[ICON_CLASS]] [[HAS_ACTIVITIES_CLASS]]\">
     <span class=\"icon left test-result-icon\"></span>
@@ -976,6 +982,13 @@ struct HTMLTemplates
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[PATH]]/Attachments/[[FILENAME]]\" onclick=\"showText('[[PATH]]/Attachments/[[FILENAME]]')\"></span>
+  </p>
+  """
+
+  static let designReviewScreenshot = """
+  <p class=\"design_review_item list-item\">
+      <img class=\"design_review_screenshot\" src=\"[[PATH]]/Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\" style=\"margin-bottom: 4px\" />
+      [[NAME]]
   </p>
   """
 }
