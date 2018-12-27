@@ -14,6 +14,7 @@ struct Run: HTML
 
     var runDestination: RunDestination
     var testSummaries: [TestSummary]
+    var testDesignReviews: [TestDesignReview]
     var status: Status {
        return testSummaries.reduce(true, { (accumulator: Bool, summary: TestSummary) -> Bool in
             return accumulator && summary.status == .success
@@ -77,6 +78,7 @@ struct Run: HTML
 
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
         testSummaries = testableSummaries.map { TestSummary(screenshotsPath: screenshotsPath, dict: $0) }
+        testDesignReviews = testableSummaries.map { TestDesignReview(screenshotsPath: screenshotsPath, dict: $0) }
         runDestination.status = status
 
         Logger.substep("Parsing Activity Logs")
@@ -143,7 +145,11 @@ struct Run: HTML
             "N_OF_TESTS": String(numberOfTests),
             "N_OF_PASSED_TESTS": String(numberOfPassedTests),
             "N_OF_FAILED_TESTS": String(numberOfFailedTests),
-            "TEST_SUMMARIES": testSummaries.map { $0.html }.joined()
+            "TEST_SUMMARIES": testSummaries.map { $0.html }.joined(),
+            "TEST_DESIGN_REVIEW": testDesignReviews.compactMap {
+                guard !$0.screenshots.isEmpty else { return nil }
+                return $0.html
+            }.joined()
         ]
     }
 
