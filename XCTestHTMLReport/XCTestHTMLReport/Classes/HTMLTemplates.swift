@@ -195,6 +195,34 @@ struct HTMLTemplates
       flex: 1;
     }
 
+    #design-review {
+        display: none;
+        background-color: #F2F2F2;
+        flex: 1;
+        flex-direction: column;
+        overflow-y: scroll;
+    }
+
+    .design_review {
+        display: flex;
+        flex: 1;
+        flex-wrap: wrap;
+    }
+
+    .design_review_item {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-evenly;
+        margin: auto;
+        padding: 16px;
+    }
+
+    .design_review_screenshot {
+        height: 600px;
+    }
+
     .icon {
       background-size: 14px 14px;
       height: 14px;
@@ -533,6 +561,7 @@ struct HTMLTemplates
         <ul id=\"test-log-toolbar\" class=\"toolbar centered-toolbar toggle-toolbar\">
           <li class=\"selected\" onclick=\"showTests(this);\">Tests</li>
           <li onclick=\"showLogs(this);\">Logs</li>
+          <li onclick=\"showDesignReview(this);\">Design Review</li>
         </ul>
       </header>
       <div id=\"container\">
@@ -854,14 +883,26 @@ struct HTMLTemplates
 
     function showLogs(el) {
       selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'flex');
       setDisplayToElementsWithSelector('.tests', 'none');
+      setDisplayToElementsWithSelector('#logs', 'flex');
+      setDisplayToElementsWithSelector('#design-review', 'none');
+      setDisplayToElementsWithSelector('#right-sidebar', 'none');
     }
 
     function showTests(el) {
       selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'none');
       setDisplayToElementsWithSelector('.tests', 'flex');
+      setDisplayToElementsWithSelector('#logs', 'none');
+      setDisplayToElementsWithSelector('#design-review', 'none');
+      setDisplayToElementsWithSelector('#right-sidebar', 'flex');
+    }
+
+    function showDesignReview(el) {
+        selectedElement(el);
+        setDisplayToElementsWithSelector('.tests', 'none');
+        setDisplayToElementsWithSelector('#logs', 'none');
+        setDisplayToElementsWithSelector('#design-review', 'flex');
+        setDisplayToElementsWithSelector('#right-sidebar', 'none');
     }
 
     document.querySelectorAll('.device-info')[0].classList.add(\"selected\");
@@ -905,12 +946,21 @@ struct HTMLTemplates
       </div>
       <iframe id=\"logs-iframe\" src=\"logs-[[DEVICE_IDENTIFIER]].txt\"></iframe>
     </div>
+    <div id=\"design-review\">
+        [[TEST_DESIGN_REVIEW]]
+    </div>
   </div>
   """
 
   static let testSummary = """
   <div class=\"summary\" id=\"[[UUID]]\">
       [[TESTS]]
+  </div>
+  """
+
+  static let testDesignReview = """
+  <div class=\"design_review\" id=\"[[UUID]]\">
+      [[DESIGN_REVIEW_SCREENSHOTS]]
   </div>
   """
 
@@ -960,6 +1010,13 @@ struct HTMLTemplates
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[PATH]]/Attachments/[[FILENAME]]\" onclick=\"showText('[[PATH]]/Attachments/[[FILENAME]]')\"></span>
+  </p>
+  """
+
+  static let designReviewScreenshot = """
+  <p class=\"design_review_item list-item\">
+      <img class=\"design_review_screenshot\" src=\"[[PATH]]/Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\" style=\"margin-bottom: 4px\" />
+      [[NAME]]
   </p>
   """
 }
