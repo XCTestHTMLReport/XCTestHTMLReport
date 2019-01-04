@@ -6,7 +6,7 @@ class Xchtmlreport < Formula
   head "https://github.com/applidium/XCTestHTMLReport.git", :branch => "develop_ad"
 
   def install
-    system "xcodebuild clean build CODE_SIGNING_REQUIRED=NO -workspace XCTestHTMLReport.xcworkspace -scheme XCTestHTMLReport -configuration Release"
+    system "xcodebuild" " clean" " build" " CODE_SIGNING_REQUIRED=NO" " -workspace" " XCTestHTMLReport.xcworkspace" " -scheme XCTestHTMLReport" " -configuration Release"
     bin.install "xchtmlreport"
   end
 end
