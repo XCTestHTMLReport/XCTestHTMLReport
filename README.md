@@ -26,10 +26,10 @@ Install via [Homebrew](https://brew.sh/).
 
 ```bash
 # Install latest stable version
-$ brew install https://raw.githubusercontent.com/applidum/XCTestHTMLReport/develop_ad/xchtmlreport.rb
+$ brew install https://raw.githubusercontent.com/applidium/XCTestHTMLReport/develop_ad/xchtmlreport.rb
 
 # Install latest master branch
-$ brew install --HEAD https://raw.githubusercontent.com/applidum/XCTestHTMLReport/develop_ad/xchtmlreport.rb
+$ brew install --HEAD https://raw.githubusercontent.com/applidium/XCTestHTMLReport/develop_ad/xchtmlreport.rb
 ```
 
 ### Alternate
