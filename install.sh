@@ -5,7 +5,7 @@ set -e
 VERSION=$1
 
 if [ -z $VERSION ] ; then
-VERSION="1.7.0"
+VERSION="1.7.1"
 fi
 
 OUT_ZIP="xchtmlreport.zip"

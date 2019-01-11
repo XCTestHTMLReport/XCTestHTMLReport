@@ -8,7 +8,7 @@
 
 import Foundation
 
-var version = "1.7.0"
+var version = "1.7.1"
 
 print("XCTestHTMLReport \(version)")
 
