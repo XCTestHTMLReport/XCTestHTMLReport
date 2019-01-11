@@ -11,8 +11,19 @@ import Foundation
 struct Summary
 {
     private let filename = "action_TestSummaries.plist"
+    private let validIconUrl = "https://raw.githubusercontent.com/applidium/XCTestHTMLReport/develop_ad/XCTestHTMLReport/XCTestHTMLReport/Resources/valid.png"
+    private let invalidIconUrl = "https://raw.githubusercontent.com/applidium/XCTestHTMLReport/develop_ad/XCTestHTMLReport/XCTestHTMLReport/Resources/invalid.png"
 
     var runs = [Run]()
+    var totalNumberOfTests: Int {
+        return runs.reduce(0) { $0 + $1.numberOfTests }
+    }
+    var totalNumberOfPassedTests: Int {
+        return runs.reduce(0) { $0 + $1.numberOfPassedTests }
+    }
+    var totalNumberOfFailedTests: Int {
+        return runs.reduce(0) { $0 + $1.numberOfFailedTests }
+    }
 
     init(roots: [String])
     {
@@ -42,6 +53,14 @@ struct Summary
             }
         }
     }
+
+    //MARK: - Private
+
+    private func isSummaryValid() -> Bool {
+        return runs.reduce(true) { (accumulator: Bool, run: Run) -> Bool in
+            return accumulator && run.status == .success
+        }
+    }
 }
 
 extension Summary: HTML
@@ -51,11 +70,12 @@ extension Summary: HTML
     }
 
     var htmlPlaceholderValues: [String: String] {
+        let isSummaryValid = self.isSummaryValid()
         return [
+            "OG_IMAGE": isSummaryValid ? validIconUrl : invalidIconUrl,
+            "OG_DESCRIPTION": "Total test count : \(totalNumberOfTests). \(totalNumberOfPassedTests) passed, \(totalNumberOfFailedTests) failed.",
             "DEVICES": runs.map { $0.runDestination.html }.joined(),
-            "RESULT_CLASS": runs.reduce(true, { (accumulator: Bool, run: Run) -> Bool in
-                return accumulator && run.status == .success
-            }) ? "success" : "failure",
+            "RESULT_CLASS": isSummaryValid ? "success" : "failure",
             "RUNS": runs.map { $0.html }.joined()
         ]
     }
