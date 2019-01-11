@@ -14,38 +14,21 @@ struct TestSummary: HTML
     var testName: String
     var tests: [Test]
     var status: Status {
-        var currentTests = tests
-        var status: Status = .unknown
-
-        if currentTests.count == 0 {
+        if tests.isEmpty {
             return .success
         }
 
-        status = currentTests.reduce(.unknown, { (accumulator: Status, test: Test) -> Status in
-            if accumulator == .unknown {
-                return test.status
-            }
-
-            if test.status == .failure {
+        let computedStatus = tests.reduce(.unknown) { (accumulator, test) -> Status in
+            if accumulator == .failure {
                 return .failure
             }
-
-            if test.status == .success {
-                return accumulator == .failure ? .failure : .success
+            let testStatus = test.status
+            if accumulator == .success {
+                return testStatus == .failure ? .failure : .success
             }
-
-            return .unknown
-        })
-
-        currentTests = currentTests.reduce([], { (accumulator: [Test], test: Test) -> [Test] in
-            if let subTests = test.subTests {
-                return accumulator + subTests
-            }
-
-            return accumulator
-        })
-
-        return status
+            return testStatus
+        }
+        return computedStatus
     }
 
     init(screenshotsPath: String, dict: [String : Any])

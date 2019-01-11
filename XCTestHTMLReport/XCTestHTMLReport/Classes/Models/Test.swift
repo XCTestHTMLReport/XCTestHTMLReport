@@ -53,8 +53,32 @@ struct Test: HTML
     var name: String
     var subTests: [Test]?
     var activities: [Activity]?
-    var status: Status
     var objectClass: ObjectClass
+    private var intrinsicStatus: Status
+
+    var status: Status {
+        if intrinsicStatus == .failure || intrinsicStatus == .success {
+            return intrinsicStatus
+        }
+
+        guard
+            let subTests = subTests,
+            !subTests.isEmpty else {
+                return .success
+        }
+
+        let computedStatus = subTests.reduce(.unknown) { (accumulator, subTest) -> Status in
+            if accumulator == .failure {
+                return .failure
+            }
+            let subStatus = subTest.status
+            if accumulator == .success {
+                return subStatus == .failure ? .failure : .success
+            }
+            return subStatus
+        }
+        return computedStatus
+    }
 
     var allSubTests: [Test]? {
         guard subTests != nil else {
@@ -97,7 +121,7 @@ struct Test: HTML
         }
 
         let rawStatus = dict["TestStatus"] as? String ?? ""
-        status = Status(rawValue: rawStatus)!
+        intrinsicStatus = Status(rawValue: rawStatus)!
     }
 
     // PRAGMA MARK: - HTML
