@@ -103,6 +103,8 @@
 		F707885721D3C59E00E74BBB /* DesignReviewScreenshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignReviewScreenshot.swift; sourceTree = "<group>"; };
 		F707885921D3CB2600E74BBB /* design_review_screenshot.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = design_review_screenshot.html; sourceTree = "<group>"; };
 		F707885A21D3CE2900E74BBB /* test_design_review.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = test_design_review.html; sourceTree = "<group>"; };
+		F7E8669A21E8E50800DF20C4 /* invalid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = invalid.png; sourceTree = "<group>"; };
+		F7E8669B21E8E50800DF20C4 /* valid.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = valid.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -191,6 +193,7 @@
 		F324B4971F22359500B5B8B4 /* XCTestHTMLReport */ = {
 			isa = PBXGroup;
 			children = (
+				F7E8669921E8E4F500DF20C4 /* Resources */,
 				F3190E602098641500BC991B /* Classes */,
 				F30753EA209868460079C53E /* HTML */,
 				F3C0589F1F25E73C00EF51E1 /* Libraries */,
@@ -247,6 +250,15 @@
 				F3C058A01F25E74C00EF51E1 /* XCTestHTMLReport-Bridging-Header.h */,
 			);
 			path = Libraries;
+			sourceTree = "<group>";
+		};
+		F7E8669921E8E4F500DF20C4 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F7E8669A21E8E50800DF20C4 /* invalid.png */,
+				F7E8669B21E8E50800DF20C4 /* valid.png */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
