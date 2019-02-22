@@ -1,7 +1,7 @@
 class Xchtmlreport < Formula
   desc "XCTestHTMLReport: Xcode-like HTML report for Unit and UI Tests"
   homepage "https://github.com/applidium/XCTestHTMLReport"
-  url "https://github.com/applidium/XCTestHTMLReport/archive/1.7.1.tar.gz"
+  url "https://github.com/applidium/XCTestHTMLReport/archive/1.7.2.tar.gz"
   sha256 "8a879ce4d05df964b311c0a63f639726e20778ad13b82ce4171026bce52da985"
   head "https://github.com/applidium/XCTestHTMLReport.git", :branch => "develop_ad"
 
