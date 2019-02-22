@@ -126,12 +126,14 @@ struct Run: HTML
             let activityLogs = logs[start..<end]
 
             do {
-                let file = "\(result.values.first!)/logs-\(runDestination.targetDevice.uniqueIdentifier).txt"
+                let file = "\(result.values.first!)/test-logs-\(runDestination.targetDevice.uniqueIdentifier).txt"
                 try activityLogs.write(toFile: file, atomically: false, encoding: .utf8)
             }
             catch let e {
                 Logger.error("An error has occured while create the activity log file for \(root). Error: \(e)")
             }
+
+            generateApplicationLog(from: parentDirectory)
         }
     }
 
@@ -153,4 +155,42 @@ struct Run: HTML
         ]
     }
 
+    // MARK: - Private
+
+    private func generateApplicationLog(from parentDirectory: String) {
+        // The app log file we are looking for is at :
+        // ./Diagnostics/<targetName>-X/<targetName>-X/StandardOutputAndStandardError-<bundleId>
+        // where X is a random identifier
+        let path = parentDirectory + "/Diagnostics"
+
+        guard let appLogsPath = getPath(
+            from: path,
+            startingWith: "StandardOutputAndStandardError-"
+        ) else {
+            return
+        }
+
+        let appLogFile = "\(result.values.first!)/app-logs-\(runDestination.targetDevice.uniqueIdentifier).txt"
+        do {
+            let appLogs = try String(contentsOfFile: appLogsPath)
+            try appLogs.write(toFile: appLogFile, atomically: false, encoding: .utf8)
+        } catch let e {
+            Logger.error("An error has occured while create the application log file for \(path). Error: \(e)")
+        }
+    }
+
+    private func getPath(from parentPath: String, startingWith prefix: String) -> String? {
+        guard
+            let enumerator = FileManager.default.enumerator(atPath: parentPath),
+            var paths = enumerator.allObjects as? [String] else {
+                return nil
+        }
+        paths = paths.filter { $0.contains(prefix) }
+
+        guard paths.count == 1, let path = paths.first else {
+            Logger.error("Should corresponds to a single path")
+            return nil
+        }
+        return parentPath + "/" + path
+    }
 }

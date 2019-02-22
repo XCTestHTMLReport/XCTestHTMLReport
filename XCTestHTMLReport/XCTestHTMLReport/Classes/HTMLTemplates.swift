@@ -193,9 +193,15 @@ struct HTMLTemplates
       flex-direction: column;
     }
 
-    #logs-iframe {
+    #test-logs-iframe {
       border: 0;
       flex: 1;
+    }
+
+    #app-logs-iframe {
+        display: none;
+        border: 0;
+        flex: 1;
     }
 
     #design-review {
@@ -908,6 +914,18 @@ struct HTMLTemplates
         setDisplayToElementsWithSelector('#right-sidebar', 'none');
     }
 
+    function showTestLogs(el) {
+        selectedElement(el);
+        showElementsWithSelector('#test-logs-iframe');
+        hideElementsWithSelector('#app-logs-iframe');
+    }
+
+    function showApplicationLogs(el) {
+        selectedElement(el);
+        showElementsWithSelector('#app-logs-iframe');
+        hideElementsWithSelector('#test-logs-iframe');
+    }
+
     document.querySelectorAll('.device-info')[0].classList.add(\"selected\");
     document.querySelectorAll('.run')[0].classList.add(\"active\");
 
@@ -944,10 +962,12 @@ struct HTMLTemplates
     <div id=\"logs\">
       <div id=\"logs-header\">
         <ul class=\"toolbar toggle-toolbar\">
-          <li class=\"selected\">All Messages</li>
+          <li onclick=\"showTestLogs(this);\" class=\"selected\">Test Logs</li>
+          <li onclick=\"showApplicationLogs(this);\">App Logs</li>
         </ul>
       </div>
-      <iframe id=\"logs-iframe\" src=\"logs-[[DEVICE_IDENTIFIER]].txt\"></iframe>
+      <iframe id=\"test-logs-iframe\" src=\"test-logs-[[DEVICE_IDENTIFIER]].txt\"></iframe>
+      <iframe id=\"app-logs-iframe\" src=\"app-logs-[[DEVICE_IDENTIFIER]].txt\"></iframe>
     </div>
     <div id=\"design-review\">
         [[TEST_DESIGN_REVIEW]]

@@ -187,9 +187,15 @@
       flex-direction: column;
     }
 
-    #logs-iframe {
+    #test-logs-iframe {
       border: 0;
       flex: 1;
+    }
+
+    #app-logs-iframe {
+        display: none;
+        border: 0;
+        flex: 1;
     }
 
     #design-review {
@@ -900,6 +906,18 @@
         setDisplayToElementsWithSelector('#logs', 'none');
         setDisplayToElementsWithSelector('#design-review', 'flex');
         setDisplayToElementsWithSelector('#right-sidebar', 'none');
+    }
+
+    function showTestLogs(el) {
+        selectedElement(el);
+        showElementsWithSelector('#test-logs-iframe');
+        hideElementsWithSelector('#app-logs-iframe');
+    }
+
+    function showApplicationLogs(el) {
+        selectedElement(el);
+        showElementsWithSelector('#app-logs-iframe');
+        hideElementsWithSelector('#test-logs-iframe');
     }
 
     document.querySelectorAll('.device-info')[0].classList.add("selected");

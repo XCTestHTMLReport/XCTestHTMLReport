@@ -16,10 +16,12 @@
     <div id="logs">
       <div id="logs-header">
         <ul class="toolbar toggle-toolbar">
-          <li class="selected">All Messages</li>
+          <li onclick="showTestLogs(this);" class="selected">Test Logs</li>
+          <li onclick="showApplicationLogs(this);">App Logs</li>
         </ul>
       </div>
-      <iframe id="logs-iframe" src="logs-[[DEVICE_IDENTIFIER]].txt"></iframe>
+      <iframe id="test-logs-iframe" src="test-logs-[[DEVICE_IDENTIFIER]].txt"></iframe>
+      <iframe id="app-logs-iframe" src="app-logs-[[DEVICE_IDENTIFIER]].txt"></iframe>
     </div>
     <div id="design-review">
         [[TEST_DESIGN_REVIEW]]
