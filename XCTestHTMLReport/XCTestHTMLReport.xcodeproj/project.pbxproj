@@ -306,7 +306,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "echo \"Creating templates\"\n$SRCROOT/Scripts/createTemplates.sh";
+			shellScript = "echo \"Creating templates\"\n$SRCROOT/Scripts/createTemplates.sh\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
