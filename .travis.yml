@@ -1,7 +1,10 @@
-osx_image: xcode9.3
+osx_image: 
+  - xcode9.3
+  - xcode10.1
+  - xcode10.2
+
 language: objective-c
 
-before_script:
-  - bundle install
 script:
-  - set -o pipefail
+  - set -o pipefail && xcodebuild clean build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO -workspace XCTestHTMLReport.xcworkspace -scheme XCTestHTMLReport -configuration Release | xcpretty
+  - ./xchtmlreport -h
