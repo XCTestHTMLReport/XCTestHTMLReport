@@ -21,7 +21,7 @@ struct Run: HTML
     }
     var allTests: [Test] {
         let tests = testSummaries.flatMap { $0.tests }
-        let subTests = tests.flatMap { (test) -> [Test]? in
+        let subTests = tests.compactMap { (test) -> [Test]? in
             guard test.allSubTests != nil else {
                 return [test]
             }
@@ -60,8 +60,19 @@ struct Run: HTML
         if root == indexHTMLRoot {
             screenshotsPath = path.dropLastPathComponent()
         } else {
-            let pathComponents = (indexHTMLRoot as NSString).pathComponents
-            screenshotsPath = String(repeating: "../", count: pathComponents.count) + root + "/" + path.dropLastPathComponent()
+            var indexDiff = 0;
+            let pathComponentsA = (indexHTMLRoot as NSString).pathComponents
+            let pathComponentsB = (root as NSString).pathComponents
+
+            for index in 0..<min(pathComponentsA.count, pathComponentsB.count) {
+                if pathComponentsA[index] == pathComponentsB[index] {
+                    indexDiff += 1
+                } else {
+                    break;
+                }
+            }
+
+            screenshotsPath = String(repeating: "../", count: pathComponentsB[indexDiff...].count) + pathComponentsB[indexDiff...].joined(separator: "/")
         }
 
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
@@ -113,7 +124,7 @@ struct Run: HTML
             let activityLogs = logs[start..<end]
 
             do {
-                let file = "\(result.values.first!)/logs-\(runDestination.targetDevice.identifier).txt"
+                let file = "\(result.values.first!)/logs-\(runDestination.targetDevice.uniqueIdentifier).txt"
                 try activityLogs.write(toFile: file, atomically: false, encoding: .utf8)
             }
             catch let e {
@@ -128,7 +139,7 @@ struct Run: HTML
 
     var htmlPlaceholderValues: [String: String] {
         return [
-            "DEVICE_IDENTIFIER": runDestination.targetDevice.identifier,
+            "DEVICE_IDENTIFIER": runDestination.targetDevice.uniqueIdentifier,
             "N_OF_TESTS": String(numberOfTests),
             "N_OF_PASSED_TESTS": String(numberOfPassedTests),
             "N_OF_FAILED_TESTS": String(numberOfFailedTests),

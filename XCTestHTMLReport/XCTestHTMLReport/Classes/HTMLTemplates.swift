@@ -364,7 +364,6 @@ struct HTMLTemplates
     }
 
     .test-summary p, .test-summary-group p, .activity p {
-      color: #111;
       font-size: 12px;
       padding: 4px 4px 4px 52px;
       border-bottom: 1px solid #EEE;
@@ -502,6 +501,14 @@ struct HTMLTemplates
       border: 0;
       width: 100%;
       flex: 1;
+    }
+
+    .list-item {
+      color: #111;
+    }
+
+    .list-item.list-item-failed {
+      color: red;
     }
 
     .list-item.selected {
@@ -942,7 +949,7 @@ struct HTMLTemplates
   static let screenshot = """
   <p class=\"attachment list-item\">
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
-    Screenshot
+    [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
     <img class=\"screenshot\" src=\"[[PATH]]/Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\"/>
   </p>
@@ -951,7 +958,7 @@ struct HTMLTemplates
   static let text = """
   <p class=\"attachment list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
-    Text
+    [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[PATH]]/Attachments/[[FILENAME]]\" onclick=\"showText('[[PATH]]/Attachments/[[FILENAME]]')\"></span>
   </p>
   """

@@ -55,7 +55,9 @@ struct Activity: HTML
         return hasDirecAttachment || subActivitesHaveAttachments
     }
     var hasFailingSubActivities: Bool {
-        return subActivities?.reduce(false) { $0 || $1.type == .assertionFailure } ?? false
+		guard let subActivities = subActivities else { return false }
+
+		return subActivities.reduce(false) { $0 || $1.type == .assertionFailure || $1.hasFailingSubActivities }
     }
     var cssClasses: String {
         var cls = ""
@@ -101,7 +103,7 @@ struct Activity: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "UUID": uuid,
-            "TITLE": title,
+            "TITLE": title.stringByEscapingXMLChars,
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
             "PADDING": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? String(padding + 18) : String(padding),
             "TIME": totalTime.timeString,

@@ -11,6 +11,7 @@ import Foundation
 struct TargetDevice
 {
     var identifier: String
+    var uniqueIdentifier: String
     var osVersion: String
     var model: String
 
@@ -19,6 +20,7 @@ struct TargetDevice
         Logger.substep("Parsing TargetDevice")
         
         identifier = dict["Identifier"] as! String
+        uniqueIdentifier = UUID().uuidString
         osVersion = dict["OperatingSystemVersion"] as! String
         model = dict["ModelName"] as! String
     }

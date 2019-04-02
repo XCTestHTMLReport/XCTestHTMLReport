@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		77239F5820CFAD7000BAB94E /* ThirdSuite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77239F5720CFAD7000BAB94E /* ThirdSuite.swift */; };
 		F39729081F2471A7006B1EF3 /* SecondSuite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39729071F2471A7006B1EF3 /* SecondSuite.swift */; };
 		F3AB012C1F2459FA00334580 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB012B1F2459FA00334580 /* AppDelegate.swift */; };
 		F3AB012E1F2459FA00334580 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB012D1F2459FA00334580 /* ViewController.swift */; };
@@ -36,6 +37,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		77239F5720CFAD7000BAB94E /* ThirdSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThirdSuite.swift; sourceTree = "<group>"; };
 		F3223CEF1F26341D00BEDA4A /* iPhone.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = iPhone.png; sourceTree = "<group>"; };
 		F39729071F2471A7006B1EF3 /* SecondSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecondSuite.swift; sourceTree = "<group>"; };
 		F3AB01281F2459FA00334580 /* XCTestHTMLReportSampleApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = XCTestHTMLReportSampleApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -117,6 +119,7 @@
 				F3223CEF1F26341D00BEDA4A /* iPhone.png */,
 				F3AB01401F2459FA00334580 /* FirstSuite.swift */,
 				F39729071F2471A7006B1EF3 /* SecondSuite.swift */,
+				77239F5720CFAD7000BAB94E /* ThirdSuite.swift */,
 				F3AB01421F2459FA00334580 /* Info.plist */,
 			);
 			path = XCTestHTMLReportSampleAppUITests;
@@ -194,7 +197,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0920;
-				LastUpgradeCheck = 0900;
+				LastUpgradeCheck = 1000;
 				ORGANIZATIONNAME = Tito;
 				TargetAttributes = {
 					F3AB01271F2459FA00334580 = {
@@ -274,6 +277,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F39729081F2471A7006B1EF3 /* SecondSuite.swift in Sources */,
+				77239F5820CFAD7000BAB94E /* ThirdSuite.swift in Sources */,
 				F3AB01411F2459FA00334580 /* FirstSuite.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -335,6 +339,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -342,6 +347,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -392,6 +398,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -399,6 +406,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
