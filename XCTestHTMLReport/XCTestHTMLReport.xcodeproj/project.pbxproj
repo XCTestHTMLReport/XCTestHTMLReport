@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		0994F3C92175C16A003988B4 /* String+Path.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0994F3C82175C16A003988B4 /* String+Path.swift */; };
 		0994F3CB2175C1B7003988B4 /* String+Xml.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0994F3CA2175C1B7003988B4 /* String+Xml.swift */; };
-		B12D2AA11FC69B0700DE78C6 /* NSData+GZIP.m in Sources */ = {isa = PBXBuildFile; fileRef = B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */; };
+		D894645622A9CBDA009079CC /* Data+GZIP.swift in Sources */ = {isa = PBXBuildFile; fileRef = D894645522A9CBDA009079CC /* Data+GZIP.swift */; };
 		D980EDD4209123E400CABFE7 /* JUnitReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D980EDD3209123DB00CABFE7 /* JUnitReport.swift */; };
 		F30667381F2A0DE900EDE682 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30667371F2A0DE900EDE682 /* Logger.swift */; };
 		F30667541F2A1BE200EDE682 /* StringGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30667501F2A1BB900EDE682 /* StringGenerator.swift */; };
@@ -56,8 +56,7 @@
 /* Begin PBXFileReference section */
 		0994F3C82175C16A003988B4 /* String+Path.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Path.swift"; sourceTree = "<group>"; };
 		0994F3CA2175C1B7003988B4 /* String+Xml.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Xml.swift"; sourceTree = "<group>"; };
-		B12D2A9F1FC69B0700DE78C6 /* NSData+GZIP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSData+GZIP.h"; sourceTree = "<group>"; };
-		B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSData+GZIP.m"; sourceTree = "<group>"; };
+		D894645522A9CBDA009079CC /* Data+GZIP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+GZIP.swift"; sourceTree = "<group>"; };
 		D980EDD3209123DB00CABFE7 /* JUnitReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JUnitReport.swift; sourceTree = "<group>"; };
 		F30667371F2A0DE900EDE682 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		F30667471F2A1BB900EDE682 /* BackgroundColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundColor.swift; sourceTree = "<group>"; };
@@ -96,7 +95,6 @@
 		F3B7EE6F1F2247FA00E19B57 /* TestSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestSummary.swift; sourceTree = "<group>"; };
 		F3B7EE711F224A4200E19B57 /* Test.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Test.swift; sourceTree = "<group>"; };
 		F3B7EE7D1F233B9C00E19B57 /* HTML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTML.swift; sourceTree = "<group>"; };
-		F3C058A01F25E74C00EF51E1 /* XCTestHTMLReport-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "XCTestHTMLReport-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -232,9 +230,7 @@
 			isa = PBXGroup;
 			children = (
 				F30667461F2A1BB900EDE682 /* Rainbow */,
-				B12D2A9F1FC69B0700DE78C6 /* NSData+GZIP.h */,
-				B12D2AA01FC69B0700DE78C6 /* NSData+GZIP.m */,
-				F3C058A01F25E74C00EF51E1 /* XCTestHTMLReport-Bridging-Header.h */,
+				D894645522A9CBDA009079CC /* Data+GZIP.swift */,
 			);
 			path = Libraries;
 			sourceTree = "<group>";
@@ -323,8 +319,8 @@
 				F3B7EE701F2247FA00E19B57 /* TestSummary.swift in Sources */,
 				F3B7EE6C1F2242DC00E19B57 /* Summary.swift in Sources */,
 				F306675E1F2A1BEC00EDE682 /* BackgroundColor.swift in Sources */,
-				B12D2AA11FC69B0700DE78C6 /* NSData+GZIP.m in Sources */,
 				F3AB011D1F23659D00334580 /* Attachment.swift in Sources */,
+				D894645622A9CBDA009079CC /* Data+GZIP.swift in Sources */,
 				F324B4A01F22383D00B5B8B4 /* Argument.swift in Sources */,
 				F340F8181F2A37B000AECEE2 /* TimeInterval+Time.swift in Sources */,
 				F324B4991F22359500B5B8B4 /* main.swift in Sources */,
@@ -471,7 +467,6 @@
 				DEVELOPMENT_TEAM = "";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks $(TOOLCHAIN_DIR)/usr/lib/swift/macosx";
 				PRODUCT_NAME = xchtmlreport;
-				SWIFT_OBJC_BRIDGING_HEADER = "XCTestHTMLReport/Libraries/XCTestHTMLReport-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 4.0;
 				SYMROOT = "$(SRCROOT)/..";
@@ -486,7 +481,6 @@
 				DEVELOPMENT_TEAM = "";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks $(TOOLCHAIN_DIR)/usr/lib/swift/macosx";
 				PRODUCT_NAME = xchtmlreport;
-				SWIFT_OBJC_BRIDGING_HEADER = "XCTestHTMLReport/Libraries/XCTestHTMLReport-Bridging-Header.h";
 				SWIFT_VERSION = 4.0;
 				SYMROOT = "$(SRCROOT)/..";
 			};
