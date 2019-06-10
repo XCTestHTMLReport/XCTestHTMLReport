@@ -56,23 +56,12 @@ struct Run: HTML
 
         runDestination = RunDestination(dict: dict!["RunDestination"] as! [String : Any])
 
-        var screenshotsPath = ""
+        let screenshotsPath: String
         if root == indexHTMLRoot {
             screenshotsPath = path.dropLastPathComponent()
         } else {
-            var indexDiff = 0;
-            let pathComponentsA = (indexHTMLRoot as NSString).pathComponents
-            let pathComponentsB = (root as NSString).pathComponents
-
-            for index in 0..<min(pathComponentsA.count, pathComponentsB.count) {
-                if pathComponentsA[index] == pathComponentsB[index] {
-                    indexDiff += 1
-                } else {
-                    break;
-                }
-            }
-
-            screenshotsPath = String(repeating: "../", count: pathComponentsB[indexDiff...].count) + pathComponentsB[indexDiff...].joined(separator: "/")
+            let fullPath = (root as NSString).appendingPathComponent(path.dropLastPathComponent())
+            screenshotsPath = fullPath.relativePath(from: indexHTMLRoot)
         }
 
         let testableSummaries = dict!["TestableSummaries"] as! [[String: Any]]
