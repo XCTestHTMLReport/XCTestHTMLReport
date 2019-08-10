@@ -783,6 +783,9 @@
     function showScreenshot(filename) {
       hideAttachmentPlaceholder();
       hideLog();
+
+      screenshot.src = null;
+
       var image = document.getElementById('screenshot-'+filename);
       screenshot.style.display = "block";
       screenshot.src = image.src;
