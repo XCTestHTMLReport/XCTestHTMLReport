@@ -14,7 +14,7 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsA').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.2' -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -resultBundlePath TestResultsA | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("xchtmlreport -r TestResultsA -v").run
@@ -29,8 +29,8 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsB').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.2' -resultBundlePath TestResultsA | xcpretty").run
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs Max,OS=12.2' -resultBundlePath TestResultsB | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs Max,OS=12.4' -resultBundlePath TestResultsB | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("xchtmlreport -r TestResultsA -r TestResultsB -v").run
@@ -44,7 +44,7 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsA').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.2' -destination 'platform=iOS Simulator,name=iPhone Xs Max,OS=12.2' -destination 'platform=iOS Simulator,name=iPhone Xr,OS=12.2' -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -destination 'platform=iOS Simulator,name=iPhone Xs Max,OS=12.4' -destination 'platform=iOS Simulator,name=iPhone Xr,OS=12.4' -resultBundlePath TestResultsA | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("xchtmlreport -r TestResultsA -v").run
@@ -59,8 +59,8 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsB').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs Max,OS=12.2' -only-testing:XCTestHTMLReportSampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.2' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs Max,OS=12.4' -only-testing:XCTestHTMLReportSampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("xchtmlreport -r TestResultsA -r TestResultsB -v").run
@@ -75,8 +75,8 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsB').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.2' -only-testing:XCTestHTMLReportSampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.2' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -only-testing:XCTestHTMLReportSampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("xchtmlreport -r TestResultsA -r TestResultsB -v").run
