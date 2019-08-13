@@ -17,6 +17,7 @@ Xcode-like HTML report for Unit and UI Tests
 - Filter out successful or failed tests
 - Displays information about the target device
 - Displays activity logs
+- Junit report
 
 ## Fastlane Support
 
