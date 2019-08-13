@@ -18,6 +18,10 @@ Xcode-like HTML report for Unit and UI Tests
 - Displays information about the target device
 - Displays activity logs
 
+## Fastlane Support
+
+https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport
+
 ## Installation
 
 ### Homebrew
