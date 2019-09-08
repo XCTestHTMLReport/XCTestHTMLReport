@@ -109,12 +109,8 @@ struct Activity: HTML
             "TIME": totalTime.timeString,
             "ACTIVITY_TYPE_CLASS": cssClasses,
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? "no-drop-down" : "",
-            "SUB_ACTIVITY": subActivities?.reduce("", { (accumulator: String, activity: Activity) -> String in
-                return accumulator + activity.html
-            }) ?? "",
-            "ATTACHMENTS": attachments?.reduce("", { (accumulator: String, attachment: Attachment) -> String in
-                return accumulator + attachment.html
-            }) ?? "",
+            "SUB_ACTIVITY": subActivities?.accumulateHTMLAsString ?? "",
+            "ATTACHMENTS": attachments?.accumulateHTMLAsString ?? "",
         ]
     }
 }

@@ -391,6 +391,11 @@ struct HTMLTemplates
       display:none;
       z-index: 1000;
     }
+    
+    .preview-screenshot {
+        background-color: white;
+        height: 350px;
+    }
 
     #content {
       height: 100%;
@@ -924,6 +929,7 @@ struct HTMLTemplates
     </p>
     [[SUB_TESTS]]
     <div id=\"activities-[[UUID]]\" class=\"activities\">
+    [[SCREENSHOT_FLOW]]
     [[ACTIVITIES]]
     </div>
   </div>
