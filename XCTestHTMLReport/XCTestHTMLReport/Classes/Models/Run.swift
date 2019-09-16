@@ -8,6 +8,7 @@
 
 import Foundation
 
+/// Represents a single test run against a single test device
 struct Run: HTML
 {
     private let activityLogsFilename = "action.xcactivitylog"

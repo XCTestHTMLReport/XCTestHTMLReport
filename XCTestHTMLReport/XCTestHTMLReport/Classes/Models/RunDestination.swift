@@ -31,6 +31,7 @@ private extension Status {
     }
 }
 
+/// Represents single test device attributes
 struct RunDestination : HTML
 {
     var name: String

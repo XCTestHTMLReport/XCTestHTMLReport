@@ -56,7 +56,7 @@ extension Summary: HTML
             "RESULT_CLASS": runs.reduce(true, { (accumulator: Bool, run: Run) -> Bool in
                 return accumulator && run.status == .success
             }) ? "success" : "failure",
-            "RUNS": runs.map { $0.html }.joined()
+            "RUNS": JoinedRuns(runs: runs).html + runs.map { $0.html }.joined()
         ]
     }
 }
