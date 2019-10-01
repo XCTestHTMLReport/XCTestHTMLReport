@@ -4,7 +4,7 @@ require_relative './lib/cmd'
 require_relative './lib/print'
 
 class Test < Thor
-  XCODEBUILD_CMD_BASE = 'xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme XCTestHTMLReportSampleApp -verbose'
+  XCODEBUILD_CMD_BASE = 'xcodebuild test -project XCTestHTMLReportSampleApp/XCTestHTMLReportSampleApp.xcodeproj -scheme XCTestHTMLReportSampleApp -verbose'
 
   desc 'once', 'Runs tests and creates an HTML Report'
   def once
