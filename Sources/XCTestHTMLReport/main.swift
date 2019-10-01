@@ -1,12 +1,4 @@
-//
-//  main.swift
-//  XCTestHTMLReport
-//
-//  Created by Titouan van Belle on 21.07.17.
-//  Copyright © 2017 Tito. All rights reserved.
-//
-
-import Foundation
+import Darwin
 
 var version = "1.7.0"
 

@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Gzip
 
 struct Run: HTML
 {
@@ -90,10 +91,10 @@ struct Run: HTML
         } else {
             Logger.substep("Found \(logsPath)")
 
-            let data = NSData(contentsOfFile: logsPath)
+            let data = NSData(contentsOfFile: logsPath)! as Data
 
             Logger.substep("Gunzipping activity logs")
-            let gunzippedData = data!.gunzipped()!
+            let gunzippedData = try! data.gunzipped()
             let logs = String(data: gunzippedData, encoding: .utf8)!
 
             Logger.substep("Extracting useful activity logs")
