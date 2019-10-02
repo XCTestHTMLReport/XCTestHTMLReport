@@ -52,16 +52,6 @@ struct TestSummary: HTML
         self.tests = summary.tests.map { Test(group: $0, file: file) }
     }
 
-    init(screenshotsPath: String, dict: [String : Any])
-    {
-        Logger.substep("Parsing TestSummary")
-        
-        uuid = NSUUID().uuidString
-        testName = dict["TestName"] as! String
-        let rawTests = dict["Tests"] as! [[String: Any]]
-        tests = rawTests.map { Test(screenshotsPath: screenshotsPath, dict: $0) }
-    }
-
     // PRAGMA MARK: - HTML
 
     var htmlTemplate = HTMLTemplates.testSummary

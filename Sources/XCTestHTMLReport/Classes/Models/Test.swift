@@ -104,31 +104,6 @@ struct Test: HTML
         }
     }
 
-    init(screenshotsPath: String, dict: [String : Any]) {
-        uuid = dict["TestSummaryGUID"] as? String ?? NSUUID().uuidString
-        duration = dict["Duration"] as! Double
-        name = dict["TestName"] as! String
-        identifier = dict["TestIdentifier"] as! String
-
-        let objectClassRaw = dict["TestObjectClass"] as! String
-        objectClass = ObjectClass(rawValue: objectClassRaw)!
-
-        if let rawSubTests = dict["Subtests"] as? [[String : Any]] {
-            subTests = rawSubTests.map { Test(screenshotsPath: screenshotsPath, dict: $0) }
-        } else {
-            subTests = []
-        }
-
-        if let rawActivitySummaries = dict["ActivitySummaries"] as? [[String : Any]] {
-            activities = rawActivitySummaries.map { Activity(screenshotsPath: screenshotsPath, dict: $0, padding: 20) }
-        } else {
-            activities = []
-        }
-
-        let rawStatus = dict["TestStatus"] as? String ?? ""
-        status = Status(rawValue: rawStatus)!
-    }
-
     // PRAGMA MARK: - HTML
 
     var htmlTemplate = HTMLTemplates.test

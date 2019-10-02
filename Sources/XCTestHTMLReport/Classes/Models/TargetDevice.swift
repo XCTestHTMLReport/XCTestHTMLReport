@@ -23,15 +23,5 @@ struct TargetDevice
         self.osVersion = record.operatingSystemVersion
         self.model = record.modelName
     }
-
-    init(dict: [String : Any])
-    {
-        Logger.substep("Parsing TargetDevice")
-        
-        identifier = dict["Identifier"] as! String
-        uniqueIdentifier = UUID().uuidString
-        osVersion = dict["OperatingSystemVersion"] as! String
-        model = dict["ModelName"] as! String
-    }
 }
 

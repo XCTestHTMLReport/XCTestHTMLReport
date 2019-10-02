@@ -34,35 +34,6 @@ struct Summary
             self.runs.append(contentsOf: runs)
         }
     }
-
-    init(roots: [String])
-    {
-        let indexHTMLRoot = roots[0]
-        for root in roots {
-            Logger.step("Parsing Test Summaries")
-            let enumerator = FileManager.default.enumerator(atPath: root)
-
-            guard enumerator != nil else {
-                Logger.error("Failed to create enumerator for path \(root)")
-                exit(EXIT_FAILURE)
-            }
-
-            let paths = enumerator?.allObjects as! [String]
-
-            Logger.substep("Searching for \(filename) in \(root)")
-            let plistPath = paths.filter { $0.contains("action_TestSummaries.plist") }
-
-            if plistPath.count == 0 {
-                Logger.error("Failed to find action_TestSummaries.plist in \(root)")
-                exit(EXIT_FAILURE)
-            }
-
-            for path in plistPath {
-                let run = Run(root: root, path: path, indexHTMLRoot: indexHTMLRoot)
-                runs.append(run)
-            }
-        }
-    }
 }
 
 extension Summary: HTML

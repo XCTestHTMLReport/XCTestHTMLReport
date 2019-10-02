@@ -77,25 +77,6 @@ struct Attachment: HTML
         self.padding = padding
     }
 
-    init(screenshotsPath: String, dict: [String : Any], padding: Int)
-    {
-        path = screenshotsPath
-        filename = dict["Filename"] as! String
-        let typeRaw = dict["UniformTypeIdentifier"] as! String
-
-        if let attachmentType = AttachmentType(rawValue: typeRaw) {
-            type = attachmentType
-        } else {
-            Logger.warning("Attachment type is not supported: \(typeRaw). Skipping.")
-        }
-        
-        if let name = dict["Name"] as? String {
-            self.name = AttachmentName(rawValue: name)
-        }
-
-        self.padding = padding
-    }
-
     var fallbackDisplayName: String {
         guard let type = type else { return "Attachment" }
         

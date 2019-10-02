@@ -85,34 +85,6 @@ struct Activity: HTML
         }
         self.padding = padding
     }
-    
-    init(screenshotsPath: String, dict: [String : Any], padding: Int) {
-        uuid = dict["UUID"] as! String
-        startTime = dict["StartTimeInterval"] as? TimeInterval
-        finishTime = dict["FinishTimeInterval"] as? TimeInterval
-        title = dict["Title"] as! String
-
-        let rawActivityType = dict["ActivityType"] as! String
-        if let activityType = ActivityType(rawValue: rawActivityType) {
-            type = activityType
-        } else {
-            Logger.warning("Activity type is not supported: \(rawActivityType). Skipping activity: \(title)")
-        }
-
-        if let rawAttachments = dict["Attachments"] as? [[String : Any]] {
-            attachments = rawAttachments.map { Attachment(screenshotsPath: screenshotsPath, dict: $0, padding: padding + 16) }
-        } else {
-            attachments = []
-        }
-
-        if let rawSubActivities = dict["SubActivities"] as? [[String : Any]] {
-            subActivities = rawSubActivities.map { Activity(screenshotsPath: screenshotsPath, dict: $0, padding: padding + 10) }
-        } else {
-            subActivities = []
-        }
-
-        self.padding = padding
-    }
 
     // PRAGMA MARK: - HTML
 

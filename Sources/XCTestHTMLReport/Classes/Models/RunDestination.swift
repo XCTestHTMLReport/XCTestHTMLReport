@@ -44,14 +44,6 @@ struct RunDestination : HTML
         targetDevice = TargetDevice(record: record.targetDeviceRecord)
     }
 
-    init(dict: [String : Any])
-    {
-        Logger.substep("Parsing RunDestination")
-        
-        name = dict["Name"] as! String
-        targetDevice = TargetDevice(dict: dict["TargetDevice"] as! [String : Any])
-    }
-
     // PRAGMA MARK: - HTML
 
     var htmlTemplate = HTMLTemplates.device
