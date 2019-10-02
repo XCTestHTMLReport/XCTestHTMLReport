@@ -48,16 +48,14 @@ struct Activity: HTML
         return 0.0
     }
     var title: String
-    var subActivities: [Activity]?
+    var subActivities: [Activity]
     var type: ActivityType?
     var hasGlobalAttachment: Bool {
         let hasDirecAttachment = attachments?.count ?? 0 > 0
-        let subActivitesHaveAttachments = subActivities?.reduce(false) { $0 || $1.hasGlobalAttachment } ?? false
+        let subActivitesHaveAttachments = subActivities.reduce(false) { $0 || $1.hasGlobalAttachment }
         return hasDirecAttachment || subActivitesHaveAttachments
     }
     var hasFailingSubActivities: Bool {
-		guard let subActivities = subActivities else { return false }
-
 		return subActivities.reduce(false) { $0 || $1.type == .assertionFailure || $1.hasFailingSubActivities }
     }
     var cssClasses: String {
@@ -78,13 +76,8 @@ struct Activity: HTML
         self.startTime = summary.start?.timeIntervalSince1970 ?? 0
         self.finishTime = summary.finish?.timeIntervalSince1970 ?? 0
         self.title = summary.title
-        // ???: There is a different behavior if `self.subActivities` is nil or empty
-        if summary.subactivities.isEmpty {
-            self.subActivities = nil
-        } else {
-            self.subActivities = summary.subactivities.map {
-                Activity(summary: $0, file: file, padding: padding + 10)
-            }
+        self.subActivities = summary.subactivities.map {
+            Activity(summary: $0, file: file, padding: padding + 10)
         }
         self.type = ActivityType(rawValue: summary.activityType)
         self.attachments = summary.attachments.map {
@@ -112,6 +105,8 @@ struct Activity: HTML
 
         if let rawSubActivities = dict["SubActivities"] as? [[String : Any]] {
             subActivities = rawSubActivities.map { Activity(screenshotsPath: screenshotsPath, dict: $0, padding: padding + 10) }
+        } else {
+            subActivities = []
         }
 
         self.padding = padding
@@ -126,13 +121,13 @@ struct Activity: HTML
             "UUID": uuid,
             "TITLE": title.stringByEscapingXMLChars,
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
-            "PADDING": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? String(padding + 18) : String(padding),
+            "PADDING": (subActivities.isEmpty && (attachments == nil || attachments?.count == 0)) ? String(padding + 18) : String(padding),
             "TIME": totalTime.timeString,
             "ACTIVITY_TYPE_CLASS": cssClasses,
-            "HAS_SUB-ACTIVITIES_CLASS": (subActivities == nil && (attachments == nil || attachments?.count == 0)) ? "no-drop-down" : "",
-            "SUB_ACTIVITY": subActivities?.reduce("", { (accumulator: String, activity: Activity) -> String in
+            "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && (attachments == nil || attachments?.count == 0)) ? "no-drop-down" : "",
+            "SUB_ACTIVITY": subActivities.reduce("") { (accumulator: String, activity: Activity) -> String in
                 return accumulator + activity.html
-            }) ?? "",
+            },
             "ATTACHMENTS": attachments?.reduce("", { (accumulator: String, attachment: Attachment) -> String in
                 return accumulator + attachment.html
             }) ?? "",
