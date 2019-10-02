@@ -16,6 +16,7 @@ struct Run: HTML
 
     var runDestination: RunDestination
     var testSummaries: [TestSummary]
+    var logPath: String = ""
     var status: Status {
        return testSummaries.reduce(true, { (accumulator: Bool, summary: TestSummary) -> Bool in
             return accumulator && summary.status == .success
@@ -54,6 +55,16 @@ struct Run: HTML
                 exit(EXIT_FAILURE)
         }
 
+        // TODO: (Pierre Felgines) 02/10/2019 Use only emittedOutput from logs objects
+        // For now XCResultKit do not handle logs
+        guard
+            let logReference = action.actionResult.logRef,
+            let url = file.exportPayload(id: logReference.id) else {
+                Logger.error("Can't find logs")
+                exit(EXIT_FAILURE)
+        }
+
+        self.logPath = url.path
         self.testSummaries = testPlanSummaries.summaries
             .flatMap { $0.testableSummaries }
             .map { TestSummary(summary: $0, file: file) }
@@ -157,6 +168,7 @@ struct Run: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "DEVICE_IDENTIFIER": runDestination.targetDevice.uniqueIdentifier,
+            "LOG_PATH": logPath,
             "N_OF_TESTS": String(numberOfTests),
             "N_OF_PASSED_TESTS": String(numberOfPassedTests),
             "N_OF_FAILED_TESTS": String(numberOfFailedTests),

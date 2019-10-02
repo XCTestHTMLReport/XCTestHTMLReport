@@ -903,7 +903,7 @@ struct HTMLTemplates
           <li class=\"selected\">All Messages</li>
         </ul>
       </div>
-      <iframe id=\"logs-iframe\" src=\"logs-[[DEVICE_IDENTIFIER]].txt\"></iframe>
+      <iframe id=\"logs-iframe\" src=\"[[LOG_PATH]]\"></iframe>
     </div>
   </div>
   """
