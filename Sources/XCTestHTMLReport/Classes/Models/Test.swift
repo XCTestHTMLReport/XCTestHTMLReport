@@ -77,13 +77,12 @@ struct Test: HTML
         self.name = group.name
         if group.subtests.isEmpty {
             self.subTests = group.subtestGroups.map { Test(group: $0, file: file) }
-            self.objectClass = .testSummaryGroup
         } else {
-            self.subTests = group.subtests.map { Test.init(metadata: $0, file: file) }
-            self.objectClass = .testableSummary
+            self.subTests = group.subtests.map { Test(metadata: $0, file: file) }
         }
+        self.objectClass = .testSummaryGroup
         self.activities = []
-        self.status = Status.success // TODO: (Pierre Felgines) 01/10/2019 To change
+        self.status = .unknown // ???: Usefull?
     }
 
     init(metadata: ActionTestMetadata, file: XCResultFile) {
