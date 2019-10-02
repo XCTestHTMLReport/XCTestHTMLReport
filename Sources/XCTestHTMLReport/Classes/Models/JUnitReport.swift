@@ -151,7 +151,7 @@ extension JUnitReport.TestCase
             state = .unknown
         }
 
-        results = test.activities?.map { JUnitReport.TestResult(activity: $0) } ?? []
+        results = test.activities.map { JUnitReport.TestResult(activity: $0) }
     }
 }
 

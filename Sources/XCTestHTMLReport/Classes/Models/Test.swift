@@ -53,7 +53,7 @@ struct Test: HTML
     var duration: Double
     var name: String
     var subTests: [Test]?
-    var activities: [Activity]?
+    var activities: [Activity]
     var status: Status
     var objectClass: ObjectClass
 
@@ -92,7 +92,7 @@ struct Test: HTML
             self.subTests = group.subtests.map { Test.init(metadata: $0, file: file) }
             self.objectClass = .testableSummary
         }
-        self.activities = nil
+        self.activities = []
         self.status = Status.success // TODO: (Pierre Felgines) 01/10/2019 To change
     }
 
@@ -110,7 +110,7 @@ struct Test: HTML
                 Activity(summary: $0, file: file, padding: 20)
             }
         } else {
-            self.activities = nil
+            self.activities = []
         }
     }
 
@@ -129,6 +129,8 @@ struct Test: HTML
 
         if let rawActivitySummaries = dict["ActivitySummaries"] as? [[String : Any]] {
             activities = rawActivitySummaries.map { Activity(screenshotsPath: screenshotsPath, dict: $0, padding: 20) }
+        } else {
+            activities = []
         }
 
         let rawStatus = dict["TestStatus"] as? String ?? ""
@@ -147,10 +149,10 @@ struct Test: HTML
             "SUB_TESTS": subTests?.reduce("", { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
             }) ?? "",
-            "HAS_ACTIVITIES_CLASS": (activities == nil) ? "no-drop-down" : "",
-            "ACTIVITIES": activities?.reduce("", { (accumulator: String, activity: Activity) -> String in
+            "HAS_ACTIVITIES_CLASS": activities.isEmpty ? "no-drop-down" : "",
+            "ACTIVITIES": activities.reduce("") { (accumulator: String, activity: Activity) -> String in
                 return accumulator + activity.html
-            }) ?? "",
+            },
             "ICON_CLASS": status.cssClass,
             "ITEM_CLASS": objectClass.cssClass,
 			"LIST_ITEM_CLASS": objectClass == .testSummary ? (status == .failure ? "list-item list-item-failed" : "list-item") : ""
