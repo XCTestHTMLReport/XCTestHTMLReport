@@ -18,6 +18,15 @@
           "revision": "9c52c1952e9b2305d4507cf473392ac2d7c9b155",
           "version": "3.1.5"
         }
+      },
+      {
+        "package": "XCResultKit",
+        "repositoryURL": "https://github.com/davidahouse/XCResultKit.git",
+        "state": {
+          "branch": null,
+          "revision": "8434203a0b11ebc771a70add09f9f56f1f5e8768",
+          "version": null
+        }
       }
     ]
   },

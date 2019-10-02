@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import XCResultKit
 
 private extension Status {
     /// e.g. <span class="icon left failure"></span>
@@ -36,6 +37,12 @@ struct RunDestination : HTML
     var name: String
     var targetDevice: TargetDevice
     var status: Status = .unknown
+
+    init(record: ActionRunDestinationRecord) {
+        Logger.substep("Parsing ActionRunDestinationRecord")
+        name = record.displayName
+        targetDevice = TargetDevice(record: record.targetDeviceRecord)
+    }
 
     init(dict: [String : Any])
     {

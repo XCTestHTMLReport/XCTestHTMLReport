@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import XCResultKit
 
 enum Status: String {
     case unknown = ""
@@ -77,6 +78,40 @@ struct Test: HTML
         }
 
         return 0
+    }
+
+    init(group: ActionTestSummaryGroup, file: XCResultFile) {
+        self.uuid = NSUUID().uuidString
+        self.identifier = group.identifier
+        self.duration = group.duration
+        self.name = group.name
+        if group.subtests.isEmpty {
+            self.subTests = group.subtestGroups.map { Test(group: $0, file: file) }
+            self.objectClass = .testSummaryGroup
+        } else {
+            self.subTests = group.subtests.map { Test.init(metadata: $0, file: file) }
+            self.objectClass = .testableSummary
+        }
+        self.activities = nil
+        self.status = Status.success // TODO: (Pierre Felgines) 01/10/2019 To change
+    }
+
+    init(metadata: ActionTestMetadata, file: XCResultFile) {
+        self.uuid = NSUUID().uuidString
+        self.identifier = metadata.identifier
+        self.duration = metadata.duration ?? 0
+        self.name = metadata.name
+        self.subTests = nil
+        self.status = Status(rawValue: metadata.testStatus) ?? .failure
+        self.objectClass = .testSummary
+        if let id = metadata.summaryRef?.id,
+            let actionTestSummary = file.getActionTestSummary(id: id) {
+            self.activities = actionTestSummary.activitySummaries.map {
+                Activity(summary: $0, file: file, padding: 20)
+            }
+        } else {
+            self.activities = nil
+        }
     }
 
     init(screenshotsPath: String, dict: [String : Any]) {

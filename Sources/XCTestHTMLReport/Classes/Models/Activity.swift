@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import XCResultKit
 
 enum ActivityType: String {
     case unknwown = ""
@@ -70,6 +71,21 @@ struct Activity: HTML
         }
 
         return cls
+    }
+
+    init(summary: ActionTestActivitySummary, file: XCResultFile, padding: Int) {
+        self.uuid = summary.uuid
+        self.startTime = summary.start?.timeIntervalSince1970 ?? 0
+        self.finishTime = summary.finish?.timeIntervalSince1970 ?? 0
+        self.title = summary.title
+        self.subActivities = summary.subactivities.map {
+            Activity(summary: $0, file: file, padding: padding + 10)
+        }
+        self.type = ActivityType(rawValue: summary.activityType)
+        self.attachments = summary.attachments.map {
+            Attachment(attachment: $0, file: file, padding: padding + 16)
+        }
+        self.padding = padding
     }
     
     init(screenshotsPath: String, dict: [String : Any], padding: Int) {

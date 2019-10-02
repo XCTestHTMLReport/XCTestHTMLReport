@@ -7,12 +7,33 @@
 //
 
 import Foundation
+import XCResultKit
 
 struct Summary
 {
     private let filename = "action_TestSummaries.plist"
 
     var runs = [Run]()
+
+    init(resultPaths: [String]) {
+        for resultPath in resultPaths {
+            Logger.step("Parsing \(resultPath)")
+
+            guard let url = URL(string: resultPath) else {
+                Logger.error("Can't create url for : \(resultPath)")
+                exit(EXIT_FAILURE)
+            }
+            let resultFile = XCResultFile(url: url)
+            guard let invocationRecord = resultFile.getInvocationRecord() else {
+                Logger.error("Can't find invocation record for : \(resultPath)")
+                exit(EXIT_FAILURE)
+            }
+            let runs = invocationRecord.actions.map {
+                Run(action: $0, file: resultFile)
+            }
+            self.runs.append(contentsOf: runs)
+        }
+    }
 
     init(roots: [String])
     {

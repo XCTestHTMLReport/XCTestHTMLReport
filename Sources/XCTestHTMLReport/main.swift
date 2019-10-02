@@ -25,13 +25,13 @@ if !command.isValid {
     exit(EXIT_FAILURE)
 }
 
-let summary = Summary(roots: result.values)
+let summary = Summary(resultPaths: result.values)
 
 Logger.step("Building HTML..")
 let html = summary.html
 
 do {
-    let path = "\(result.values.first!)/index.html"
+    let path = "\(result.values.first!.dropLastPathComponent())/index.html"
     Logger.substep("Writing report to \(path)")
 
     try html.write(toFile: path, atomically: false, encoding: .utf8)

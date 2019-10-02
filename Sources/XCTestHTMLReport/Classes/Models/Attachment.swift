@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import XCResultKit
 
 enum AttachmentType: String {
     case unknwown = ""
@@ -62,6 +63,19 @@ struct Attachment: HTML
     var path: String
     var type: AttachmentType?
     var name: AttachmentName?
+
+    init(attachment: ActionTestAttachment, file: XCResultFile, padding: Int) {
+        self.filename = attachment.filename ?? ""
+        self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknwown
+        self.name = AttachmentName(rawValue: attachment.name ?? "")
+        if let id = attachment.payloadRef?.id,
+            let url = file.exportPayload(id: id) {
+            self.path = url.path
+        } else {
+            self.path = ""
+        }
+        self.padding = padding
+    }
 
     init(screenshotsPath: String, dict: [String : Any], padding: Int)
     {

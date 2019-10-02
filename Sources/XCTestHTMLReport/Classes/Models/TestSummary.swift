@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import XCResultKit
 
 struct TestSummary: HTML
 {
@@ -43,6 +44,12 @@ struct TestSummary: HTML
         })
 
         return status
+    }
+
+    init(summary: ActionTestableSummary, file: XCResultFile) {
+        self.uuid = UUID().uuidString
+        self.testName = summary.targetName ?? ""
+        self.tests = summary.tests.map { Test(group: $0, file: file) }
     }
 
     init(screenshotsPath: String, dict: [String : Any])

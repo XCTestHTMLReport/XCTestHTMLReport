@@ -951,7 +951,7 @@ struct HTMLTemplates
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
-    <img class=\"screenshot\" src=\"[[PATH]]/Attachments/[[FILENAME]]\" id=\"screenshot-[[FILENAME]]\"/>
+    <img class=\"screenshot\" src=\"[[PATH]]\" id=\"screenshot-[[FILENAME]]\"/>
   </p>
   """
 
@@ -959,7 +959,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
-    <span class=\"icon preview-icon\" data=\"[[PATH]]/Attachments/[[FILENAME]]\" onclick=\"showText('[[PATH]]/Attachments/[[FILENAME]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[PATH]]\" onclick=\"showText('[[PATH]]')\"></span>
   </p>
   """
 }

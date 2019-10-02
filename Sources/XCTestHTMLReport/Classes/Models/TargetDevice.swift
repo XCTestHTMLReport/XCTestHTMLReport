@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import XCResultKit
 
 struct TargetDevice
 {
@@ -14,6 +15,14 @@ struct TargetDevice
     var uniqueIdentifier: String
     var osVersion: String
     var model: String
+
+    init(record: ActionDeviceRecord) {
+        Logger.substep("Parsing ActionDeviceRecord")
+        self.identifier = record.identifier
+        self.uniqueIdentifier = UUID().uuidString
+        self.osVersion = record.operatingSystemVersion
+        self.model = record.modelName
+    }
 
     init(dict: [String : Any])
     {

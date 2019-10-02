@@ -8,6 +8,7 @@
 
 import Foundation
 import Gzip
+import XCResultKit
 
 struct Run: HTML
 {
@@ -41,6 +42,21 @@ struct Run: HTML
     }
     var numberOfFailedTests : Int {
         return allTests.filter { $0.status == .failure }.count
+    }
+
+    init(action: ActionRecord, file: XCResultFile) {
+        self.runDestination = RunDestination(record: action.runDestination)
+
+        guard
+            let testReference = action.actionResult.testsRef,
+            let testPlanSummaries = file.getTestPlanRunSummaries(id: testReference.id) else {
+                Logger.error("Can't find test reference")
+                exit(EXIT_FAILURE)
+        }
+
+        self.testSummaries = testPlanSummaries.summaries
+            .flatMap { $0.testableSummaries }
+            .map { TestSummary(summary: $0, file: file) }
     }
 
     init(root: String, path: String, indexHTMLRoot: String)
