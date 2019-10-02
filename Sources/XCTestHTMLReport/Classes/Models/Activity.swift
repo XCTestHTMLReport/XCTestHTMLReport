@@ -78,8 +78,13 @@ struct Activity: HTML
         self.startTime = summary.start?.timeIntervalSince1970 ?? 0
         self.finishTime = summary.finish?.timeIntervalSince1970 ?? 0
         self.title = summary.title
-        self.subActivities = summary.subactivities.map {
-            Activity(summary: $0, file: file, padding: padding + 10)
+        // ???: There is a different behavior if `self.subActivities` is nil or empty
+        if summary.subactivities.isEmpty {
+            self.subActivities = nil
+        } else {
+            self.subActivities = summary.subactivities.map {
+                Activity(summary: $0, file: file, padding: padding + 10)
+            }
         }
         self.type = ActivityType(rawValue: summary.activityType)
         self.attachments = summary.attachments.map {
