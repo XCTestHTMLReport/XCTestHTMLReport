@@ -81,13 +81,6 @@ extension Test {
         if self.objectClass == .testSummary {
             return [self]
         }
-        guard let subTests = self.subTests, subTests.isEmpty == false else {
-            return []
-        }
-        var testsToReturn: [Test] = []
-        for test in subTests {
-            testsToReturn += test.allTestSummaries()
-        }
-        return testsToReturn
+        return subTests.flatMap { $0.allTestSummaries() }
     }
 }

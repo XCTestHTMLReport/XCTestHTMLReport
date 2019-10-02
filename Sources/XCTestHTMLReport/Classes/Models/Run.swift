@@ -24,15 +24,11 @@ struct Run: HTML
     }
     var allTests: [Test] {
         let tests = testSummaries.flatMap { $0.tests }
-        let subTests = tests.compactMap { (test) -> [Test]? in
-            guard test.allSubTests != nil else {
-                return [test]
-            }
-
-            return test.allSubTests
+        return tests.flatMap { test -> [Test] in
+            return test.allSubTests.isEmpty
+                ? [test]
+                : test.allSubTests
         }
-
-        return subTests.flatMap { $0 }
     }
     var numberOfTests : Int {
         let a = allTests

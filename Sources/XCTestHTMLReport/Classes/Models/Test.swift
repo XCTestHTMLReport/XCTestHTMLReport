@@ -52,32 +52,22 @@ struct Test: HTML
     var identifier: String
     var duration: Double
     var name: String
-    var subTests: [Test]?
+    var subTests: [Test]
     var activities: [Activity]
     var status: Status
     var objectClass: ObjectClass
 
-    var allSubTests: [Test]? {
-        guard subTests != nil else {
-            return nil
+    var allSubTests: [Test] {
+        return subTests.flatMap { test -> [Test] in
+            return test.allSubTests.isEmpty
+                ? [test]
+                : test.allSubTests
         }
-
-        return subTests!.compactMap({ (test) -> [Test]? in
-            guard test.allSubTests != nil else {
-                return [test]
-            }
-
-            return test.allSubTests
-        }).flatMap { $0 }
     }
 
     var amountSubTests: Int {
-        if let subTests = subTests {
-            let a = subTests.reduce(0) { $0 + $1.amountSubTests }
-            return a == 0 ? subTests.count : a
-        }
-
-        return 0
+        let a = subTests.reduce(0) { $0 + $1.amountSubTests }
+        return a == 0 ? subTests.count : a
     }
 
     init(group: ActionTestSummaryGroup, file: XCResultFile) {
@@ -101,7 +91,7 @@ struct Test: HTML
         self.identifier = metadata.identifier
         self.duration = metadata.duration ?? 0
         self.name = metadata.name
-        self.subTests = nil
+        self.subTests = []
         self.status = Status(rawValue: metadata.testStatus) ?? .failure
         self.objectClass = .testSummary
         if let id = metadata.summaryRef?.id,
@@ -125,6 +115,8 @@ struct Test: HTML
 
         if let rawSubTests = dict["Subtests"] as? [[String : Any]] {
             subTests = rawSubTests.map { Test(screenshotsPath: screenshotsPath, dict: $0) }
+        } else {
+            subTests = []
         }
 
         if let rawActivitySummaries = dict["ActivitySummaries"] as? [[String : Any]] {
@@ -146,9 +138,9 @@ struct Test: HTML
             "UUID": uuid,
             "NAME": name + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
             "TIME": duration.timeString,
-            "SUB_TESTS": subTests?.reduce("", { (accumulator: String, test: Test) -> String in
+            "SUB_TESTS": subTests.reduce("") { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
-            }) ?? "",
+            },
             "HAS_ACTIVITIES_CLASS": activities.isEmpty ? "no-drop-down" : "",
             "ACTIVITIES": activities.reduce("") { (accumulator: String, activity: Activity) -> String in
                 return accumulator + activity.html
