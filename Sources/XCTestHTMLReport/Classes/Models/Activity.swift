@@ -37,7 +37,7 @@ struct Activity: HTML
 {
     var uuid: String
     var padding = 0
-    var attachments: [Attachment]?
+    var attachments: [Attachment]
     var startTime: TimeInterval?
     var finishTime: TimeInterval?
     var totalTime: TimeInterval {
@@ -51,9 +51,9 @@ struct Activity: HTML
     var subActivities: [Activity]
     var type: ActivityType?
     var hasGlobalAttachment: Bool {
-        let hasDirecAttachment = attachments?.count ?? 0 > 0
+        let hasDirectAttachment = !attachments.isEmpty
         let subActivitesHaveAttachments = subActivities.reduce(false) { $0 || $1.hasGlobalAttachment }
-        return hasDirecAttachment || subActivitesHaveAttachments
+        return hasDirectAttachment || subActivitesHaveAttachments
     }
     var hasFailingSubActivities: Bool {
 		return subActivities.reduce(false) { $0 || $1.type == .assertionFailure || $1.hasFailingSubActivities }
@@ -101,6 +101,8 @@ struct Activity: HTML
 
         if let rawAttachments = dict["Attachments"] as? [[String : Any]] {
             attachments = rawAttachments.map { Attachment(screenshotsPath: screenshotsPath, dict: $0, padding: padding + 16) }
+        } else {
+            attachments = []
         }
 
         if let rawSubActivities = dict["SubActivities"] as? [[String : Any]] {
@@ -121,16 +123,16 @@ struct Activity: HTML
             "UUID": uuid,
             "TITLE": title.stringByEscapingXMLChars,
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
-            "PADDING": (subActivities.isEmpty && (attachments == nil || attachments?.count == 0)) ? String(padding + 18) : String(padding),
+            "PADDING": (subActivities.isEmpty && attachments.isEmpty) ? String(padding + 18) : String(padding),
             "TIME": totalTime.timeString,
             "ACTIVITY_TYPE_CLASS": cssClasses,
-            "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && (attachments == nil || attachments?.count == 0)) ? "no-drop-down" : "",
+            "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && attachments.isEmpty) ? "no-drop-down" : "",
             "SUB_ACTIVITY": subActivities.reduce("") { (accumulator: String, activity: Activity) -> String in
                 return accumulator + activity.html
             },
-            "ATTACHMENTS": attachments?.reduce("", { (accumulator: String, attachment: Attachment) -> String in
+            "ATTACHMENTS": attachments.reduce("") { (accumulator: String, attachment: Attachment) -> String in
                 return accumulator + attachment.html
-            }) ?? "",
+            },
         ]
     }
 }
