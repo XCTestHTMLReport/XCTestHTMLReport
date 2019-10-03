@@ -12,6 +12,17 @@ extension String
 {
     func dropLastPathComponent() -> String
     {
-        return components(separatedBy: "/").dropLast().joined(separator: "/")
+        if let url = URL(string: self) {
+            return url.deletingLastPathComponent().path
+        }
+        return self
+    }
+
+    func addPathComponent(_ component: String) -> String
+    {
+        if let url = URL(string: self) {
+            return url.appendingPathComponent(component).path
+        }
+        return self
     }
 }

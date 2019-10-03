@@ -31,7 +31,9 @@ Logger.step("Building HTML..")
 let html = summary.html
 
 do {
-    let path = "\(result.values.first!.dropLastPathComponent())/index.html"
+    let path = result.values.first!
+        .dropLastPathComponent()
+        .addPathComponent("index.html")
     Logger.substep("Writing report to \(path)")
 
     try html.write(toFile: path, atomically: false, encoding: .utf8)
