@@ -7,7 +7,6 @@ class Xchtmlreport < Formula
 
   def install
     system "swift build -c release"
-    system "mv .build/release/XCTestHTMLReport xchtmlreport"
-    bin.install "xchtmlreport"
+    bin.install ".build/release/xchtmlreport"
   end
 end

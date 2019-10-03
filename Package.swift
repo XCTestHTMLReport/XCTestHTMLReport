@@ -5,6 +5,9 @@ import PackageDescription
 
 let package = Package(
     name: "XCTestHTMLReport",
+    products: [
+        .executable(name: "xchtmlreport", targets: ["XCTestHTMLReport"])
+    ],
     dependencies: [
          .package(url: "https://github.com/onevcat/Rainbow.git", from: "3.0.0"),
          .package(url: "https://github.com/davidahouse/XCResultKit.git", .revision("8434203a0b11ebc771a70add09f9f56f1f5e8768"))
