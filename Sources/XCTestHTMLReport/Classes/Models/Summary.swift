@@ -28,7 +28,7 @@ struct Summary
                 Logger.error("Can't find invocation record for : \(resultPath)")
                 exit(EXIT_FAILURE)
             }
-            let runs = invocationRecord.actions.map {
+            let runs = invocationRecord.actions.compactMap {
                 Run(action: $0, file: resultFile)
             }
             self.runs.append(contentsOf: runs)

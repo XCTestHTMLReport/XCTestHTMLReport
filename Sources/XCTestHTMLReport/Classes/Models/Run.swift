@@ -41,26 +41,25 @@ struct Run: HTML
         return allTests.filter { $0.status == .failure }.count
     }
 
-    init(action: ActionRecord, file: XCResultFile) {
+    init?(action: ActionRecord, file: XCResultFile) {
         self.runDestination = RunDestination(record: action.runDestination)
 
         guard
             let testReference = action.actionResult.testsRef,
             let testPlanSummaries = file.getTestPlanRunSummaries(id: testReference.id) else {
-                Logger.error("Can't find test reference")
-                exit(EXIT_FAILURE)
+                Logger.warning("Can't find test reference for action \(action.title ?? "")")
+                return nil
         }
 
         // TODO: (Pierre Felgines) 02/10/2019 Use only emittedOutput from logs objects
         // For now XCResultKit do not handle logs
-        guard
-            let logReference = action.actionResult.logRef,
-            let url = file.exportPayload(id: logReference.id) else {
-                Logger.error("Can't find logs")
-                exit(EXIT_FAILURE)
+        if let logReference = action.actionResult.logRef,
+            let url = file.exportPayload(id: logReference.id) {
+            self.logPath = url.path
+        } else {
+            Logger.warning("Can't find test reference for action \(action.title ?? "")")
+            self.logPath = ""
         }
-
-        self.logPath = url.path
         self.testSummaries = testPlanSummaries.summaries
             .flatMap { $0.testableSummaries }
             .map { TestSummary(summary: $0, file: file) }
