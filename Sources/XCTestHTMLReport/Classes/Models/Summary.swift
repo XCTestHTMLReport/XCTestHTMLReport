@@ -23,8 +23,8 @@ struct Summary
             }
             let resultFile = XCResultFile(url: url)
             guard let invocationRecord = resultFile.getInvocationRecord() else {
-                Logger.error("Can't find invocation record for : \(resultPath)")
-                exit(EXIT_FAILURE)
+                Logger.warning("Can't find invocation record for : \(resultPath)")
+                break
             }
             let runs = invocationRecord.actions.compactMap {
                 Run(action: $0, file: resultFile)
