@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import Gzip
 import XCResultKit
 
 struct Run: HTML

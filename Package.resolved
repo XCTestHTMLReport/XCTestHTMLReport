@@ -2,15 +2,6 @@
   "object": {
     "pins": [
       {
-        "package": "Gzip",
-        "repositoryURL": "https://github.com/1024jp/GzipSwift.git",
-        "state": {
-          "branch": null,
-          "revision": "7d428aa5ce561cb4338ce245293d852326a86dfe",
-          "version": "5.0.0"
-        }
-      },
-      {
         "package": "Rainbow",
         "repositoryURL": "https://github.com/onevcat/Rainbow.git",
         "state": {
