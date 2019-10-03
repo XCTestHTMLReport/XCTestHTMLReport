@@ -11,8 +11,6 @@ import XCResultKit
 
 struct Summary
 {
-    private let filename = "action_TestSummaries.plist"
-
     var runs = [Run]()
 
     init(resultPaths: [String]) {
