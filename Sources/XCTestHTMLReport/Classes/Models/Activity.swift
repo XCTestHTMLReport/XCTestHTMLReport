@@ -35,11 +35,11 @@ enum ActivityType: String {
 
 struct Activity: HTML
 {
-    var uuid: String
-    var padding = 0
-    var attachments: [Attachment]
-    var startTime: TimeInterval?
-    var finishTime: TimeInterval?
+    let uuid: String
+    let padding: Int
+    let attachments: [Attachment]
+    let startTime: TimeInterval?
+    let finishTime: TimeInterval?
     var totalTime: TimeInterval {
         if let start = startTime, let finish = finishTime {
             return finish - start
@@ -71,7 +71,7 @@ struct Activity: HTML
         return cls
     }
 
-    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int) {
+    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0) {
         self.uuid = summary.uuid
         self.startTime = summary.start?.timeIntervalSince1970 ?? 0
         self.finishTime = summary.finish?.timeIntervalSince1970 ?? 0

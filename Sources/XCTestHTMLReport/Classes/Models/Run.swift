@@ -11,9 +11,9 @@ import XCResultKit
 
 struct Run: HTML
 {
-    var runDestination: RunDestination
-    var testSummaries: [TestSummary]
-    var logPath: String = ""
+    let runDestination: RunDestination
+    let testSummaries: [TestSummary]
+    let logPath: String
     var status: Status {
        return testSummaries.reduce(true, { (accumulator: Bool, summary: TestSummary) -> Bool in
             return accumulator && summary.status == .success

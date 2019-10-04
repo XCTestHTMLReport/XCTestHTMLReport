@@ -11,10 +11,10 @@ import XCResultKit
 
 struct TargetDevice
 {
-    var identifier: String
-    var uniqueIdentifier: String
-    var osVersion: String
-    var model: String
+    let identifier: String
+    let uniqueIdentifier: String
+    let osVersion: String
+    let model: String
 
     init(record: ActionDeviceRecord) {
         Logger.substep("Parsing ActionDeviceRecord")

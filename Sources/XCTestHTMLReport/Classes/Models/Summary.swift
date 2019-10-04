@@ -11,9 +11,10 @@ import XCResultKit
 
 struct Summary
 {
-    var runs = [Run]()
+    let runs: [Run]
 
     init(resultPaths: [String]) {
+        var runs: [Run] = []
         for resultPath in resultPaths {
             Logger.step("Parsing \(resultPath)")
             let url = URL(fileURLWithPath: resultPath)
@@ -22,11 +23,12 @@ struct Summary
                 Logger.warning("Can't find invocation record for : \(resultPath)")
                 break
             }
-            let runs = invocationRecord.actions.compactMap {
+            let resultRuns = invocationRecord.actions.compactMap {
                 Run(action: $0, file: resultFile)
             }
-            self.runs.append(contentsOf: runs)
+            runs.append(contentsOf: resultRuns)
         }
+        self.runs = runs
     }
 }
 

@@ -58,13 +58,13 @@ enum AttachmentName: RawRepresentable {
 
 struct Attachment: HTML
 {
-    var padding = 0
-    var filename: String
-    var path: String
-    var type: AttachmentType?
-    var name: AttachmentName?
+    let padding: Int
+    let filename: String
+    let path: String
+    let type: AttachmentType?
+    let name: AttachmentName?
 
-    init(attachment: ActionTestAttachment, file: ResultFile, padding: Int) {
+    init(attachment: ActionTestAttachment, file: ResultFile, padding: Int = 0) {
         self.filename = attachment.filename ?? ""
         self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknwown
         self.name = AttachmentName(rawValue: attachment.name ?? "")

@@ -11,9 +11,9 @@ import XCResultKit
 
 struct TestSummary: HTML
 {
-    var uuid: String
-    var testName: String
-    var tests: [Test]
+    let uuid: String
+    let testName: String
+    let tests: [Test]
     var status: Status {
         let currentTests = tests
         var status: Status = .unknown

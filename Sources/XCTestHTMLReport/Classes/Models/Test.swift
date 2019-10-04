@@ -48,14 +48,14 @@ enum ObjectClass: String {
 
 struct Test: HTML
 {
-    var uuid: String
-    var identifier: String
-    var duration: Double
-    var name: String
-    var subTests: [Test]
-    var activities: [Activity]
-    var status: Status
-    var objectClass: ObjectClass
+    let uuid: String
+    let identifier: String
+    let duration: Double
+    let name: String
+    let subTests: [Test]
+    let activities: [Activity]
+    let status: Status
+    let objectClass: ObjectClass
 
     var allSubTests: [Test] {
         return subTests.flatMap { test -> [Test] in
