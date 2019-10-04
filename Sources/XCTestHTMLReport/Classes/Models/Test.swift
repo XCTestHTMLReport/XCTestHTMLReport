@@ -70,7 +70,7 @@ struct Test: HTML
         return a == 0 ? subTests.count : a
     }
 
-    init(group: ActionTestSummaryGroup, file: XCResultFile) {
+    init(group: ActionTestSummaryGroup, file: ResultFile) {
         self.uuid = NSUUID().uuidString
         self.identifier = group.identifier
         self.duration = group.duration
@@ -85,7 +85,7 @@ struct Test: HTML
         self.status = .unknown // ???: Usefull?
     }
 
-    init(metadata: ActionTestMetadata, file: XCResultFile) {
+    init(metadata: ActionTestMetadata, file: ResultFile) {
         self.uuid = NSUUID().uuidString
         self.identifier = metadata.identifier
         self.duration = metadata.duration ?? 0

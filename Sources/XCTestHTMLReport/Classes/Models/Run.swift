@@ -40,7 +40,7 @@ struct Run: HTML
         return allTests.filter { $0.status == .failure }.count
     }
 
-    init?(action: ActionRecord, file: XCResultFile) {
+    init?(action: ActionRecord, file: ResultFile) {
         self.runDestination = RunDestination(record: action.runDestination)
 
         guard
@@ -54,7 +54,7 @@ struct Run: HTML
         // For now XCResultKit do not handle logs
         if let logReference = action.actionResult.logRef,
             let url = file.exportPayload(id: logReference.id) {
-            self.logPath = url.path
+            self.logPath = url.relativePath
         } else {
             Logger.warning("Can't find test reference for action \(action.title ?? "")")
             self.logPath = ""

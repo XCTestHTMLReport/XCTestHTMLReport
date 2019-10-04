@@ -71,7 +71,7 @@ struct Activity: HTML
         return cls
     }
 
-    init(summary: ActionTestActivitySummary, file: XCResultFile, padding: Int) {
+    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int) {
         self.uuid = summary.uuid
         self.startTime = summary.start?.timeIntervalSince1970 ?? 0
         self.finishTime = summary.finish?.timeIntervalSince1970 ?? 0

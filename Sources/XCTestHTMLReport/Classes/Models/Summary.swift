@@ -16,12 +16,8 @@ struct Summary
     init(resultPaths: [String]) {
         for resultPath in resultPaths {
             Logger.step("Parsing \(resultPath)")
-
-            guard let url = URL(string: resultPath) else {
-                Logger.error("Can't create url for : \(resultPath)")
-                exit(EXIT_FAILURE)
-            }
-            let resultFile = XCResultFile(url: url)
+            let url = URL(fileURLWithPath: resultPath)
+            let resultFile = ResultFile(url: url)
             guard let invocationRecord = resultFile.getInvocationRecord() else {
                 Logger.warning("Can't find invocation record for : \(resultPath)")
                 break

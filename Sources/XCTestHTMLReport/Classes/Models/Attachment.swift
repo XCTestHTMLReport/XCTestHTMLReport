@@ -64,13 +64,13 @@ struct Attachment: HTML
     var type: AttachmentType?
     var name: AttachmentName?
 
-    init(attachment: ActionTestAttachment, file: XCResultFile, padding: Int) {
+    init(attachment: ActionTestAttachment, file: ResultFile, padding: Int) {
         self.filename = attachment.filename ?? ""
         self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknwown
         self.name = AttachmentName(rawValue: attachment.name ?? "")
         if let id = attachment.payloadRef?.id,
             let url = file.exportPayload(id: id) {
-            self.path = url.path
+            self.path = url.relativePath
         } else {
             self.path = ""
         }
