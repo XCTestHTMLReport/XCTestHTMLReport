@@ -11,8 +11,6 @@ import XCResultKit
 
 struct Run: HTML
 {
-    private let activityLogsFilename = "action.xcactivitylog"
-
     var runDestination: RunDestination
     var testSummaries: [TestSummary]
     var logPath: String = ""
