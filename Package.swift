@@ -10,7 +10,7 @@ let package = Package(
     ],
     dependencies: [
          .package(url: "https://github.com/onevcat/Rainbow.git", from: "3.0.0"),
-         .package(url: "https://github.com/davidahouse/XCResultKit.git", .revision("bcfaf47b4e10675c437262ab5f023ed25419b48d"))
+         .package(url: "https://github.com/davidahouse/XCResultKit.git", from: "0.3.0")
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
