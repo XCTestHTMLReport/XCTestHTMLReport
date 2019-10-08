@@ -52,5 +52,22 @@ class ResultFile {
     func getCodeCoverage() -> CodeCoverage? {
         return file.getCodeCoverage()
     }
+
+    func exportLogs(id: String) -> URL? {
+        guard let logSection = file.getLogs(id: id) else {
+            Logger.warning("Can't get logss with id \(id)")
+            return nil
+        }
+        let url = self.url.appendingPathComponent(id)
+        let fileManager = FileManager.default
+        do {
+            try? fileManager.removeItem(at: url)
+            try logSection.emittedOutput?.write(to: url, atomically: true, encoding: .utf8)
+            return url
+        } catch {
+            Logger.warning("Can't write output to \(url). \(error.localizedDescription)")
+            return nil
+        }
+    }
 }
 

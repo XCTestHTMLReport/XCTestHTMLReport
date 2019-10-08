@@ -51,7 +51,7 @@ struct Run: HTML
         // TODO: (Pierre Felgines) 02/10/2019 Use only emittedOutput from logs objects
         // For now XCResultKit do not handle logs
         if let logReference = action.actionResult.logRef,
-            let url = file.exportPayload(id: logReference.id) {
+            let url = file.exportLogs(id: logReference.id) {
             self.logPath = url.relativePath
         } else {
             Logger.warning("Can't find test reference for action \(action.title ?? "")")
