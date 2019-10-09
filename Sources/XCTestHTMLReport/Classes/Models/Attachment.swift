@@ -61,7 +61,7 @@ struct Attachment: HTML
     let padding: Int
     let filename: String
     let path: String
-    let type: AttachmentType?
+    let type: AttachmentType
     let name: AttachmentName?
 
     init(attachment: ActionTestAttachment, file: ResultFile, padding: Int = 0) {
@@ -78,8 +78,6 @@ struct Attachment: HTML
     }
 
     var fallbackDisplayName: String {
-        guard let type = type else { return "Attachment" }
-        
         switch type {
         case .png, .jpeg:
             return "Screenshot"
@@ -102,18 +100,14 @@ struct Attachment: HTML
     // PRAGMA MARK: - HTML
 
     var htmlTemplate: String {
-        if let type = type {
-            switch type {
-            case .png, .jpeg:
-                return HTMLTemplates.screenshot
-            case .text, .html, .data:
-                return HTMLTemplates.text
-            case .unknwown:
-                return ""
-            }
+        switch type {
+        case .png, .jpeg:
+            return HTMLTemplates.screenshot
+        case .text, .html, .data:
+            return HTMLTemplates.text
+        case .unknwown:
+            return ""
         }
-
-        return ""
     }
 
     var htmlPlaceholderValues: [String: String] {
