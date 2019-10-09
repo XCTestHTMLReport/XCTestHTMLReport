@@ -67,7 +67,7 @@ struct Attachment: HTML
     init(attachment: ActionTestAttachment, file: ResultFile, padding: Int = 0) {
         self.filename = attachment.filename ?? ""
         self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknwown
-        self.name = AttachmentName(rawValue: attachment.name ?? "")
+        self.name = attachment.name.map(AttachmentName.init(rawValue:))
         if let id = attachment.payloadRef?.id,
             let url = file.exportPayload(id: id) {
             self.path = url.relativePath
