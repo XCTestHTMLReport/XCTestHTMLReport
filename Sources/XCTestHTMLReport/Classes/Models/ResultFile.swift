@@ -11,10 +11,12 @@ import XCResultKit
 /// Wrapper of XCResultFile because XCResultFile do not expose `url` property yet
 class ResultFile {
     private let url: URL
+    private let relativeUrl: URL
     private let file: XCResultFile
 
     init(url: URL) {
         self.url = url
+        self.relativeUrl = URL(fileURLWithPath: url.lastPathComponent)
         self.file = XCResultFile(url: url)
     }
 
@@ -30,7 +32,7 @@ class ResultFile {
         do {
             try? fileManager.removeItem(at: url)
             try fileManager.moveItem(at: savedURL, to: url)
-            return url
+            return relativeUrl.appendingPathComponent(id)
         } catch {
             Logger.warning("Can't move item from \(savedURL) to \(url). \(error.localizedDescription)")
             return nil
@@ -63,7 +65,7 @@ class ResultFile {
         do {
             try? fileManager.removeItem(at: url)
             try logSection.emittedOutput?.write(to: url, atomically: true, encoding: .utf8)
-            return url
+            return relativeUrl.appendingPathComponent(id)
         } catch {
             Logger.warning("Can't write output to \(url). \(error.localizedDescription)")
             return nil
