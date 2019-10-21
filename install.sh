@@ -5,7 +5,7 @@ set -e
 VERSION=$1
 
 if [ -z $VERSION ] ; then
-VERSION="1.6.1"
+VERSION="2.0.0"
 fi
 
 OUT_ZIP="xchtmlreport.zip"
@@ -23,10 +23,17 @@ fi
 
 unzip $OUT_ZIP
 
-chmod 755 xchtmlreport
-mv xchtmlreport /usr/local/bin/
+BUILD_DIR="XCTestHTMLReport-$VERSION"
 
+cd $BUILD_DIR
+swift build -c release
+
+chmod 755 .build/release/xchtmlreport
+mv .build/release/xchtmlreport /usr/local/bin/
+
+cd ".."
 rm $OUT_ZIP
+rm -rf $BUILD_DIR
 
 printf '\e[1;32m%-6s\e[m' "Successully installed XCTestHTMLReport. Execute xchtmlreport -h for help."
 printf '\n'
