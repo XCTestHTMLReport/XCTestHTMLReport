@@ -6,7 +6,7 @@ class Xchtmlreport < Formula
   head "https://github.com/TitouanVanBelle/XCTestHTMLReport.git", :branch => "develop"
 
   def install
-    system "swift build -c release"
+    system "swift build --disable-sandbox -c release"
     bin.install ".build/release/xchtmlreport"
   end
 end
