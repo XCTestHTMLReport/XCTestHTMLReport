@@ -71,17 +71,17 @@ struct Activity: HTML
         return cls
     }
 
-    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0) {
+    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode) {
         self.uuid = summary.uuid
         self.startTime = summary.start?.timeIntervalSince1970 ?? 0
         self.finishTime = summary.finish?.timeIntervalSince1970 ?? 0
         self.title = summary.title
         self.subActivities = summary.subactivities.map {
-            Activity(summary: $0, file: file, padding: padding + 10)
+            Activity(summary: $0, file: file, padding: padding + 10, renderingMode: renderingMode)
         }
         self.type = ActivityType(rawValue: summary.activityType)
         self.attachments = summary.attachments.map {
-            Attachment(attachment: $0, file: file, padding: padding + 16)
+            Attachment(attachment: $0, file: file, padding: padding + 16, renderingMode: renderingMode)
         }
         self.padding = padding
     }

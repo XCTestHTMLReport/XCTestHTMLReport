@@ -10,7 +10,7 @@ import Foundation
 import XCResultKit
 
 enum AttachmentType: String {
-    case unknwown = ""
+    case unknown = ""
     case data = "public.data"
     case html = "public.html"
     case jpeg = "public.jpeg"
@@ -25,6 +25,17 @@ enum AttachmentType: String {
             return "text"
         default:
             return ""
+        }
+    }
+
+    fileprivate var mimeType: String? {
+        switch self {
+        case .png:
+            return "image/png"
+        case .jpeg:
+            return "image/jpeg"
+        case .text, .html, .data, .unknown:
+            return nil
         }
     }
 }
@@ -60,21 +71,22 @@ struct Attachment: HTML
 {
     let padding: Int
     let filename: String
-    let path: String
+    let url: URL?
     let type: AttachmentType
     let name: AttachmentName?
+    let renderingMode: Summary.RenderingMode
 
-    init(attachment: ActionTestAttachment, file: ResultFile, padding: Int = 0) {
+    init(attachment: ActionTestAttachment, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode) {
         self.filename = attachment.filename ?? ""
-        self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknwown
+        self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknown
         self.name = attachment.name.map(AttachmentName.init(rawValue:))
-        if let id = attachment.payloadRef?.id,
-            let url = file.exportPayload(id: id) {
-            self.path = url.relativePath
+        if let id = attachment.payloadRef?.id {
+            self.url = file.exportPayload(id: id)
         } else {
-            self.path = ""
+            self.url = nil
         }
         self.padding = padding
+        self.renderingMode = renderingMode
     }
 
     var fallbackDisplayName: String {
@@ -83,11 +95,31 @@ struct Attachment: HTML
             return "Screenshot"
         case .text, .html, .data:
             return "File"
-        case .unknwown:
+        case .unknown:
             return "Attachment"
         }
     }
-    
+
+    private var base64data: String? {
+        guard let url = url,
+            let data = try? Data(contentsOf: url),
+            let mimeType = type.mimeType else {
+            return nil
+        }
+        return "data:\(mimeType);base64,\(data.base64EncodedString())"
+    }
+
+    private var path: String? {
+        return url?.relativePath
+    }
+
+    private var src: String? {
+        switch renderingMode {
+        case .inline: return base64data
+        case .linking: return path
+        }
+    }
+
     var displayName: String {
         switch name {
         case .some(.custom(let customName)):
@@ -105,7 +137,7 @@ struct Attachment: HTML
             return HTMLTemplates.screenshot
         case .text, .html, .data:
             return HTMLTemplates.text
-        case .unknwown:
+        case .unknown:
             return ""
         }
     }
@@ -113,7 +145,7 @@ struct Attachment: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "PADDING": String(padding),
-            "PATH": path,
+            "SRC": src ?? "",
             "FILENAME": filename,
             "NAME": displayName
         ]

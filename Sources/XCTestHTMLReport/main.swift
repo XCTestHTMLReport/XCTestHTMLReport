@@ -17,15 +17,19 @@ var junit = BlockArgument("j", "junit", required: false, helpMessage: "Provide J
     junitEnabled = true
 }
 var result = ValueArgument(.path, "r", "resultBundlePath", required: true, allowsMultiple: true, helpMessage: "Path to a result bundle (allows multiple)")
+var renderingMode = Summary.RenderingMode.linking
+var inlineAssets = BlockArgument("i", "inlineAssets", required: false, helpMessage: "Inline all assets in the resulting html-file, making it heavier, but more portable") {
+    renderingMode = .inline
+}
 
-command.arguments = [help, verbose, junit, result]
+command.arguments = [help, verbose, junit, result, inlineAssets]
 
 if !command.isValid {
     print(command.usage)
     exit(EXIT_FAILURE)
 }
 
-let summary = Summary(resultPaths: result.values)
+let summary = Summary(resultPaths: result.values, renderingMode: renderingMode)
 
 Logger.step("Building HTML..")
 let html = summary.html
