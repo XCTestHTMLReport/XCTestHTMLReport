@@ -84,5 +84,13 @@ class ResultFile {
             return nil
         }
     }
+
+    func exportLogsData(id: String) -> Data? {
+        guard let logSection = file.getLogs(id: id) else {
+            Logger.warning("Can't get logss with id \(id)")
+            return nil
+        }
+        return logSection.emittedOutput?.data(using: .utf8)
+    }
 }
 
