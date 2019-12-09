@@ -86,12 +86,10 @@ struct Attachment: HTML
         self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknown
         self.name = attachment.name.map(AttachmentName.init(rawValue:))
         if let id = attachment.payloadRef?.id {
-            switch renderingMode {
-            case .inline:
-                self.content = file.exportPayloadData(id: id).map(RenderingContent.data) ?? .none
-            case .linking:
-                self.content = file.exportPayload(id: id).map(RenderingContent.url) ?? .none
-            }
+            self.content = file.exportPayloadContent(
+                id: id,
+                renderingMode: renderingMode
+            )
         } else {
             self.content = .none
         }
