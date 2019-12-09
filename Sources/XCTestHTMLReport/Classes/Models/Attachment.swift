@@ -77,22 +77,25 @@ struct Attachment: HTML
 {
     let padding: Int
     let filename: String
-    let url: URL?
+    let content: RenderingContent
     let type: AttachmentType
     let name: AttachmentName?
-    let renderingMode: Summary.RenderingMode
 
     init(attachment: ActionTestAttachment, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode) {
         self.filename = attachment.filename ?? ""
         self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknown
         self.name = attachment.name.map(AttachmentName.init(rawValue:))
         if let id = attachment.payloadRef?.id {
-            self.url = file.exportPayload(id: id)
+            switch renderingMode {
+            case .inline:
+                self.content = file.exportPayloadData(id: id).map(RenderingContent.data) ?? .none
+            case .linking:
+                self.content = file.exportPayload(id: id).map(RenderingContent.url) ?? .none
+            }
         } else {
-            self.url = nil
+            self.content = .none
         }
         self.padding = padding
-        self.renderingMode = renderingMode
     }
 
     var fallbackDisplayName: String {
@@ -106,23 +109,17 @@ struct Attachment: HTML
         }
     }
 
-    private var base64data: String? {
-        guard let url = url,
-            let data = try? Data(contentsOf: url),
-            let mimeType = type.mimeType else {
+    var source: String? {
+        switch content {
+        case let .data(data):
+            guard let mimeType = type.mimeType else {
+                return nil
+            }
+            return "data:\(mimeType);base64,\(data.base64EncodedString())"
+        case let .url(url):
+            return url.relativePath
+        case .none:
             return nil
-        }
-        return "data:\(mimeType);base64,\(data.base64EncodedString())"
-    }
-
-    private var path: String? {
-        return url?.relativePath
-    }
-
-    private var source: String? {
-        switch renderingMode {
-        case .inline: return base64data
-        case .linking: return path
         }
     }
 

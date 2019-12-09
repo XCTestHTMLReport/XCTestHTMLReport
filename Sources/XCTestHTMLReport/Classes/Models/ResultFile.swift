@@ -39,6 +39,19 @@ class ResultFile {
         }
     }
 
+    func exportPayloadData(id: String) -> Data? {
+        guard let savedURL = file.exportPayload(id: id) else {
+            Logger.warning("Can't export payload with id \(id)")
+            return nil
+        }
+        do {
+            return try Data(contentsOf: savedURL)
+        } catch {
+            Logger.warning("Can't get content of \(savedURL)")
+            return nil
+        }
+    }
+
     func getInvocationRecord() -> ActionsInvocationRecord? {
         return file.getInvocationRecord()
     }
