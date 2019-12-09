@@ -34,7 +34,13 @@ enum AttachmentType: String {
             return "image/png"
         case .jpeg:
             return "image/jpeg"
-        case .text, .html, .data, .unknown:
+        case .text:
+            return "text/plain"
+        case .html:
+            return "text/html"
+        case .data:
+            return "application/octet-stream"
+        case .unknown:
             return nil
         }
     }
