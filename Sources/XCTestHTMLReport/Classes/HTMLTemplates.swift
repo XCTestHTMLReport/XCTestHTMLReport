@@ -903,7 +903,7 @@ struct HTMLTemplates
           <li class=\"selected\">All Messages</li>
         </ul>
       </div>
-      <iframe id=\"logs-iframe\" src=\"[[LOG_PATH]]\"></iframe>
+      <iframe id=\"logs-iframe\" src=\"[[LOG_SOURCE]]\"></iframe>
     </div>
   </div>
   """
@@ -951,7 +951,7 @@ struct HTMLTemplates
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
-    <img class=\"screenshot\" src=\"[[PATH]]\" id=\"screenshot-[[FILENAME]]\"/>
+    <img class=\"screenshot\" src=\"[[SOURCE]]\" id=\"screenshot-[[FILENAME]]\"/>
   </p>
   """
 
@@ -959,7 +959,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
-    <span class=\"icon preview-icon\" data=\"[[PATH]]\" onclick=\"showText('[[PATH]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[SOURCE]]\" onclick=\"showText('[[SOURCE]]')\"></span>
   </p>
   """
 }

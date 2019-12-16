@@ -39,6 +39,19 @@ class ResultFile {
         }
     }
 
+    func exportPayloadData(id: String) -> Data? {
+        guard let savedURL = file.exportPayload(id: id) else {
+            Logger.warning("Can't export payload with id \(id)")
+            return nil
+        }
+        do {
+            return try Data(contentsOf: savedURL)
+        } catch {
+            Logger.warning("Can't get content of \(savedURL)")
+            return nil
+        }
+    }
+
     func getInvocationRecord() -> ActionsInvocationRecord? {
         return file.getInvocationRecord()
     }
@@ -71,5 +84,35 @@ class ResultFile {
             return nil
         }
     }
+
+    func exportLogsData(id: String) -> Data? {
+        guard let logSection = file.getLogs(id: id) else {
+            Logger.warning("Can't get logss with id \(id)")
+            return nil
+        }
+        return logSection.emittedOutput?.data(using: .utf8)
+    }
 }
 
+extension ResultFile {
+
+    func exportPayloadContent(id: String,
+                              renderingMode: Summary.RenderingMode) -> RenderingContent {
+        switch renderingMode {
+        case .inline:
+            return exportPayloadData(id: id).map(RenderingContent.data) ?? .none
+        case .linking:
+            return exportPayload(id: id).map(RenderingContent.url) ?? .none
+        }
+    }
+
+    func exportLogsContent(id: String,
+                           renderingMode: Summary.RenderingMode) -> RenderingContent {
+        switch renderingMode {
+        case .inline:
+            return exportLogsData(id: id).map(RenderingContent.data) ?? .none
+        case .linking:
+            return exportLogs(id: id).map(RenderingContent.url) ?? .none
+        }
+    }
+}
