@@ -35,13 +35,16 @@ Logger.step("Building HTML..")
 let html = summary.html
 
 do {
-    let path = result.values.first!
+    let initialPath = result.values.first!
+    let encodedPath = initialPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? initialPath
+    
+    let resultPath = encodedPath
         .dropLastPathComponent()
         .addPathComponent("index.html")
-    Logger.substep("Writing report to \(path)")
+    Logger.substep("Writing report to \(resultPath)")
 
-    try html.write(toFile: path, atomically: false, encoding: .utf8)
-    Logger.success("\nReport successfully created at \(path)")
+    try html.write(toFile: resultPath, atomically: false, encoding: .utf8)
+    Logger.success("\nReport successfully created at \(resultPath)")
 }
 catch let e {
     Logger.error("An error has occured while creating the report. Error: \(e)")
