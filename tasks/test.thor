@@ -88,4 +88,19 @@ class Test < Thor
     Cmd.new("#{PACKAGE_BUILD}").run
     Cmd.new("#{PACKAGE_PATH} -r TestResultsA -r TestResultsB -v").run
   end
+
+  desc 'spaces', 'Makes sure result bundles with spaces in path are supported'
+  def spaces
+    Print.info 'Running tests once with one HTML Report'
+
+    Print.step "Deleting previous test results"
+    Cmd.new("rm -rf 'Test Results A'").run
+
+    Print.step "Running tests"
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -resultBundlePath 'Test Results A' | xcpretty").run
+
+    Print.step "Generating report"
+    Cmd.new("#{PACKAGE_BUILD}").run
+    Cmd.new("#{PACKAGE_PATH} -r 'Test Results A' -v").run
+  end
 end

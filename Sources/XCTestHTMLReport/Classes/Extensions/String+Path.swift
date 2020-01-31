@@ -12,17 +12,11 @@ extension String
 {
     func dropLastPathComponent() -> String
     {
-        if let url = URL(string: self) {
-            return url.deletingLastPathComponent().path
-        }
-        return self
+        return URL(fileURLWithPath: self).deletingLastPathComponent().path
     }
 
     func addPathComponent(_ component: String) -> String
     {
-        if let url = URL(string: self) {
-            return url.appendingPathComponent(component).path
-        }
-        return self
+        return URL(fileURLWithPath: self).appendingPathComponent(component).path
     }
 }
