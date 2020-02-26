@@ -10,7 +10,7 @@ import XCResultKit
 
 /// Wrapper of XCResultFile because XCResultFile do not expose `url` property yet
 class ResultFile {
-    private let url: URL
+    let url: URL
     private let relativeUrl: URL
     private let file: XCResultFile
 

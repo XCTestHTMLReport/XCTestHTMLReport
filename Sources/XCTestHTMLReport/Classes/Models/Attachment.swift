@@ -129,6 +129,15 @@ struct Attachment: HTML
             return fallbackDisplayName
         }
     }
+
+    var isScreenshot: Bool {
+        switch type {
+        case .png, .jpeg:
+            return true
+        default:
+            return false
+        }
+    }
     
     // PRAGMA MARK: - HTML
 

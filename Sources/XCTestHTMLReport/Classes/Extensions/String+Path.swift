@@ -10,6 +10,11 @@ import Foundation
 
 extension String
 {
+    func lastPathComponent() -> String
+    {
+        return URL(fileURLWithPath: self).lastPathComponent
+    }
+
     func dropLastPathComponent() -> String
     {
         return URL(fileURLWithPath: self).deletingLastPathComponent().path
