@@ -17,6 +17,8 @@ private extension Status {
             return "failure"
         case .success:
             return "success"
+        case .skipped:
+            return "skip"
         default:
             return ""
         }

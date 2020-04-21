@@ -16,6 +16,7 @@ enum ActivityType: String {
     case assertionFailure = "com.apple.dt.xctest.activity-type.testAssertionFailure"
     case userCreated = "com.apple.dt.xctest.activity-type.userCreated"
     case attachementContainer = "com.apple.dt.xctest.activity-type.attachmentContainer"
+    case skippedTest = "com.apple.dt.xctest.activity-type.skippedTest"
 
     var cssClass: String {
         switch self {
@@ -27,6 +28,8 @@ enum ActivityType: String {
             return "activity-assertion-failure"
         case .userCreated:
             return "activity-user-created"
+        case .skippedTest:
+            return "activity-skipped-test"
         default:
             return ""
         }
