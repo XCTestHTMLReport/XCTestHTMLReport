@@ -21,8 +21,23 @@ var renderingMode = Summary.RenderingMode.linking
 var inlineAssets = BlockArgument("i", "inlineAssets", required: false, helpMessage: "Inline all assets in the resulting html-file, making it heavier, but more portable") {
     renderingMode = .inline
 }
+var downsizeImagesEnabled = false
+var downsizeImages = BlockArgument("z", "downsize-images", required: false, helpMessage: "Downsize image screenshots") {
+    downsizeImagesEnabled = true
+}
+var deleteUnattachedFilesEnabled = false
+var deleteUnattachedFiles = BlockArgument("d", "delete-unattached", required: false, helpMessage: "Delete unattached files from bundle, reducing bundle size") {
+    deleteUnattachedFilesEnabled = true
+}
 
-command.arguments = [help, verbose, junit, result, inlineAssets]
+
+command.arguments = [help,
+                     verbose,
+                     junit,
+                     downsizeImages,
+                     deleteUnattachedFiles,
+                     result,
+                     inlineAssets]
 
 if !command.isValid {
     print(command.usage)
@@ -59,6 +74,27 @@ if junitEnabled {
     }
     catch let e {
         Logger.error("An error has occured while creating the JUnit report. Error: \(e)")
+    }
+}
+
+if downsizeImagesEnabled && renderingMode == .linking {
+    Logger.substep("Resizing images..")
+    var resizedCount = 0
+    for run in summary.runs {
+        for screenshotAttachment in run.screenshotAttachments {
+            let resized = resizeImage(atPath: run.file.url.path + "/../" + (screenshotAttachment.source ?? ""))
+            if resized {
+                resizedCount += 1
+            }
+        }
+    }
+    Logger.substep("Finished resizing \(resizedCount) images")
+}
+
+if deleteUnattachedFilesEnabled && renderingMode == .linking {
+    for run in summary.runs {
+        let files = removeUnattachedFiles(run: run)
+        Logger.substep("Deleted \(files) unattached files")
     }
 }
 

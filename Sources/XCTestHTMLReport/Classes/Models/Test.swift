@@ -59,6 +59,7 @@ struct Test: HTML
     let activities: [Activity]
     let status: Status
     let objectClass: ObjectClass
+    let testScreenshotFlow: TestScreenshotFlow?
 
     var allSubTests: [Test] {
         return subTests.flatMap { test -> [Test] in
@@ -86,6 +87,7 @@ struct Test: HTML
         self.objectClass = .testSummaryGroup
         self.activities = []
         self.status = .unknown // ???: Usefull?
+        testScreenshotFlow = TestScreenshotFlow(activities: activities)
     }
 
     init(metadata: ActionTestMetadata, file: ResultFile, renderingMode: Summary.RenderingMode) {
@@ -104,6 +106,7 @@ struct Test: HTML
         } else {
             self.activities = []
         }
+        testScreenshotFlow = TestScreenshotFlow(activities: activities)
     }
 
     // PRAGMA MARK: - HTML
@@ -119,12 +122,12 @@ struct Test: HTML
                 return accumulator + test.html
             },
             "HAS_ACTIVITIES_CLASS": activities.isEmpty ? "no-drop-down" : "",
-            "ACTIVITIES": activities.reduce("") { (accumulator: String, activity: Activity) -> String in
-                return accumulator + activity.html
-            },
+            "ACTIVITIES": activities.accumulateHTMLAsString,
             "ICON_CLASS": status.cssClass,
             "ITEM_CLASS": objectClass.cssClass,
-			"LIST_ITEM_CLASS": objectClass == .testSummary ? (status == .failure ? "list-item list-item-failed" : "list-item") : ""
+			"LIST_ITEM_CLASS": objectClass == .testSummary ? (status == .failure ? "list-item list-item-failed" : "list-item") : "",
+            "SCREENSHOT_FLOW": testScreenshotFlow?.screenshots.accumulateHTMLAsString ?? "",
+            "SCREENSHOT_TAIL": testScreenshotFlow?.screenshotsTail.accumulateHTMLAsString ?? ""
         ]
     }
 }

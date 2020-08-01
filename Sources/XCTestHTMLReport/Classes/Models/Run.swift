@@ -11,6 +11,7 @@ import XCResultKit
 
 struct Run: HTML
 {
+    let file: ResultFile
     let runDestination: RunDestination
     let testSummaries: [TestSummary]
     let logContent: RenderingContent
@@ -46,6 +47,7 @@ struct Run: HTML
     }
 
     init?(action: ActionRecord, file: ResultFile, renderingMode: Summary.RenderingMode) {
+        self.file = file
         self.runDestination = RunDestination(record: action.runDestination)
 
         guard

@@ -399,6 +399,18 @@ struct HTMLTemplates
       z-index: 1000;
     }
 
+    .screenshot-flow {
+        border: 1px solid #021a40;
+        background-color: white;
+        height: 200px;
+    }
+
+    .screenshot-tail {
+        border: 1px solid #021a40;
+        background-color: white;
+        height: 350px;
+    }
+
     #content {
       height: 100%;
       display: flex;
@@ -934,6 +946,7 @@ struct HTMLTemplates
   """
 
   static let test = """
+  [[SCREENSHOT_TAIL]]
   <div class=\"[[ITEM_CLASS]] [[ICON_CLASS]] [[HAS_ACTIVITIES_CLASS]]\">
     <span class=\"icon left test-result-icon\"></span>
     <p class=\"[[LIST_ITEM_CLASS]]\">
@@ -943,6 +956,7 @@ struct HTMLTemplates
     </p>
     [[SUB_TESTS]]
     <div id=\"activities-[[UUID]]\" class=\"activities\">
+    [[SCREENSHOT_FLOW]]
     [[ACTIVITIES]]
     </div>
   </div>
