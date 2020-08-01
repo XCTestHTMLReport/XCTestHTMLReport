@@ -19,4 +19,10 @@ class XCTestHTMLReportSampleAppUnitTests: XCTestCase
     {
         XCTAssert(true, "Test succeeded")
     }
+    
+    func testSkipped() throws {
+        // This requires Xcode 11.4 and later
+        let letsSkipThis = true
+        try XCTSkipIf(letsSkipThis, "Test skipped")
+    }
 }

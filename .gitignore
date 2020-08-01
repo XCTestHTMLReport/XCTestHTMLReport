@@ -4,3 +4,4 @@ TestResults*
 /Packages
 /*.xcodeproj
 xcuserdata/
+.swiftpm

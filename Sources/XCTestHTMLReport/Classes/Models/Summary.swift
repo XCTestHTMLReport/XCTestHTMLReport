@@ -44,11 +44,17 @@ extension Summary: HTML
     }
 
     var htmlPlaceholderValues: [String: String] {
+        let resultClass: String
+        if runs.first(where: { $0.status == .failure }) != nil {
+            resultClass = "failure"
+        } else if runs.first(where: { $0.status == .success }) != nil {
+            resultClass = "success"
+        } else {
+            resultClass = "skip"
+        }
         return [
             "DEVICES": runs.map { $0.runDestination.html }.joined(),
-            "RESULT_CLASS": runs.reduce(true, { (accumulator: Bool, run: Run) -> Bool in
-                return accumulator && run.status == .success
-            }) ? "success" : "failure",
+            "RESULT_CLASS": resultClass,
             "RUNS": runs.map { $0.html }.joined()
         ]
     }

@@ -47,6 +47,8 @@ struct JUnitReport
         enum State {
             case unknown
             case failed
+            case systemOut
+            case skipped
         }
         var title: String
         var state: State
@@ -93,32 +95,33 @@ extension JUnitReport.TestCase: XMLRepresentable
         let timeString = String(format: "%.02f", time)
         var xml = "    <testcase classname='\(classname)' name='\(name)' time='\(timeString)'"
 
-        if state == .failed {
-            xml += ">\n"
-            xml += "      <failure>\n"
-
-            results.forEach { (result) in
-                xml += result.xmlString
-            }
-
-            xml += "      </failure>\n"
-            xml += "    </testcase>\n"
-        } else {
+        if results.isEmpty {
             xml += "/>\n"
+        } else {
+            xml += ">\n"
+            xml += results.map { $0.xmlString }.joined(separator: "\n")
+            xml += "\n    </testcase>\n"
         }
-
         return xml
     }
 }
 
 extension JUnitReport.TestResult: XMLRepresentable
 {
+    /// e.g.
+    ///   <failure message='XCTAssertEqual failed: (&quot;0.0&quot;) is not equal to (&quot;1.0&quot;)'/>
+    ///   <system-out>Some message logged to std out</system-out>
     var xmlString: String {
         switch state {
         case .failed:
-            return "        \(title.stringByEscapingXMLChars)\n"
+            return "        <failure message='\(title.stringByEscapingXMLChars)'>\n        </failure>"
+        case .systemOut:
+            return "        <system-out>\(title.stringByEscapingXMLChars)</system-out>"
+        case .skipped:
+            return "        <skipped />"
         default:
-            return ""
+            // falback to system-out. This is better than printing nothing
+            return "        <system-out>\(title.stringByEscapingXMLChars)</system-out>"
         }
     }
 }
@@ -147,22 +150,34 @@ extension JUnitReport.TestCase
             state = .failed
         case .success:
             state = .passed
+        case .skipped:
+            state = .skipped
         case .unknown:
             state = .unknown
         }
-
-        results = test.activities.map { JUnitReport.TestResult(activity: $0) }
+        // Activities can be nested in infinite levels so here everything should be flatted
+        // To replicate cascading we add some indent
+        func flatSubActivities(of activity: Activity, indent: Int) -> [JUnitReport.TestResult] {
+            let t = activity.subActivities.flatMap { flatSubActivities(of: $0, indent: indent + 1) }
+            return [JUnitReport.TestResult(activity: activity, indent: indent)] + t
+        }
+        results = test.activities.map {
+            return flatSubActivities(of: $0, indent: 0)
+        }.flatMap { $0 }
     }
 }
 
 extension JUnitReport.TestResult
 {
-    init(activity: Activity)
+    init(activity: Activity, indent: Int)
     {
-        title = activity.title
-
+        title = String(repeating: " ", count: indent * 2) + activity.title
         if activity.type == .assertionFailure {
             state = .failed
+        } else if activity.type == .userCreated {
+            state = .systemOut
+        } else if activity.type == .skippedTest {
+            state = .skipped
         } else {
             state = .unknown
         }

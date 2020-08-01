@@ -15,9 +15,13 @@ struct Run: HTML
     let testSummaries: [TestSummary]
     let logContent: RenderingContent
     var status: Status {
-       return testSummaries.reduce(true, { (accumulator: Bool, summary: TestSummary) -> Bool in
-            return accumulator && summary.status == .success
-        }) ? .success : .failure
+        if let _ = testSummaries.first(where: { $0.status == .failure }) {
+            return .failure
+        }
+        if let _ = testSummaries.first(where: { $0.status == .skipped }) {
+            return .skipped
+        }
+        return .success
     }
     var allTests: [Test] {
         let tests = testSummaries.flatMap { $0.tests }
@@ -33,6 +37,9 @@ struct Run: HTML
     }
     var numberOfPassedTests : Int {
         return allTests.filter { $0.status == .success }.count
+    }
+    var numberOfSkippedTests : Int {
+        return allTests.filter { $0.status == .skipped }.count
     }
     var numberOfFailedTests : Int {
         return allTests.filter { $0.status == .failure }.count
@@ -85,6 +92,7 @@ struct Run: HTML
             "LOG_SOURCE": logSource ?? "",
             "N_OF_TESTS": String(numberOfTests),
             "N_OF_PASSED_TESTS": String(numberOfPassedTests),
+            "N_OF_SKIPPED_TESTS": String(numberOfSkippedTests),
             "N_OF_FAILED_TESTS": String(numberOfFailedTests),
             "TEST_SUMMARIES": testSummaries.map { $0.html }.joined()
         ]

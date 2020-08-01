@@ -28,7 +28,8 @@ extension ActivityLogSection: EmittableOutput {
 extension ActivityLogMajorSection: EmittableOutput {
 
     var emittedOutput: String? {
-        return "\(title) - \(subtitle)\n\n"
+        let t = [title, subtitle].compactMap { $0 }.joined(separator: " - ")
+        return "\(t)\n\n"
             + unitTestSubsections
                 .compactMap { $0.emittedOutput }
                 .joined(separator: "\n")

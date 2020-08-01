@@ -13,6 +13,7 @@ enum Status: String {
     case unknown = ""
     case failure = "Failure"
     case success = "Success"
+    case skipped = "Skipped"
 
     var cssClass: String {
         switch self {
@@ -20,6 +21,8 @@ enum Status: String {
             return "failed"
         case .success:
             return "succeeded"
+        case .skipped:
+            return "skipped"
         default:
             return ""
         }

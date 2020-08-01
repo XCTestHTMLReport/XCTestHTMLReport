@@ -12,7 +12,7 @@ final class XCTestHTMLReportTests: XCTestCase {
             return
         }
 
-        let fooBinary = productsDirectory.appendingPathComponent("XCTestHTMLReport")
+        let fooBinary = productsDirectory.appendingPathComponent("xchtmlreport")
 
         let process = Process()
         process.executableURL = fooBinary
@@ -26,7 +26,8 @@ final class XCTestHTMLReportTests: XCTestCase {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8)
 
-        XCTAssertEqual(output, "Hello, world!\n")
+        // Since we are not passing any arguments error message is expected
+        XCTAssertTrue(output?.contains("Error: Argument -r is required") == true)
     }
 
     /// Returns path to the built products directory.
