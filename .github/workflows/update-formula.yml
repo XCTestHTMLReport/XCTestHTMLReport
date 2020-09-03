@@ -1,0 +1,78 @@
+name: Update Formula
+
+on:
+  push:
+   tags:
+     - '*'
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        os: [macos-latest]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update Formula
+      id: update_formula
+      run: |
+        VERSION=${GITHUB_REF/refs\/tags\//}
+        URL="https://github.com/tkww/XCTestHTMLReport/archive/$VERSION.tar.gz"
+        brew tap tkww/tap https://$GITHUB_USER:$GITHUB_TOKEN@github.com/tkww/homebrew-tap.git
+        cd /usr/local/Homebrew/Library/Taps/tkww/homebrew-tap/Formula
+        sed -E -i '' 's~^  url ".+"~  url "'$URL\"~ ./xchtmlreport.rb
+        brew fetch ./xchtmlreport.rb || true
+        SHA256=$(shasum --algorithm 256 $(brew --cache --build-from-source ./xchtmlreport.rb) | awk '{print $1}')
+        sed -E -i '' 's/^  sha256 ".+"/  sha256 "'$SHA256\"/ ./xchtmlreport.rb
+        git config --global user.email "$GITHUB_ACTOR@users.noreply.github.com"
+        git config --global user.name $GITHUB_ACTOR
+        git checkout -b formula/xchtmlreport/$VERSION
+        brew install --build-bottle ./xchtmlreport.rb
+        brew bottle --json --root-url=https://github.com/tkww/XCTestHTMLReport/releases/download/$VERSION ./xchtmlreport.rb
+        FILE=$(ls -d *.bottle.tar.gz | head -1)
+        mv "$FILE" "$(echo "$FILE" | sed s/--/-/)"
+        BOTTLE=$(ls -d $PWD/*.bottle.tar.gz | head -1)
+        BOTTLE_JSON=$(ls -d $PWD/*.bottle.json | head -1)
+        brew bottle --merge $BOTTLE_JSON --write --no-commit
+        git add xchtmlreport.rb
+        git commit -m "xchtmlreport $VERSION"
+        git push origin formula/xchtmlreport/$VERSION
+        BOTTLE_SHA256=$(shasum --algorithm 256 $BOTTLE | awk '{print $1}')
+        BOTTLE_NAME=$(basename $BOTTLE)
+        echo ::set-output name=bottle::$BOTTLE
+        echo ::set-output name=bottle_name::$BOTTLE_NAME
+        echo ::set-output name=bottle_json::$BOTTLE_JSON
+        echo ::set-output name=bottle_sha::$BOTTLE_SHA256
+      env:
+        GITHUB_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
+        GITHUB_USER: ${{ secrets.HOMEBREW_GITHUB_USER }}
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+    - name: Upload Release Asset
+      id: upload-release-asset 
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }} 
+        asset_path: ${{ steps.update_formula.outputs.bottle }} 
+        asset_name: ${{ steps.update_formula.outputs.bottle_name }} 
+        asset_content_type: application/gzip
+    - name: Open Pull Request
+      id: open_pull_request
+      run: |
+        VERSION=${GITHUB_REF/refs\/tags\//}
+        cd /usr/local/Homebrew/Library/Taps/tkww/homebrew-tap
+        curl -u $GITHUB_USER:$GITHUB_TOKEN -d '{"title": "Update xchtmlreport to '"$VERSION"'", "base": "main", "head": "formula/xchtmlreport/'"$VERSION"'"}' https://api.github.com/repos/tkww/homebrew-tap/pulls
+      env:
+        GITHUB_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
+        GITHUB_USER: ${{ secrets.HOMEBREW_GITHUB_USER }}
