@@ -332,6 +332,10 @@ struct HTMLTemplates
       background-image: url(data:image/svg+xml;utf8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pgo8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMTkuMS4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogNi4wMCBCdWlsZCAwKSAgLS0+CjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmVyc2lvbj0iMS4xIiBpZD0iQ2FwYV8xIiB4PSIwcHgiIHk9IjBweCIgdmlld0JveD0iMCAwIDc2Ljc0NyA3Ni43NDciIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDc2Ljc0NyA3Ni43NDc7IiB4bWw6c3BhY2U9InByZXNlcnZlIiB3aWR0aD0iNjRweCIgaGVpZ2h0PSI2NHB4Ij4KPGc+Cgk8Zz4KCQk8cGF0aCBkPSJNNzYuMjk5LDM3LjA5NkM2NC4yNSwyMi40OTIsNTEuMjk1LDE1LjMxMSwzNy43OTIsMTUuNjU3QzE2LjAwNywxNi4yNjYsMS4wMTEsMzYuMzMxLDAuMzgzLDM3LjE4NCAgICBjLTAuMDI5LDAuMDQtMC4wNDksMC4wODQtMC4wNzQsMC4xMjZjLTAuMDIxLDAuMDMyLTAuMDQsMC4wNjUtMC4wNTksMC4xYy0wLjA0NSwwLjA4LTAuMDgzLDAuMTYtMC4xMTUsMC4yNDMgICAgYy0wLjAxNSwwLjA0LTAuMDI4LDAuMDgtMC4wNDEsMC4xMmMtMC4wMjUsMC4wNzktMC4wNDYsMC4xNTgtMC4wNjEsMC4yMzhjLTAuMDEsMC4wNTItMC4wMTYsMC4xMDQtMC4wMjEsMC4xNTcgICAgQzAuMDA1LDM4LjIzNiwwLDM4LjMwNCwwLDM4LjM3M2MwLDAuMDY4LDAuMDA1LDAuMTM2LDAuMDEyLDAuMjA0YzAuMDA2LDAuMDUzLDAuMDEyLDAuMTA0LDAuMDIxLDAuMTU3ICAgIGMwLjAxNSwwLjA4LDAuMDM2LDAuMTU5LDAuMDYxLDAuMjM4YzAuMDEzLDAuMDQsMC4wMjYsMC4wOCwwLjA0MSwwLjEyYzAuMDMyLDAuMDgzLDAuMDcxLDAuMTYzLDAuMTE1LDAuMjQzICAgIGMwLjAxOSwwLjAzNCwwLjAzNywwLjA2NiwwLjA1OSwwLjFjMC4wMjUsMC4wNDEsMC4wNDUsMC4wODYsMC4wNzQsMC4xMjZjMC42MjgsMC44NTQsMTUuNjI0LDIwLjkxOCwzNy40MDksMjEuNTI3ICAgIGMwLjMzNywwLjAwOSwwLjY3MiwwLjAxNCwxLjAwNywwLjAxNGMxMy4xMzksMCwyNS43NS03LjIxMywzNy41LTIxLjQ1M2MwLjMwOS0wLjM3NCwwLjQ0OS0wLjgyNywwLjQ0OC0xLjI3NiAgICBDNzYuNzQ4LDM3LjkyMyw3Ni42MDgsMzcuNDcsNzYuMjk5LDM3LjA5NnogTTM3LjkyOCw1Ny4wOTFDMjAuOTksNTYuNjMsOC4wNDcsNDIuNTc0LDQuNTUsMzguMzczICAgIGMzLjQ5Ny00LjIwMSwxNi40MzktMTguMjU4LDMzLjM3OC0xOC43MTljMTEuODIyLTAuMzA5LDIzLjMwNSw1Ljk4OSwzNC4yMDEsMTguNzE5QzYxLjIzNCw1MS4xMDQsNDkuNzYyLDU3LjQzMywzNy45MjgsNTcuMDkxeiIgZmlsbD0iIzgyODI4MiIvPgoJCTxwYXRoIGQ9Ik0zOS4zNzUsMjUuMjA2Yy03LjI2MSwwLTEzLjE2Nyw1LjkwNi0xMy4xNjcsMTMuMTY2YzAsNy4yNjEsNS45MDYsMTMuMTY3LDEzLjE2NywxMy4xNjdzMTMuMTY3LTUuOTA2LDEzLjE2Ny0xMy4xNjcgICAgQzUyLjU0MiwzMS4xMTIsNDYuNjM2LDI1LjIwNiwzOS4zNzUsMjUuMjA2eiBNMzkuMzc1LDQ3LjUzOWMtNS4wNTUsMC05LjE2Ny00LjExMi05LjE2Ny05LjE2N2MwLTUuMDU0LDQuMTEyLTkuMTY2LDkuMTY3LTkuMTY2ICAgIHM5LjE2Nyw0LjExMiw5LjE2Nyw5LjE2NlM0NC40Myw0Ny41MzksMzkuMzc1LDQ3LjUzOXoiIGZpbGw9IiM4MjgyODIiLz4KCTwvZz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8L3N2Zz4K);
     }
 
+    .test-group-tests {
+      display: none;
+    }
+
     .activities {
       display: none;
     }
@@ -584,6 +588,14 @@ struct HTMLTemplates
       <div id=\"container\">
         <div id=\"left-sidebar\" class=\"sidebar\">
           <div class=\"resizer\"></div>
+          <h4 id=\"device-header\">All tests</h4>
+          <ul id=\"info-sections\">
+              <li class=\"section\">
+                  <ul class=\"device-info\" onclick=\"selectDevice('ALL', this);\">
+                      <li><span class=\"device-result icon left failure\"></span><h3 class=\"device-name\">All devices</h3></li>
+                  </ul>
+              </li>
+          </ul>
           <h4 id=\"device-header\">Devices</h4>
           <ul id=\"info-sections\">
             <li class=\"section\">
@@ -803,12 +815,17 @@ struct HTMLTemplates
       el.classList.toggle('dropped');
       var activities = document.getElementById('activities-'+id);
       var attachments = document.getElementById('attachments-'+id);
+      var testGroup = document.getElementById('test-group-'+id);
       if (activities) {
         activities.style.display = (activities.style.display == 'block' ? 'none' : 'block');
       }
 
       if (attachments) {
         attachments.style.display = (attachments.style.display == 'block' ? 'none' : 'block');
+      }
+
+      if (testGroup) {
+        testGroup.style.display = (testGroup.style.display == 'block' ? 'none' : 'block');
       }
     }
 
@@ -1002,13 +1019,35 @@ struct HTMLTemplates
   </div>
   """
 
+  static let testGroupCollection = """
+  <div class=\"test-summary-group no-dropdown\">
+    <p>
+      [[NAME]] ([[TIME]])
+    </p>
+    [[TEST_GROUPS]]
+  </div>
+  """
+
+  static let testGroup = """
+  <div class=\"test-summary [[ICON_CLASS]]\">
+    <span class=\"icon left test-result-icon\"></span>
+    <p class=\"test-group\">
+      <span class=\"icon left drop-down-icon\" onclick=\"toggle(this, '[[UUID]]')\"></span>
+      [[NAME]] ([[TIME]])
+    </p>
+    <div class=\"test-group-tests\" id=\"test-group-[[UUID]]\" style=\"margin-left: 28px\">
+        [[TESTS]]
+    </div>
+  </div>
+  """
+
   static let test = """
   [[SCREENSHOT_TAIL]]
   <div class=\"[[ITEM_CLASS]] [[ICON_CLASS]] [[HAS_ACTIVITIES_CLASS]]\">
     <span class=\"icon left test-result-icon\"></span>
     <p class=\"[[LIST_ITEM_CLASS]]\">
       <span class=\"icon left drop-down-icon\" onclick=\"toggle(this, '[[UUID]]')\"></span>
-      <span class=\"icon left test-icon\"></span>
+      <span class=\"icon left test-icon [[HAS_RETRIES_CLASS]]\"></span>
       [[NAME]] ([[TIME]])
     </p>
     [[SUB_TESTS]]

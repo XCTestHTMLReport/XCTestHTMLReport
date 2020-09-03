@@ -38,7 +38,7 @@ enum ActivityType: String {
 
 struct Activity: HTML
 {
-    let uuid: String
+    private(set) var uuid: String
     let padding: Int
     let attachments: [Attachment]
     let startTime: TimeInterval?
@@ -51,7 +51,7 @@ struct Activity: HTML
         return 0.0
     }
     var title: String
-    var subActivities: [Activity]
+    private(set) var subActivities: [Activity]
     var type: ActivityType?
     var hasGlobalAttachment: Bool {
         let hasDirectAttachment = !attachments.isEmpty
@@ -93,6 +93,15 @@ struct Activity: HTML
             Attachment(attachment: $0, file: file, padding: padding + 16, renderingMode: renderingMode)
         }
         self.padding = padding
+    }
+
+    func regeneratingUUID() -> Activity {
+        var activity = self
+
+        activity.uuid = UUID().uuidString
+        activity.subActivities = activity.subActivities.map { $0.regeneratingUUID() }
+
+        return activity
     }
 
     // PRAGMA MARK: - HTML

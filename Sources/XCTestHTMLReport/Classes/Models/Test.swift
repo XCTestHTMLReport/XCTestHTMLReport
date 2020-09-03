@@ -51,15 +51,16 @@ enum ObjectClass: String {
 
 struct Test: HTML
 {
-    let uuid: String
+    private(set) var uuid: String
     let identifier: String
     let duration: Double
     let name: String
     let subTests: [Test]
-    let activities: [Activity]
+    private(set) var activities: [Activity]
     let status: Status
     let objectClass: ObjectClass
-    let testScreenshotFlow: TestScreenshotFlow?
+    let summaryGroup: ActionTestSummaryGroup
+    private(set) var testScreenshotFlow: TestScreenshotFlow?
 
     var allSubTests: [Test] {
         return subTests.flatMap { test -> [Test] in
@@ -82,15 +83,16 @@ struct Test: HTML
         if group.subtests.isEmpty {
             self.subTests = group.subtestGroups.map { Test(group: $0, file: file, renderingMode: renderingMode) }
         } else {
-            self.subTests = group.subtests.map { Test(metadata: $0, file: file, renderingMode: renderingMode) }
+            self.subTests = group.subtests.map { Test(group: group, metadata: $0, file: file, renderingMode: renderingMode) }
         }
         self.objectClass = .testSummaryGroup
         self.activities = []
         self.status = .unknown // ???: Usefull?
+        self.summaryGroup = group
         testScreenshotFlow = TestScreenshotFlow(activities: activities)
     }
 
-    init(metadata: ActionTestMetadata, file: ResultFile, renderingMode: Summary.RenderingMode) {
+    init(group: ActionTestSummaryGroup, metadata: ActionTestMetadata, file: ResultFile, renderingMode: Summary.RenderingMode) {
         self.uuid = NSUUID().uuidString
         self.identifier = metadata.identifier
         self.duration = metadata.duration ?? 0
@@ -106,7 +108,25 @@ struct Test: HTML
         } else {
             self.activities = []
         }
+        self.summaryGroup = group
         testScreenshotFlow = TestScreenshotFlow(activities: activities)
+    }
+
+    func removingScreenshotFlow() -> Test {
+        var test = self
+
+        test.testScreenshotFlow = nil
+
+        return test
+    }
+
+    func regeneratingUUID() -> Test {
+        var test = self
+
+        test.uuid = UUID().uuidString
+        test.activities = test.activities.map { $0.regeneratingUUID() }
+
+        return test
     }
 
     // PRAGMA MARK: - HTML

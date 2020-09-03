@@ -551,6 +551,17 @@
       <div id="container">
         <div id="left-sidebar" class="sidebar">
           <div class="resizer"></div>
+          <h4 id="device-header">All tests</h4>
+          <ul id="info-sections">
+              <li class="section">
+                  <ul class="device-info" onclick="selectDevice('ALL', this);">
+                      <li><span class="device-result icon left failure"></span><h3 class="device-name">All devices</h3></li>
+                      <li class="device-os">Device OS</li>
+                      <li class="device-model">Device Model</li>
+                      <li class="device-identifier">Device Identifier</li>
+                  </ul>
+              </li>
+          </ul>
           <h4 id="device-header">Devices</h4>
           <ul id="info-sections">
             <li class="section">

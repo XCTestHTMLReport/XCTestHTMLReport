@@ -55,7 +55,7 @@ extension Summary: HTML
         return [
             "DEVICES": runs.map { $0.runDestination.html }.joined(),
             "RESULT_CLASS": resultClass,
-            "RUNS": runs.map { $0.html }.joined()
+            "RUNS": JoinedRuns(runs: runs).html + runs.map { $0.html }.joined()
         ]
     }
 }

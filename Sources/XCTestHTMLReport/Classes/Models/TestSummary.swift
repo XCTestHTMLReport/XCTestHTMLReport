@@ -52,6 +52,12 @@ struct TestSummary: HTML
         self.tests = summary.tests.concurrentMap { Test(group: $0, file: file, renderingMode: renderingMode) }
     }
 
+    init(testName: String, tests: [Test]) {
+        self.uuid = UUID().uuidString
+        self.testName = testName
+        self.tests = tests
+    }
+
     // PRAGMA MARK: - HTML
 
     var htmlTemplate = HTMLTemplates.testSummary
