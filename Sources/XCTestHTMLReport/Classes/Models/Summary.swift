@@ -28,7 +28,7 @@ struct Summary
                 Logger.warning("Can't find invocation record for : \(resultPath)")
                 break
             }
-            let resultRuns = invocationRecord.actions.compactMap {
+            let resultRuns = invocationRecord.actions.concurrentCompactMap {
                 Run(action: $0, file: resultFile, renderingMode: renderingMode)
             }
             runs.append(contentsOf: resultRuns)

@@ -70,7 +70,7 @@ struct Run: HTML
         }
         self.testSummaries = testPlanSummaries.summaries
             .flatMap { $0.testableSummaries }
-            .map { TestSummary(summary: $0, file: file, renderingMode: renderingMode) }
+            .concurrentMap { TestSummary(summary: $0, file: file, renderingMode: renderingMode) }
     }
 
     private var logSource: String? {
