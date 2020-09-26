@@ -9,16 +9,16 @@
 import Foundation
 import XCResultKit
 
-struct Summary
+public struct Summary
 {
     let runs: [Run]
 
-    enum RenderingMode {
+    public enum RenderingMode {
         case inline
         case linking
     }
 
-    init(resultPaths: [String], renderingMode: RenderingMode) {
+    public init(resultPaths: [String], renderingMode: RenderingMode) {
         var runs: [Run] = []
         for resultPath in resultPaths {
             Logger.step("Parsing \(resultPath)")
@@ -34,6 +34,38 @@ struct Summary
             runs.append(contentsOf: resultRuns)
         }
         self.runs = runs
+    }
+
+    public func reduceImageSizes() -> Int {
+        var resizedCount = 0
+        for run in runs {
+            for screenshotAttachment in run.screenshotAttachments {
+                let resized = resizeImage(atPath: run.file.url.path + "/../" + (screenshotAttachment.source ?? ""))
+                if resized {
+                    resizedCount += 1
+                }
+            }
+        }
+        return resizedCount
+    }
+
+    /// Generate html report
+    public func generateHtmlReport() -> String {
+        return html
+    }
+
+    /// Generate junit report
+    public func generateJunitReport() -> String {
+        return junit.xmlString
+    }
+
+    /// Delete all unattached files in runs
+    public func deleteUnattachedFiles() -> Int {
+        var deletedFilesCount = 0
+        for run in runs {
+            deletedFilesCount += removeUnattachedFiles(run: run)
+        }
+        return deletedFilesCount
     }
 }
 

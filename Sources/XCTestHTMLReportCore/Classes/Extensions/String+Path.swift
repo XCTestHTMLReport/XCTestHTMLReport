@@ -10,17 +10,17 @@ import Foundation
 
 extension String
 {
-    func lastPathComponent() -> String
+    public func lastPathComponent() -> String
     {
         return URL(fileURLWithPath: self).lastPathComponent
     }
 
-    func dropLastPathComponent() -> String
+    public func dropLastPathComponent() -> String
     {
         return URL(fileURLWithPath: self).deletingLastPathComponent().path
     }
 
-    func addPathComponent(_ component: String) -> String
+    public func addPathComponent(_ component: String) -> String
     {
         return URL(fileURLWithPath: self).appendingPathComponent(component).path
     }

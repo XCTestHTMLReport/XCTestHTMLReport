@@ -2,6 +2,15 @@
   "object": {
     "pins": [
       {
+        "package": "NDHpple",
+        "repositoryURL": "https://github.com/nacho4d/NDHpple.git",
+        "state": {
+          "branch": null,
+          "revision": "40e79aa815880d50aee4c05af15b91fabc14d4f2",
+          "version": "2.0.1"
+        }
+      },
+      {
         "package": "Rainbow",
         "repositoryURL": "https://github.com/onevcat/Rainbow.git",
         "state": {
@@ -15,8 +24,8 @@
         "repositoryURL": "https://github.com/davidahouse/XCResultKit.git",
         "state": {
           "branch": null,
-          "revision": "d6632d454dabadf24ae79b1edc8a9942f49f513d",
-          "version": "0.6.0"
+          "revision": "8010b380d18ce8986acf41a5595cc52305367f6a",
+          "version": "0.7.1"
         }
       }
     ]

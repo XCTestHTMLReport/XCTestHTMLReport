@@ -29,13 +29,11 @@ class SecondSuite: XCTestCase {
     }
 
     func testOne() {
-        let result = randomBool()
-        XCTAssert(result, "Test \(result ? "succeeded" : "failed")")
+        XCTAssert(false, "Test failed")
     }
 
     func testTwo() {
-        let result = randomBool()
-        XCTAssert(result, "Test \(result ? "succeeded" : "failed")")
+        XCTAssert(true, "Test succeeded")
     }
 }
 

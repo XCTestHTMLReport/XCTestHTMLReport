@@ -2,6 +2,12 @@ TestResults*
 .DS_Store
 /.build
 /Packages
+
 /*.xcodeproj
 xcuserdata/
 .swiftpm
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings

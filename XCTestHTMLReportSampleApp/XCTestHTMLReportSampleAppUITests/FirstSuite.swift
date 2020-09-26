@@ -8,10 +8,6 @@
 
 import XCTest
 
-func randomBool() -> Bool {
-    return arc4random_uniform(2) == 0
-}
-
 class FirstSuite: XCTestCase {
         
     override func setUp() {
@@ -66,13 +62,21 @@ class FirstSuite: XCTestCase {
             logsAttachement.lifetime = .keepAlways
             activity.add(logsAttachement)
         }
-
-        let result = randomBool()
-        XCTAssert(result, "Test \(result ? "succeeded" : "failed")")
+        XCTAssert(true, "Test succeeded")
     }
 
     func testTwo() {
-        let result = randomBool()
-        XCTAssert(result, "Test \(result ? "succeeded" : "failed")")
+        XCTAssert(false, "Test failed")
+    }
+
+    func testWithSpecialChars() {
+        let specialChars = "DoubleQuote\"SingleQuote'LessThan<GreaterThan>Ampersand&"
+        XCTContext.runActivity(named: "Activity with \(specialChars)") { (activity) in
+            let logsAttachement = XCTAttachment(string: "This is a log")
+            logsAttachement.lifetime = .keepAlways
+            logsAttachement.name = "FileName with \(specialChars)"
+            activity.add(logsAttachement)
+            XCTAssert(false, "Test with \(specialChars) failed on purpose")
+        }
     }
 }

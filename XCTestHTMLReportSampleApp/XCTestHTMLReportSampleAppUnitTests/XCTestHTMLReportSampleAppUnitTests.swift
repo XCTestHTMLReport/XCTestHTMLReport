@@ -25,4 +25,19 @@ class XCTestHTMLReportSampleAppUnitTests: XCTestCase
         let letsSkipThis = true
         try XCTSkipIf(letsSkipThis, "Test skipped")
     }
+
+    func testWithLogAttachment() throws {
+        let logData = "log1\nlog2\nlog3".data(using: .utf8)!
+        let attachment = XCTAttachment.init(data: logData, uniformTypeIdentifier: "com.apple.log")
+        attachment.name = "myLogFile"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testWithLogAttachmentWithoutName() throws {
+        let logData = "log4\nlog5\nlog6".data(using: .utf8)!
+        let attachment = XCTAttachment.init(data: logData, uniformTypeIdentifier: "com.apple.log")
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
 }

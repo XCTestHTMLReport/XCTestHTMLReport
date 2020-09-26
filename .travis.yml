@@ -1,9 +1,10 @@
 osx_image:
-  - xcode11.4
+  - xcode12
 
 language: objective-c
 
 script:
+  - prepareTestResults.sh 
   - swift test
   - swift build -c release
   - .build/release/xchtmlreport -h

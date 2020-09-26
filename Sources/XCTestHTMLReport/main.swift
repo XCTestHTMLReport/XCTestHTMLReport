@@ -1,4 +1,5 @@
 import Darwin
+import XCTestHTMLReportCore
 
 var version = "2.0.0"
 
@@ -47,7 +48,7 @@ if !command.isValid {
 let summary = Summary(resultPaths: result.values, renderingMode: renderingMode)
 
 Logger.step("Building HTML..")
-let html = summary.html
+let html = summary.generateHtmlReport()
 
 do {
     let path = result.values.first!
@@ -64,7 +65,7 @@ catch let e {
 
 if junitEnabled {
     Logger.step("Building JUnit..")
-    let junitXml = summary.junit.xmlString
+    let junitXml = summary.generateJunitReport()
     do {
         let path = "\(result.values.first!)/report.junit"
         Logger.substep("Writing JUnit report to \(path)")
@@ -79,23 +80,13 @@ if junitEnabled {
 
 if downsizeImagesEnabled && renderingMode == .linking {
     Logger.substep("Resizing images..")
-    var resizedCount = 0
-    for run in summary.runs {
-        for screenshotAttachment in run.screenshotAttachments {
-            let resized = resizeImage(atPath: run.file.url.path + "/../" + (screenshotAttachment.source ?? ""))
-            if resized {
-                resizedCount += 1
-            }
-        }
-    }
+    let resizedCount = summary.reduceImageSizes()
     Logger.substep("Finished resizing \(resizedCount) images")
 }
 
 if deleteUnattachedFilesEnabled && renderingMode == .linking {
-    for run in summary.runs {
-        let files = removeUnattachedFiles(run: run)
-        Logger.substep("Deleted \(files) unattached files")
-    }
+    let deletedFilesCount = summary.deleteUnattachedFiles()
+    Logger.substep("Deleted \(deletedFilesCount) unattached files")
 }
 
 exit(EXIT_SUCCESS)
