@@ -59,7 +59,13 @@ struct Activity: HTML
         return hasDirectAttachment || subActivitesHaveAttachments
     }
     var hasFailingSubActivities: Bool {
-		return subActivities.reduce(false) { $0 || $1.type == .assertionFailure || $1.hasFailingSubActivities }
+		return failingActivityRecursive != nil
+    }
+    var failingActivity: Activity? {
+        return type == .assertionFailure ? self : nil
+    }
+    var failingActivityRecursive: Activity? {
+        return subActivities.first(where: { $0.failingActivityRecursive != nil }) ?? failingActivity
     }
     var cssClasses: String {
         var cls = ""
@@ -102,12 +108,8 @@ struct Activity: HTML
             "TIME": totalTime.timeString,
             "ACTIVITY_TYPE_CLASS": cssClasses,
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && attachments.isEmpty) ? "no-drop-down" : "",
-            "SUB_ACTIVITY": subActivities.reduce("") { (accumulator: String, activity: Activity) -> String in
-                return accumulator + activity.html
-            },
-            "ATTACHMENTS": attachments.reduce("") { (accumulator: String, attachment: Attachment) -> String in
-                return accumulator + attachment.html
-            },
+            "SUB_ACTIVITY": subActivities.accumulateHTMLAsString,
+            "ATTACHMENTS": attachments.accumulateHTMLAsString,
         ]
     }
 }

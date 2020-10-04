@@ -347,6 +347,13 @@
       flex: 1;
       flex-direction: column;
       overflow-y: scroll;
+      
+      overflow:auto;
+      position:absolute;
+      top: 0;
+      left:0;
+      right:0;
+      bottom:0;
     }
 
     .tests-header, #logs-header {
@@ -384,6 +391,18 @@
       margin: auto;
       display:none;
       z-index: 1000;
+    }
+
+    .screenshot-flow {
+        border: 1px solid #021a40;
+        background-color: white;
+        height: 200px;
+    }
+
+    .screenshot-tail {
+        border: 1px solid #021a40;
+        background-color: white;
+        height: 350px;
     }
 
     #content {

@@ -1,7 +1,4 @@
-
-
-| :warning: WARNING: Custom fork that fixes some issues in junit report and add support for new features in Xcode 11.4: XCTSkipIf and XCTSkipUnless. [See this PR](https://github.com/TitouanVanBelle/XCTestHTMLReport/pull/172) for more details. | 
-| --- |
+:warning: **Looking for collaborators to maintain XCTestHTMLReport**: Drop me a line :warning: 
 
 ![title](https://i.imgur.com/yTtjLP6.png)
 
@@ -18,6 +15,8 @@ Xcode-like HTML report for Unit and UI Tests
   - .png
   - .jpeg
   - .txt
+  - .log
+  - .mp4
 - Navigate through the report with the keyboard's arrow keys
 - Filter out successful or failed tests
 - Displays information about the target device
