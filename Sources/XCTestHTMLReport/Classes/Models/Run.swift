@@ -74,14 +74,18 @@ struct Run: HTML
     }
 
     private var logSource: String? {
-        switch logContent {
-        case let .url(url):
-            return url.relativePath
-        case let .data(data):
-            return "data:text/plain;base64,\(data.base64EncodedString())"
-        case .none:
-            return nil
-        }
+        guard let data: Data = {
+            switch $0 {
+            case let .url(url):
+                return try? Data(contentsOf: url)
+            case let .data(data):
+                return data
+            case .none:
+                return nil
+            }
+        }(logContent) else { return nil }
+
+        return "data:text/plain;base64,\(data.base64EncodedString())"
     }
 
     // PRAGMA MARK: - HTML

@@ -1,6 +1,6 @@
 import Darwin
 
-var version = "2.2.5"
+var version = "2.2.6"
 
 print("XCTestHTMLReport \(version)")
 
