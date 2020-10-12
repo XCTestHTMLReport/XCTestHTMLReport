@@ -614,7 +614,9 @@ struct HTMLTemplates
           <h2>No Selected Attachment</h2>
           <img src=\"\" class=\"displayed-screenshot\" id=\"screenshot\"/>
           <iframe id=\"text-attachment\" src=\"\"></iframe>
-          <video class=\"displayed-video\" controls src=\"\" id=\"video\"/>
+          <video class=\"displayed-video\" controls crossOrigin="anonymous" id=\"video\">
+            <source src=\"\" type=\"video/mp4\" id=\"video-source\">
+          </video>
         </div>
         <div class=\"clear\"></div>
       </div>
@@ -627,6 +629,7 @@ struct HTMLTemplates
     sidebar, startX, startWidth, originalWidth,
     screenshot = document.getElementById('screenshot'),
     video = document.getElementById('video'),
+    videoSource = document.getElementById('video-source'),
     iframe = document.getElementById('text-attachment');
 
     for (var i = 0; i < resizers.length; i++) {
@@ -881,10 +884,11 @@ struct HTMLTemplates
       hideAttachmentPlaceholder();
       hideLog();
       hideScreenshot();
-      var vid = document.getElementById('video-'+filename);
+      var vid = document.getElementById('video-source-'+filename);
       video.style.display = \"block\";
-      video.src = vid.src;
-      video.play();
+      videoSource.src = vid.src;
+      video.load();
+      video.play().catch(console.log);
     }
 
     function setDisplayToElementsWithSelector(sel, display) {
@@ -1089,7 +1093,9 @@ struct HTMLTemplates
     <span class=\"icon left video-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showVideo('[[FILENAME]]')\"></span>
-    <video class=\"video\" controls src=\"[[SOURCE]]\" id=\"video-[[FILENAME]]\"/>
+    <video class=\"video\" controls src=\"[[SOURCE]]\" id=\"video-[[FILENAME]]\">
+        <source src=\"[[SOURCE]]\" type=\"video/mp4\" id=\"video-source-[[FILENAME]]\">
+    </video>
   </p>
   """
 
