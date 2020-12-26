@@ -4,7 +4,7 @@ osx_image:
 language: objective-c
 
 script:
-  - prepareTestResults.sh 
+  - ./prepareTestResults.sh 
   - swift test
   - swift build -c release
   - .build/release/xchtmlreport -h
