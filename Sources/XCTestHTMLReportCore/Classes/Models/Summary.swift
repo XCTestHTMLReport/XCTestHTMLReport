@@ -36,7 +36,9 @@ public struct Summary
         self.runs = runs
     }
 
-    public func reduceImageSizes() -> Int {
+    /// Reduce size of all images in attachments
+    public func reduceImageSizes() {
+        Logger.substep("Resizing images..")
         var resizedCount = 0
         for run in runs {
             for screenshotAttachment in run.screenshotAttachments {
@@ -46,26 +48,29 @@ public struct Summary
                 }
             }
         }
-        return resizedCount
+        Logger.substep("Finished resizing \(resizedCount) images")
     }
 
-    /// Generate html report
-    public func generateHtmlReport() -> String {
+    /// Generate HTML report
+    /// - Returns: Generated HTML report string
+    public func generatedHtmlReport() -> String {
         return html
     }
 
-    /// Generate junit report
-    public func generateJunitReport() -> String {
+    /// Generate JUnit report
+    /// - Returns: Generated JUnit XML report string
+    public func generatedJunitReport() -> String {
         return junit.xmlString
     }
 
     /// Delete all unattached files in runs
-    public func deleteUnattachedFiles() -> Int {
+    public func deleteUnattachedFiles() {
+        Logger.substep("Deleting unattached files..")
         var deletedFilesCount = 0
         for run in runs {
             deletedFilesCount += removeUnattachedFiles(run: run)
         }
-        return deletedFilesCount
+        Logger.substep("Deleted \(deletedFilesCount) unattached files")
     }
 }
 

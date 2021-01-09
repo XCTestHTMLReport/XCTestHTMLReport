@@ -48,7 +48,7 @@ if !command.isValid {
 let summary = Summary(resultPaths: result.values, renderingMode: renderingMode)
 
 Logger.step("Building HTML..")
-let html = summary.generateHtmlReport()
+let html = summary.generatedHtmlReport()
 
 do {
     let path = result.values.first!
@@ -65,7 +65,7 @@ catch let e {
 
 if junitEnabled {
     Logger.step("Building JUnit..")
-    let junitXml = summary.generateJunitReport()
+    let junitXml = summary.generatedJunitReport()
     do {
         let path = "\(result.values.first!)/report.junit"
         Logger.substep("Writing JUnit report to \(path)")
@@ -79,14 +79,11 @@ if junitEnabled {
 }
 
 if downsizeImagesEnabled && renderingMode == .linking {
-    Logger.substep("Resizing images..")
-    let resizedCount = summary.reduceImageSizes()
-    Logger.substep("Finished resizing \(resizedCount) images")
+    summary.reduceImageSizes()
 }
 
 if deleteUnattachedFilesEnabled && renderingMode == .linking {
-    let deletedFilesCount = summary.deleteUnattachedFiles()
-    Logger.substep("Deleted \(deletedFilesCount) unattached files")
+    summary.deleteUnattachedFiles()
 }
 
 exit(EXIT_SUCCESS)
