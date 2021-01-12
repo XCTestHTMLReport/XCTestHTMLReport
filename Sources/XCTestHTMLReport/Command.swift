@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import XCTestHTMLReportCore
 
 struct Command
 {

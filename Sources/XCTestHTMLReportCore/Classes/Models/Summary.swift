@@ -9,16 +9,16 @@
 import Foundation
 import XCResultKit
 
-struct Summary
+public struct Summary
 {
     let runs: [Run]
 
-    enum RenderingMode {
+    public enum RenderingMode {
         case inline
         case linking
     }
 
-    init(resultPaths: [String], renderingMode: RenderingMode) {
+    public init(resultPaths: [String], renderingMode: RenderingMode) {
         var runs: [Run] = []
         for resultPath in resultPaths {
             Logger.step("Parsing \(resultPath)")
@@ -34,6 +34,43 @@ struct Summary
             runs.append(contentsOf: resultRuns)
         }
         self.runs = runs
+    }
+
+    /// Reduce size of all images in attachments
+    public func reduceImageSizes() {
+        Logger.substep("Resizing images..")
+        var resizedCount = 0
+        for run in runs {
+            for screenshotAttachment in run.screenshotAttachments {
+                let resized = resizeImage(atPath: run.file.url.path + "/../" + (screenshotAttachment.source ?? ""))
+                if resized {
+                    resizedCount += 1
+                }
+            }
+        }
+        Logger.substep("Finished resizing \(resizedCount) images")
+    }
+
+    /// Generate HTML report
+    /// - Returns: Generated HTML report string
+    public func generatedHtmlReport() -> String {
+        return html
+    }
+
+    /// Generate JUnit report
+    /// - Returns: Generated JUnit XML report string
+    public func generatedJunitReport() -> String {
+        return junit.xmlString
+    }
+
+    /// Delete all unattached files in runs
+    public func deleteUnattachedFiles() {
+        Logger.substep("Deleting unattached files..")
+        var deletedFilesCount = 0
+        for run in runs {
+            deletedFilesCount += removeUnattachedFiles(run: run)
+        }
+        Logger.substep("Deleted \(deletedFilesCount) unattached files")
     }
 }
 

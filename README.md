@@ -63,7 +63,7 @@ Run your UI tests using `xcodebuild` without forgetting to specify the `resultBu
 $ xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme XCTestHTMLReportSampleApp -destination 'platform=iOS Simulator,name=iPhone 7,OS=11.0' -resultBundlePath TestResults
 ```
 
-Then use the previously downloaded xchtmlreport tool to create the HTML report
+Then use the previously downloaded xchtmlreport tool to create the HTML report. Additionally, `-i` flag is also available to inline all resources, this is convenient for exporting the html file standalone. HTML file will be much heavier but much more portable.
 
 ``` bash
 $ xchtmlreport -r TestResults
@@ -82,6 +82,20 @@ Report successfully created at ./index.html
 ```
 
 This will create only one HTML Report in the path you passed with the -r option
+
+### Generate Junit Reports
+
+You can generate junit reports with the `-j` flag
+
+``` bash
+$ xchtmlreport -r TestResults1 -j
+
+Report successfully created at .index.html
+
+JUnit report successfully created at TestResults1.xcresult/report.junit
+```
+
+
 
 ## Contribution
 

@@ -1,25 +1,33 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.3
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(
     name: "XCTestHTMLReport",
+    platforms: [
+        .macOS(.v10_15),
+    ],
     products: [
-        .executable(name: "xchtmlreport", targets: ["XCTestHTMLReport"])
+        .executable(name: "xchtmlreport", targets: ["XCTestHTMLReport"]),
+        .library(name: "xchtmlreportcore", targets: ["XCTestHTMLReportCore"]),
     ],
     dependencies: [
-         .package(url: "https://github.com/onevcat/Rainbow.git", from: "3.0.0"),
-         .package(url: "https://github.com/davidahouse/XCResultKit.git", from: "0.6.0")
+        .package(url: "https://github.com/onevcat/Rainbow.git", .upToNextMajor(from: "3.0.0")),
+        .package(url: "https://github.com/davidahouse/XCResultKit.git", .upToNextMinor(from: "0.7.1")),
+        .package(url: "https://github.com/nacho4d/NDHpple.git", .upToNextMajor(from: "2.0.1")),
     ],
     targets: [
-        // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-        // Targets can depend on other targets in this package, and on products in packages which this package depends on.
         .target(
             name: "XCTestHTMLReport",
-            dependencies: ["Rainbow", "XCResultKit"]),
+            dependencies: ["XCTestHTMLReportCore"]),
+        .target(
+            name: "XCTestHTMLReportCore",
+            dependencies: ["Rainbow", "XCResultKit"],
+            exclude: ["HTML"]), // ignore HTML directory resources. They are already imported as static strings.
         .testTarget(
             name: "XCTestHTMLReportTests",
-            dependencies: ["XCTestHTMLReport"]),
+            dependencies: ["XCTestHTMLReport", "NDHpple"],
+            resources: [.copy("TestResults.xcresult")]),
     ]
 )
