@@ -60,7 +60,7 @@ extension JUnitReport: XMLRepresentable
     /// e.g. <testsuites name='BonMot-iOSTests.xctest' tests='990' failures='2'>
     var xmlString: String {
         var xml = "<?xml version='1.0' encoding='UTF-8'?>\n"
-        xml += "<testsuites name='\(name)' tests='\(tests)' failures='\(failures)'>\n"
+        xml += "<testsuites name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)'>\n"
 
         suites.forEach { (suite) in
             xml += suite.xmlString
@@ -76,7 +76,7 @@ extension JUnitReport.TestSuite: XMLRepresentable
 {
     /// e.g. <testsuite name='AccessTests' tests='1' failures='0'>
     var xmlString: String {
-        var xml = "  <testsuite name='\(name)' tests='\(tests)' failures='\(failures)'>\n"
+        var xml = "  <testsuite name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)'>\n"
 
         cases.forEach { (testcase) in
             xml += testcase.xmlString
@@ -93,7 +93,7 @@ extension JUnitReport.TestCase: XMLRepresentable
     /// e.g. <testcase classname='AccessTests' name='testThatThingsThatShouldBePublicArePublic-iPhone8' time='0.007'/>
     var xmlString: String {
         let timeString = String(format: "%.02f", time)
-        var xml = "    <testcase classname='\(classname)' name='\(name)' time='\(timeString)'"
+        var xml = "    <testcase classname='\(classname.stringByEscapingXMLChars)' name='\(name.stringByEscapingXMLChars)' time='\(timeString)'"
 
         if results.isEmpty {
             xml += "/>\n"
