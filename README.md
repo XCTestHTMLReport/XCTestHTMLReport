@@ -14,6 +14,7 @@ Xcode-like HTML report for Unit and UI Tests
 - Supports attachments:
   - .png
   - .jpeg
+  - .heic
   - .txt
   - .log
   - .mp4
