@@ -73,12 +73,13 @@ class ResultFile {
             Logger.warning("Can't get logss with id \(id)")
             return nil
         }
-        let url = self.url.appendingPathComponent(id)
+        let fileName = "\(id).log"
+        let url = self.url.appendingPathComponent(fileName)
         let fileManager = FileManager.default
         do {
             try? fileManager.removeItem(at: url)
             try logSection.emittedOutput?.write(to: url, atomically: true, encoding: .utf8)
-            return relativeUrl.appendingPathComponent(id)
+            return relativeUrl.appendingPathComponent(fileName)
         } catch {
             Logger.warning("Can't write output to \(url). \(error.localizedDescription)")
             return nil
