@@ -1,4 +1,4 @@
-:warning: **Looking for collaborators to maintain XCTestHTMLReport**: Drop me a line :warning: 
+:warning: **Looking to transfer repository ownership. Drop me a line is interested :warning: 
 
 ![title](https://i.imgur.com/yTtjLP6.png)
 
