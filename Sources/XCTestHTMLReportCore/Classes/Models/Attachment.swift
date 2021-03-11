@@ -15,13 +15,14 @@ enum AttachmentType: String {
     case html = "public.html"
     case jpeg = "public.jpeg"
     case png = "public.png"
+    case heic = "public.heic"
     case mp4 = "public.mpeg-4"
     case text = "public.plain-text"
     case log = "com.apple.log"
 
     var cssClass: String {
         switch self {
-        case .png, .jpeg:
+        case .png, .jpeg, .heic:
             return "screenshot"
         case .mp4:
             return "video"
@@ -38,6 +39,8 @@ enum AttachmentType: String {
             return "image/png"
         case .jpeg:
             return "image/jpeg"
+        case .heic:
+            return "image/heic"
         case .text, .log:
             return "text/plain"
         case .mp4:
@@ -104,7 +107,7 @@ struct Attachment: HTML
 
     var fallbackDisplayName: String {
         switch type {
-        case .png, .jpeg:
+        case .png, .jpeg, .heic:
             return "Screenshot"
         case .mp4:
             return "Video"
@@ -140,7 +143,7 @@ struct Attachment: HTML
 
     var isScreenshot: Bool {
         switch type {
-        case .png, .jpeg:
+        case .png, .jpeg, .heic:
             return true
         default:
             return false
@@ -151,7 +154,7 @@ struct Attachment: HTML
 
     var htmlTemplate: String {
         switch type {
-        case .png, .jpeg:
+        case .png, .jpeg, .heic:
             return HTMLTemplates.screenshot
         case .mp4:
             return HTMLTemplates.video
