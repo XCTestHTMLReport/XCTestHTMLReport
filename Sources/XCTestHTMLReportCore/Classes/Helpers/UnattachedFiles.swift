@@ -4,13 +4,17 @@
 
 import Foundation
 
-func removeUnattachedFiles(run: Run) -> Int {
+func removeUnattachedFiles(runs: [Run]) -> Int {
     let skippedFiles = ["report.junit"]
     let fileManager = FileManager.default
     var removedFiles = 0
-    var attachmentPathsLastItem = run.allAttachments.map { $0.source?.lastPathComponent() }
-    if case RenderingContent.url(let url) = run.logContent {
-        attachmentPathsLastItem.append(url.lastPathComponent)
+
+    var attachmentPathsLastItem: [String?] = []
+    for run in runs {
+        attachmentPathsLastItem = run.allAttachments.map { $0.source?.lastPathComponent() }
+        if case RenderingContent.url(let url) = run.logContent {
+            attachmentPathsLastItem.append(url.lastPathComponent)
+        }
     }
 
     func shouldBeDeleted(fileURL: URL) -> Bool {
@@ -23,6 +27,7 @@ func removeUnattachedFiles(run: Run) -> Int {
         let lastPathComponent = fileURL.lastPathComponent
 
         if attachmentPathsLastItem.contains(lastPathComponent) {
+            Logger.success("don't remove this file!!")
             return false
         }
 
@@ -34,9 +39,13 @@ func removeUnattachedFiles(run: Run) -> Int {
     }
 
     func searchFileURLs() throws -> [URL] {
-        let topContents = try fileManager.contentsOfDirectory(at: run.file.url, includingPropertiesForKeys: nil)
-        let dataContents = try fileManager.contentsOfDirectory(at: run.file.url.appendingPathComponent("Data"), includingPropertiesForKeys: nil)
-        return topContents + dataContents
+        var urls: [URL] = []
+        for run in runs {
+            let topContents = try fileManager.contentsOfDirectory(at: run.file.url, includingPropertiesForKeys: nil)
+            let dataContents = try fileManager.contentsOfDirectory(at: run.file.url.appendingPathComponent("Data"), includingPropertiesForKeys: nil)
+            urls = urls + topContents + dataContents
+        }
+        return urls
     }
 
     do {
