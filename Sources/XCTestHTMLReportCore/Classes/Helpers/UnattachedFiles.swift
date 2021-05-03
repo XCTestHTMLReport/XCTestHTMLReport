@@ -11,7 +11,7 @@ func removeUnattachedFiles(runs: [Run]) -> Int {
 
     var attachmentPathsLastItem: [String?] = []
     for run in runs {
-        attachmentPathsLastItem = run.allAttachments.map { $0.source?.lastPathComponent() }
+        attachmentPathsLastItem = attachmentPathsLastItem + run.allAttachments.map { $0.source?.lastPathComponent() }
         if case RenderingContent.url(let url) = run.logContent {
             attachmentPathsLastItem.append(url.lastPathComponent)
         }
@@ -27,7 +27,6 @@ func removeUnattachedFiles(runs: [Run]) -> Int {
         let lastPathComponent = fileURL.lastPathComponent
 
         if attachmentPathsLastItem.contains(lastPathComponent) {
-            Logger.success("don't remove this file!!")
             return false
         }
 
