@@ -9,13 +9,13 @@ func removeUnattachedFiles(runs: [Run]) -> Int {
     let fileManager = FileManager.default
     var removedFiles = 0
 
-    let attachmentPathsLastItem = runs.map { run -> [String?] in
-        var lastPathComponents = run.allAttachments.map { $0.source?.lastPathComponent() }
+    var attachmentPathsLastItem: [String?] = []
+    for run in runs {
+        attachmentPathsLastItem = attachmentPathsLastItem + run.allAttachments.map { $0.source?.lastPathComponent() }
         if case RenderingContent.url(let url) = run.logContent {
-            lastPathComponents.append(url.lastPathComponent)
+            attachmentPathsLastItem.append(url.lastPathComponent)
         }
-        return lastPathComponents
-    }.reduce([], +)
+    }
 
     func shouldBeDeleted(fileURL: URL) -> Bool {
         /// Do not delete directories
@@ -38,11 +38,13 @@ func removeUnattachedFiles(runs: [Run]) -> Int {
     }
 
     func searchFileURLs() throws -> [URL] {
-        return try runs.map { run -> [URL] in
+        var urls: [URL] = []
+        for run in runs {
             let topContents = try fileManager.contentsOfDirectory(at: run.file.url, includingPropertiesForKeys: nil)
             let dataContents = try fileManager.contentsOfDirectory(at: run.file.url.appendingPathComponent("Data"), includingPropertiesForKeys: nil)
-            return topContents + dataContents
-        }.reduce([], +)
+            urls = urls + topContents + dataContents
+        }
+        return urls
     }
 
     do {
