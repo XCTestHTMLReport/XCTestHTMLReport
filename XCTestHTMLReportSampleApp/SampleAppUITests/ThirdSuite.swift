@@ -1,6 +1,6 @@
 //
 //  ThirdSuite.swift
-//  XCTestHTMLReportSampleAppUITests
+//  SampleAppUITests
 //
 //  Created by Fabien Lydoire on 12/06/18.
 //  Copyright © 2018 Fabien Lydoire. All rights reserved.

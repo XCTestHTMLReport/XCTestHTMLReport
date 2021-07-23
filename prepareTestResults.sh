@@ -2,11 +2,11 @@
 set -e
 # Create TestResults.xcresult for functional tests
 FILENAME='TestResults.xcresult'
-cd XCTestHTMLReportSampleApp
+cd SampleApp
 rm -rf "$FILENAME"
 xcodebuild test \
-    -project XCTestHTMLReportSampleApp.xcodeproj \
-    -scheme XCTestHTMLReportSampleApp \
+    -project SampleApp.xcodeproj \
+    -scheme SampleApp \
     -destination 'platform=iOS Simulator,name=iPhone 8,OS=latest' \
     -resultBundlePath "$FILENAME" || true
 echo "Even if some test failed this is OK."

@@ -1,6 +1,6 @@
 //
-//  XCTestHTMLReportSampleAppUnitTests.swift
-//  XCTestHTMLReportSampleAppUnitTests
+//  SampleAppUnitTests.swift
+//  SampleAppUnitTests
 //
 //  Created by Titouan van Belle on 22.12.17.
 //  Copyright © 2017 Tito. All rights reserved.
@@ -8,7 +8,7 @@
 
 import XCTest
 
-class XCTestHTMLReportSampleAppUnitTests: XCTestCase
+class SampleAppUnitTests: XCTestCase
 {
     func testFailure()
     {

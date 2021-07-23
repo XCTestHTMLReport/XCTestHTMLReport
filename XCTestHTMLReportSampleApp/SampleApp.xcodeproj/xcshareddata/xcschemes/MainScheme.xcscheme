@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "F3AB01271F2459FA00334580"
-               BuildableName = "XCTestHTMLReportSampleApp.app"
-               BlueprintName = "XCTestHTMLReportSampleApp"
-               ReferencedContainer = "container:XCTestHTMLReportSampleApp.xcodeproj">
+               BuildableName = "SampleApp.app"
+               BlueprintName = "SampleApp"
+               ReferencedContainer = "container:SampleApp.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -31,9 +31,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F3AB01271F2459FA00334580"
-            BuildableName = "XCTestHTMLReportSampleApp.app"
-            BlueprintName = "XCTestHTMLReportSampleApp"
-            ReferencedContainer = "container:XCTestHTMLReportSampleApp.xcodeproj">
+            BuildableName = "SampleApp.app"
+            BlueprintName = "SampleApp"
+            ReferencedContainer = "container:SampleApp.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -42,9 +42,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "F3AB013B1F2459FA00334580"
-               BuildableName = "XCTestHTMLReportSampleAppUITests.xctest"
-               BlueprintName = "XCTestHTMLReportSampleAppUITests"
-               ReferencedContainer = "container:XCTestHTMLReportSampleApp.xcodeproj">
+               BuildableName = "SampleAppUITests.xctest"
+               BlueprintName = "SampleAppUITests"
+               ReferencedContainer = "container:SampleApp.xcodeproj">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -52,9 +52,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "F3C1FC551FECE3C30028EC72"
-               BuildableName = "XCTestHTMLReportSampleAppUnitTests.xctest"
-               BlueprintName = "XCTestHTMLReportSampleAppUnitTests"
-               ReferencedContainer = "container:XCTestHTMLReportSampleApp.xcodeproj">
+               BuildableName = "SampleAppUnitTests.xctest"
+               BlueprintName = "SampleAppUnitTests"
+               ReferencedContainer = "container:SampleApp.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -74,9 +74,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F3AB01271F2459FA00334580"
-            BuildableName = "XCTestHTMLReportSampleApp.app"
-            BlueprintName = "XCTestHTMLReportSampleApp"
-            ReferencedContainer = "container:XCTestHTMLReportSampleApp.xcodeproj">
+            BuildableName = "SampleApp.app"
+            BlueprintName = "SampleApp"
+            ReferencedContainer = "container:SampleApp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -91,9 +91,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F3AB01271F2459FA00334580"
-            BuildableName = "XCTestHTMLReportSampleApp.app"
-            BlueprintName = "XCTestHTMLReportSampleApp"
-            ReferencedContainer = "container:XCTestHTMLReportSampleApp.xcodeproj">
+            BuildableName = "SampleApp.app"
+            BlueprintName = "SampleApp"
+            ReferencedContainer = "container:SampleApp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

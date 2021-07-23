@@ -16,7 +16,7 @@
 		F3AB01361F2459FA00334580 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F3AB01341F2459FA00334580 /* LaunchScreen.storyboard */; };
 		F3AB01411F2459FA00334580 /* FirstSuite.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AB01401F2459FA00334580 /* FirstSuite.swift */; };
 		F3BBACC41F2853570069962A /* iPhone.png in Resources */ = {isa = PBXBuildFile; fileRef = F3223CEF1F26341D00BEDA4A /* iPhone.png */; };
-		F3C1FC591FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3C1FC581FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests.swift */; };
+		F3C1FC591FECE3C30028EC72 /* SampleAppUnitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3C1FC581FECE3C30028EC72 /* SampleAppUnitTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,14 +25,14 @@
 			containerPortal = F3AB01201F2459FA00334580 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = F3AB01271F2459FA00334580;
-			remoteInfo = XCTestHTMLReportSampleApp;
+			remoteInfo = SampleApp;
 		};
 		F3C1FC5B1FECE3C30028EC72 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F3AB01201F2459FA00334580 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = F3AB01271F2459FA00334580;
-			remoteInfo = XCTestHTMLReportSampleApp;
+			remoteInfo = SampleApp;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -40,18 +40,18 @@
 		77239F5720CFAD7000BAB94E /* ThirdSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThirdSuite.swift; sourceTree = "<group>"; };
 		F3223CEF1F26341D00BEDA4A /* iPhone.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = iPhone.png; sourceTree = "<group>"; };
 		F39729071F2471A7006B1EF3 /* SecondSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecondSuite.swift; sourceTree = "<group>"; };
-		F3AB01281F2459FA00334580 /* XCTestHTMLReportSampleApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = XCTestHTMLReportSampleApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F3AB01281F2459FA00334580 /* SampleApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SampleApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F3AB012B1F2459FA00334580 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F3AB012D1F2459FA00334580 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		F3AB01301F2459FA00334580 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		F3AB01321F2459FA00334580 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F3AB01351F2459FA00334580 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F3AB01371F2459FA00334580 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		F3AB013C1F2459FA00334580 /* XCTestHTMLReportSampleAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XCTestHTMLReportSampleAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F3AB013C1F2459FA00334580 /* SampleAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SampleAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F3AB01401F2459FA00334580 /* FirstSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstSuite.swift; sourceTree = "<group>"; };
 		F3AB01421F2459FA00334580 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		F3C1FC561FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XCTestHTMLReportSampleAppUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		F3C1FC581FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCTestHTMLReportSampleAppUnitTests.swift; sourceTree = "<group>"; };
+		F3C1FC561FECE3C30028EC72 /* SampleAppUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SampleAppUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F3C1FC581FECE3C30028EC72 /* SampleAppUnitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleAppUnitTests.swift; sourceTree = "<group>"; };
 		F3C1FC5A1FECE3C30028EC72 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -83,9 +83,9 @@
 		F3AB011F1F2459FA00334580 = {
 			isa = PBXGroup;
 			children = (
-				F3AB012A1F2459FA00334580 /* XCTestHTMLReportSampleApp */,
-				F3AB013F1F2459FA00334580 /* XCTestHTMLReportSampleAppUITests */,
-				F3C1FC571FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests */,
+				F3AB012A1F2459FA00334580 /* SampleApp */,
+				F3AB013F1F2459FA00334580 /* SampleAppUITests */,
+				F3C1FC571FECE3C30028EC72 /* SampleAppUnitTests */,
 				F3AB01291F2459FA00334580 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -93,14 +93,14 @@
 		F3AB01291F2459FA00334580 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				F3AB01281F2459FA00334580 /* XCTestHTMLReportSampleApp.app */,
-				F3AB013C1F2459FA00334580 /* XCTestHTMLReportSampleAppUITests.xctest */,
-				F3C1FC561FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests.xctest */,
+				F3AB01281F2459FA00334580 /* SampleApp.app */,
+				F3AB013C1F2459FA00334580 /* SampleAppUITests.xctest */,
+				F3C1FC561FECE3C30028EC72 /* SampleAppUnitTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		F3AB012A1F2459FA00334580 /* XCTestHTMLReportSampleApp */ = {
+		F3AB012A1F2459FA00334580 /* SampleApp */ = {
 			isa = PBXGroup;
 			children = (
 				F3AB012B1F2459FA00334580 /* AppDelegate.swift */,
@@ -110,10 +110,10 @@
 				F3AB01341F2459FA00334580 /* LaunchScreen.storyboard */,
 				F3AB01371F2459FA00334580 /* Info.plist */,
 			);
-			path = XCTestHTMLReportSampleApp;
+			path = SampleApp;
 			sourceTree = "<group>";
 		};
-		F3AB013F1F2459FA00334580 /* XCTestHTMLReportSampleAppUITests */ = {
+		F3AB013F1F2459FA00334580 /* SampleAppUITests */ = {
 			isa = PBXGroup;
 			children = (
 				F3223CEF1F26341D00BEDA4A /* iPhone.png */,
@@ -122,24 +122,24 @@
 				77239F5720CFAD7000BAB94E /* ThirdSuite.swift */,
 				F3AB01421F2459FA00334580 /* Info.plist */,
 			);
-			path = XCTestHTMLReportSampleAppUITests;
+			path = SampleAppUITests;
 			sourceTree = "<group>";
 		};
-		F3C1FC571FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests */ = {
+		F3C1FC571FECE3C30028EC72 /* SampleAppUnitTests */ = {
 			isa = PBXGroup;
 			children = (
-				F3C1FC581FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests.swift */,
+				F3C1FC581FECE3C30028EC72 /* SampleAppUnitTests.swift */,
 				F3C1FC5A1FECE3C30028EC72 /* Info.plist */,
 			);
-			path = XCTestHTMLReportSampleAppUnitTests;
+			path = SampleAppUnitTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		F3AB01271F2459FA00334580 /* XCTestHTMLReportSampleApp */ = {
+		F3AB01271F2459FA00334580 /* SampleApp */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F3AB01451F2459FA00334580 /* Build configuration list for PBXNativeTarget "XCTestHTMLReportSampleApp" */;
+			buildConfigurationList = F3AB01451F2459FA00334580 /* Build configuration list for PBXNativeTarget "SampleApp" */;
 			buildPhases = (
 				F3AB01241F2459FA00334580 /* Sources */,
 				F3AB01251F2459FA00334580 /* Frameworks */,
@@ -149,14 +149,14 @@
 			);
 			dependencies = (
 			);
-			name = XCTestHTMLReportSampleApp;
-			productName = XCTestHTMLReportSampleApp;
-			productReference = F3AB01281F2459FA00334580 /* XCTestHTMLReportSampleApp.app */;
+			name = SampleApp;
+			productName = SampleApp;
+			productReference = F3AB01281F2459FA00334580 /* SampleApp.app */;
 			productType = "com.apple.product-type.application";
 		};
-		F3AB013B1F2459FA00334580 /* XCTestHTMLReportSampleAppUITests */ = {
+		F3AB013B1F2459FA00334580 /* SampleAppUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F3AB01481F2459FA00334580 /* Build configuration list for PBXNativeTarget "XCTestHTMLReportSampleAppUITests" */;
+			buildConfigurationList = F3AB01481F2459FA00334580 /* Build configuration list for PBXNativeTarget "SampleAppUITests" */;
 			buildPhases = (
 				F3AB01381F2459FA00334580 /* Sources */,
 				F3AB01391F2459FA00334580 /* Frameworks */,
@@ -167,14 +167,14 @@
 			dependencies = (
 				F3AB013E1F2459FA00334580 /* PBXTargetDependency */,
 			);
-			name = XCTestHTMLReportSampleAppUITests;
-			productName = XCTestHTMLReportSampleAppUITests;
-			productReference = F3AB013C1F2459FA00334580 /* XCTestHTMLReportSampleAppUITests.xctest */;
+			name = SampleAppUITests;
+			productName = SampleAppUITests;
+			productReference = F3AB013C1F2459FA00334580 /* SampleAppUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		F3C1FC551FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests */ = {
+		F3C1FC551FECE3C30028EC72 /* SampleAppUnitTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F3C1FC5F1FECE3C30028EC72 /* Build configuration list for PBXNativeTarget "XCTestHTMLReportSampleAppUnitTests" */;
+			buildConfigurationList = F3C1FC5F1FECE3C30028EC72 /* Build configuration list for PBXNativeTarget "SampleAppUnitTests" */;
 			buildPhases = (
 				F3C1FC521FECE3C30028EC72 /* Sources */,
 				F3C1FC531FECE3C30028EC72 /* Frameworks */,
@@ -185,9 +185,9 @@
 			dependencies = (
 				F3C1FC5C1FECE3C30028EC72 /* PBXTargetDependency */,
 			);
-			name = XCTestHTMLReportSampleAppUnitTests;
-			productName = XCTestHTMLReportSampleAppUnitTests;
-			productReference = F3C1FC561FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests.xctest */;
+			name = SampleAppUnitTests;
+			productName = SampleAppUnitTests;
+			productReference = F3C1FC561FECE3C30028EC72 /* SampleAppUnitTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -217,7 +217,7 @@
 					};
 				};
 			};
-			buildConfigurationList = F3AB01231F2459FA00334580 /* Build configuration list for PBXProject "XCTestHTMLReportSampleApp" */;
+			buildConfigurationList = F3AB01231F2459FA00334580 /* Build configuration list for PBXProject "SampleApp" */;
 			compatibilityVersion = "Xcode 8.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -230,9 +230,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F3AB01271F2459FA00334580 /* XCTestHTMLReportSampleApp */,
-				F3AB013B1F2459FA00334580 /* XCTestHTMLReportSampleAppUITests */,
-				F3C1FC551FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests */,
+				F3AB01271F2459FA00334580 /* SampleApp */,
+				F3AB013B1F2459FA00334580 /* SampleAppUITests */,
+				F3C1FC551FECE3C30028EC72 /* SampleAppUnitTests */,
 			);
 		};
 /* End PBXProject section */
@@ -289,7 +289,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F3C1FC591FECE3C30028EC72 /* XCTestHTMLReportSampleAppUnitTests.swift in Sources */,
+				F3C1FC591FECE3C30028EC72 /* SampleAppUnitTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -298,12 +298,12 @@
 /* Begin PBXTargetDependency section */
 		F3AB013E1F2459FA00334580 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = F3AB01271F2459FA00334580 /* XCTestHTMLReportSampleApp */;
+			target = F3AB01271F2459FA00334580 /* SampleApp */;
 			targetProxy = F3AB013D1F2459FA00334580 /* PBXContainerItemProxy */;
 		};
 		F3C1FC5C1FECE3C30028EC72 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = F3AB01271F2459FA00334580 /* XCTestHTMLReportSampleApp */;
+			target = F3AB01271F2459FA00334580 /* SampleApp */;
 			targetProxy = F3C1FC5B1FECE3C30028EC72 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -446,7 +446,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = XK98WVAH5W;
-				INFOPLIST_FILE = XCTestHTMLReportSampleApp/Info.plist;
+				INFOPLIST_FILE = SampleApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tito.XCTestHTMLReportSampleApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -460,7 +460,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = XK98WVAH5W;
-				INFOPLIST_FILE = XCTestHTMLReportSampleApp/Info.plist;
+				INFOPLIST_FILE = SampleApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tito.XCTestHTMLReportSampleApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -474,13 +474,13 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				DEVELOPMENT_TEAM = XK98WVAH5W;
-				INFOPLIST_FILE = XCTestHTMLReportSampleAppUITests/Info.plist;
+				INFOPLIST_FILE = SampleAppUITests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tito.XCTestHTMLReportSampleAppUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = XCTestHTMLReportSampleApp;
+				TEST_TARGET_NAME = SampleApp;
 			};
 			name = Debug;
 		};
@@ -489,13 +489,13 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				DEVELOPMENT_TEAM = XK98WVAH5W;
-				INFOPLIST_FILE = XCTestHTMLReportSampleAppUITests/Info.plist;
+				INFOPLIST_FILE = SampleAppUITests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tito.XCTestHTMLReportSampleAppUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = XCTestHTMLReportSampleApp;
+				TEST_TARGET_NAME = SampleApp;
 			};
 			name = Release;
 		};
@@ -505,14 +505,14 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = XK98WVAH5W;
-				INFOPLIST_FILE = XCTestHTMLReportSampleAppUnitTests/Info.plist;
+				INFOPLIST_FILE = SampleAppUnitTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tito.XCTestHTMLReportSampleAppUnitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/XCTestHTMLReportSampleApp.app/XCTestHTMLReportSampleApp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SampleApp.app/SampleApp";
 			};
 			name = Debug;
 		};
@@ -522,21 +522,21 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = XK98WVAH5W;
-				INFOPLIST_FILE = XCTestHTMLReportSampleAppUnitTests/Info.plist;
+				INFOPLIST_FILE = SampleAppUnitTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.tito.XCTestHTMLReportSampleAppUnitTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/XCTestHTMLReportSampleApp.app/XCTestHTMLReportSampleApp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SampleApp.app/SampleApp";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F3AB01231F2459FA00334580 /* Build configuration list for PBXProject "XCTestHTMLReportSampleApp" */ = {
+		F3AB01231F2459FA00334580 /* Build configuration list for PBXProject "SampleApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F3AB01431F2459FA00334580 /* Debug */,
@@ -545,7 +545,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F3AB01451F2459FA00334580 /* Build configuration list for PBXNativeTarget "XCTestHTMLReportSampleApp" */ = {
+		F3AB01451F2459FA00334580 /* Build configuration list for PBXNativeTarget "SampleApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F3AB01461F2459FA00334580 /* Debug */,
@@ -554,7 +554,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F3AB01481F2459FA00334580 /* Build configuration list for PBXNativeTarget "XCTestHTMLReportSampleAppUITests" */ = {
+		F3AB01481F2459FA00334580 /* Build configuration list for PBXNativeTarget "SampleAppUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F3AB01491F2459FA00334580 /* Debug */,
@@ -563,7 +563,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F3C1FC5F1FECE3C30028EC72 /* Build configuration list for PBXNativeTarget "XCTestHTMLReportSampleAppUnitTests" */ = {
+		F3C1FC5F1FECE3C30028EC72 /* Build configuration list for PBXNativeTarget "SampleAppUnitTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F3C1FC5D1FECE3C30028EC72 /* Debug */,
