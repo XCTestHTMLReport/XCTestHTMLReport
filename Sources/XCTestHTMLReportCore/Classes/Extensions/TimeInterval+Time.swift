@@ -12,7 +12,7 @@ extension TimeInterval
 {
     var timeString: String
     {
-        let ti = NSInteger(self)
+        let ti = Int(self)
 
         let seconds = ti % 60
         let minutes = (ti / 60) % 60
