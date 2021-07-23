@@ -76,9 +76,9 @@ struct Test: HTML
 
     init(group: ActionTestSummaryGroup, file: ResultFile, renderingMode: Summary.RenderingMode) {
         self.uuid = NSUUID().uuidString
-        self.identifier = group.identifier
+        self.identifier = group.identifier ?? "---identifier-not-found---"
         self.duration = group.duration
-        self.name = group.name
+        self.name = group.name ?? "---group-name-not-found---"
         if group.subtests.isEmpty {
             self.subTests = group.subtestGroups.map { Test(group: $0, file: file, renderingMode: renderingMode) }
         } else {
