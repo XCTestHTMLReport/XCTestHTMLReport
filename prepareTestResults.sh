@@ -1,12 +1,14 @@
 #! /bin/bash
 set -e
+
+cd XCTestHTMLReportSampleApp
+
 # Create TestResults.xcresult for functional tests
 FILENAME='TestResults.xcresult'
-cd SampleApp
 rm -rf "$FILENAME"
 xcodebuild test \
     -project SampleApp.xcodeproj \
-    -scheme SampleApp \
+    -scheme MainScheme \
     -destination 'platform=iOS Simulator,name=iPhone 8,OS=latest' \
     -resultBundlePath "$FILENAME" || true
 echo "Even if some test failed this is OK."
