@@ -61,7 +61,7 @@ $ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLRep
 Run your UI tests using `xcodebuild` without forgetting to specify the `resultBundlePath`
 
 ``` bash
-$ xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme XCTestHTMLReportSampleApp -destination 'platform=iOS Simulator,name=iPhone 7,OS=11.0' -resultBundlePath TestResults
+$ xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme SampleApp -destination 'platform=iOS Simulator,name=iPhone 7,OS=11.0' -resultBundlePath TestResults
 ```
 
 Then use the previously downloaded xchtmlreport tool to create the HTML report. Additionally, `-i` flag is also available to inline all resources, this is convenient for exporting the html file standalone. HTML file will be much heavier but much more portable.

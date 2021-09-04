@@ -1,6 +1,6 @@
 //
 //  ViewController.swift
-//  XCTestHTMLReportSampleApp
+//  SampleApp
 //
 //  Created by Titouan van Belle on 23.07.17.
 //  Copyright © 2017 Tito. All rights reserved.

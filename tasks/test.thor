@@ -6,7 +6,7 @@ require_relative './lib/print'
 class Test < Thor
   PACKAGE_BUILD = "swift build -c release"
   PACKAGE_PATH = ".build/release/xchtmlreport"
-  XCODEBUILD_CMD_BASE = 'xcodebuild test -project XCTestHTMLReportSampleApp/XCTestHTMLReportSampleApp.xcodeproj -scheme XCTestHTMLReportSampleApp -verbose'
+  XCODEBUILD_CMD_BASE = 'xcodebuild test -project SampleApp/SampleApp.xcodeproj -scheme SampleApp -verbose'
 
   desc 'once', 'Runs tests and creates an HTML Report'
   def once
@@ -64,8 +64,8 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsB').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs Max,OS=12.4' -only-testing:XCTestHTMLReportSampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs Max,OS=12.4' -only-testing:SampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -only-testing:SampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("#{PACKAGE_BUILD}").run
@@ -81,8 +81,8 @@ class Test < Thor
     Cmd.new('rm -rf TestResultsB').run
 
     Print.step "Running tests"
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -only-testing:XCTestHTMLReportSampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
-    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -only-testing:XCTestHTMLReportSampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -only-testing:SampleAppUITests/FirstSuite -resultBundlePath TestResultsA | xcpretty").run
+    Cmd.new("#{XCODEBUILD_CMD_BASE} -destination 'platform=iOS Simulator,name=iPhone Xs,OS=12.4' -only-testing:SampleAppUITests/SecondSuite -resultBundlePath TestResultsB | xcpretty").run
 
     Print.step "Generating report"
     Cmd.new("#{PACKAGE_BUILD}").run
