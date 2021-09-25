@@ -1,4 +1,4 @@
-:warning: **Looking to transfer repository ownership. Drop me a line is interested :warning: 
+This Repository has been transfered from TitouanVanBelle/XCTestHTMLReport to this new organization. **🥳🎉 Contributions are very very welcome! 🥳🎉**
 
 ![title](https://i.imgur.com/yTtjLP6.png)
 
