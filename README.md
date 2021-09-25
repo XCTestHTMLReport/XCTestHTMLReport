@@ -30,30 +30,33 @@ https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport
 
 ## Installation
 
+### Mint 
+
+[Mint](https://) is the easiest way...
+
+Install latest stable version
+```bash
+mint install XCTestHTMLReport/XCTestHTMLReport
+```
+
+Install latest from develop branch
+```
+mint install XCTestHTMLReport/XCTestHTMLReport@develop
+```
+
 ### Homebrew
 
-Install via [Homebrew](https://brew.sh/).
+Install via [Homebrew](https://brew.sh/) tap...
 
+Install latest stable version
 ```bash
-# Install latest stable version
-$ brew install https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/develop/xchtmlreport.rb
-
-# Install latest master branch
-$ brew install --HEAD https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/develop/xchtmlreport.rb
+brew install XCTestHtmlReport/xchtmlreport/xchtmlreport
 ```
 
-### Alternate
-
-Simply execute the following command to download the latest version of XCTestHTMLReport
-
-``` bash
-$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/master/install.sh)
+Install latest from develop branch
 ```
-
-You can also specify a branch or tag
-
-``` bash
-$ bash <(curl -s https://raw.githubusercontent.com/TitouanVanBelle/XCTestHTMLReport/master/install.sh) '1.0.0'
+$ wget https://raw.githubusercontent.com/XCTestHTMLReport/XCTestHTMLReport/develop/xchtmlreport.rb
+$ brew install --HEAD --build-from-source xchtmlreport.rb
 ```
 
 ## Usage
