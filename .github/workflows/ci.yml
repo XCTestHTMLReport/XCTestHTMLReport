@@ -26,4 +26,6 @@ jobs:
       run: swift build -v -c release
       
     - name: Test
-      run: swift test -v
+      run: |
+        ./prepareTestResults.sh
+        swift test -v
