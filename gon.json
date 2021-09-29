@@ -1,0 +1,11 @@
+{
+  "notarize": [{
+    "path": "xchtmlreport.zip",
+    "bundle_id": "com.xctesthtmlreport.xctesthtmlreport",
+    "staple": false
+  }],
+  "apple_id": {
+    "username": "@env:AC_USERNAME",
+    "password": "@env:AC_PASSWORD"
+  }
+}
