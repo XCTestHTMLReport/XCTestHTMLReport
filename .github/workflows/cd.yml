@@ -38,7 +38,7 @@ jobs:
       
     - name: Sign
       run: |
-        codesign --verbose --verify --options=runtime -f -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }} .build/x86_64-apple-macosx/release/xchtmlreport
+        codesign --verbose --verify --options=runtime -f -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }})" .build/x86_64-apple-macosx/release/xchtmlreport
     
     - name: Verify
       run: codesign -vvv --deep --strict .build/x86_64-apple-macosx/release/xchtmlreport
