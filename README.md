@@ -1,6 +1,6 @@
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
 [![CD](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/workflows/ci.yml/badge.svg)](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/workflows/ci.yml)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dswift-versions&color=blue)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dplatforms&color=blue)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
 
 This Repository has been transfered from TitouanVanBelle/XCTestHTMLReport to this new organization. **🥳🎉 Contributions are very very welcome! 🥳🎉**
 
