@@ -6,6 +6,9 @@ on:
    - '[0-9]+.[0-9]+.[0-9]+'
    - '[0-9]+.[0-9]+.[0-9]+rc[0-9]+'
   workflow_dispatch:
+    inputs:
+      version:
+        description: Version to use in place of a tag
 
 jobs:
   build:
@@ -30,8 +33,9 @@ jobs:
     - name: Generate Metadata
       id: metadata
       run: |
-        echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
-        echo ::set-output name=archive_name::xchtmlreport-${GITHUB_REF/refs\/tags\//}.zip
+        [[ "$GITHUB_REF" =~ refs/tags ]] && VERSION=${GITHUB_REF/refs\/tags\//} || VERSION=${github.event.inputs.version}
+        echo ::set-output name=version::${VERSION}
+        echo ::set-output name=archive_name::xchtmlreport-${VERSION}.zip
 
     - name: Build
       run: swift build -v -c release
@@ -41,7 +45,8 @@ jobs:
         codesign --verbose --verify --options=runtime -f -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }})" .build/x86_64-apple-macosx/release/xchtmlreport
     
     - name: Verify
-      run: codesign -vvv --deep --strict .build/x86_64-apple-macosx/release/xchtmlreport
+      run: |
+        codesign -vvv --deep --strict .build/x86_64-apple-macosx/release/xchtmlreport
 
     - name: Package
       run: |
