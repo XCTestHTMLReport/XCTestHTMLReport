@@ -1,14 +1,10 @@
-name: Sign Release
+name: Release
 
 on:
   push:
    tags:
    - '[0-9]+.[0-9]+.[0-9]+'
    - '[0-9]+.[0-9]+.[0-9]+rc[0-9]+'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: Version to use in place of a tag
 
 jobs:
   build:
@@ -33,7 +29,7 @@ jobs:
     - name: Generate Metadata
       id: metadata
       run: |
-        [[ "$GITHUB_REF" =~ refs/tags ]] && VERSION=${GITHUB_REF/refs\/tags\//} || VERSION="test"
+        [[ "$GITHUB_REF" =~ refs/tags ]] && VERSION=${GITHUB_REF/refs\/tags\//} || exit
         echo ::set-output name=version::${VERSION}
         echo ::set-output name=archive_name::xchtmlreport-${VERSION}.zip
 
@@ -42,7 +38,9 @@ jobs:
       
     - name: Sign
       run: |
-        codesign --verbose --verify --options=runtime -f -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }})" .build/x86_64-apple-macosx/release/xchtmlreport
+        codesign --verbose --verify --options=runtime -f \
+        -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }})" \
+        .build/x86_64-apple-macosx/release/xchtmlreport
     
     - name: Verify
       run: |
@@ -50,11 +48,17 @@ jobs:
 
     - name: Package
       run: |
-        ditto -c -k --keepParent ".build/x86_64-apple-macosx/release/xchtmlreport" ${{ steps.metadata.outputs.archive_name }}
+        ditto -c -k \
+        --keepParent ".build/x86_64-apple-macosx/release/xchtmlreport" \
+        ${{ steps.metadata.outputs.archive_name }}
 
     - name: Notarize
       run: |
-        xcrun notarytool submit ${{ steps.metadata.outputs.archive_name }} --apple-id ${{ secrets.AC_USERNAME }} --password ${{ secrets.AC_PASSWORD }} --team-id ${{ secrets.AC_TEAM_ID }} --wait
+        xcrun notarytool submit ${{ steps.metadata.outputs.archive_name }} \
+        --apple-id ${{ secrets.AC_USERNAME }} \
+        --password ${{ secrets.AC_PASSWORD }} \
+        --team-id ${{ secrets.AC_TEAM_ID }} \
+        --wait
 
     - name: Archive
       uses: actions/upload-artifact@v2
