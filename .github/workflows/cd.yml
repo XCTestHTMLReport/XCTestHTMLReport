@@ -33,7 +33,7 @@ jobs:
     - name: Generate Metadata
       id: metadata
       run: |
-        [[ "$GITHUB_REF" =~ refs/tags ]] && VERSION=${GITHUB_REF/refs\/tags\//} || VERSION=${github.event.inputs.version}
+        [[ "$GITHUB_REF" =~ refs/tags ]] && VERSION=${GITHUB_REF/refs\/tags\//} || VERSION="test"
         echo ::set-output name=version::${VERSION}
         echo ::set-output name=archive_name::xchtmlreport-${VERSION}.zip
 
