@@ -60,7 +60,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: application
-        path: ${{ steps.get_version.outputs.archive_name }}
+        path: ${{ steps.metadata.outputs.archive_name }}
 
   release:
     runs-on: macos-11
