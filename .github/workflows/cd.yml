@@ -32,7 +32,7 @@ jobs:
       run: |
         echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
         echo ::set-output name=archive_name::xchtmlreport-${GITHUB_REF/refs\/tags\//}.zip
-        echo ::set-output name=identity::"Developer ID Application: Tyler Vick (${secrets.AC_TEAM_ID})"
+        echo ::set-output name=identity::Developer ID Application: Tyler Vick (${secrets.AC_TEAM_ID})
 
     - name: Build
       run: swift build -v -c release
