@@ -32,14 +32,13 @@ jobs:
       run: |
         echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
         echo ::set-output name=archive_name::xchtmlreport-${GITHUB_REF/refs\/tags\//}.zip
-        echo ::set-output name=identity::Developer ID Application: Tyler Vick (${secrets.AC_TEAM_ID})
 
     - name: Build
       run: swift build -v -c release
       
     - name: Sign
       run: |
-        codesign --verbose --verify --options=runtime -f -s ${{ steps.metadata.outputs.identity }} .build/x86_64-apple-macosx/release/xchtmlreport
+        codesign --verbose --verify --options=runtime -f -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }} .build/x86_64-apple-macosx/release/xchtmlreport
     
     - name: Verify
       run: codesign -vvv --deep --strict .build/x86_64-apple-macosx/release/xchtmlreport
