@@ -35,8 +35,8 @@ jobs:
     - name: Get version
       id: get_version
       run: |
-        echo ::set-output name=version::${ GITHUB_REF/refs\/tags\// }
-        echo ::set-output name=archive_name::xchtmlreport-${ GITHUB_REF/refs\/tags\// }.zip
+        echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+        echo ::set-output name=archive_name::xchtmlreport-${GITHUB_REF/refs\/tags\//}.zip
 
     - name: Build
       run: swift build -v -c release
