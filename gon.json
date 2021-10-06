@@ -1,6 +1,6 @@
 {
   "notarize": [{
-    "path": "xchtmlreport.zip",
+    "path": "@env:ARCHIVE_NAME",
     "bundle_id": "com.xctesthtmlreport.xctesthtmlreport",
     "staple": false
   }],
