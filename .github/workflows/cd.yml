@@ -48,7 +48,7 @@ jobs:
 
     - name: Package
       run: |
-        ditto -c -k --keepParent ".build/x86_64-apple-macosx/release/xchtmlreport" xchtmlreport.zip
+        ditto -c -k --keepParent ".build/x86_64-apple-macosx/release/xchtmlreport" xchtmlreport-${{ steps.get_version.outputs.version }}.zip
 
     - name: Notarize
       run: |
@@ -61,7 +61,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: application
-        path: xchtmlreport.zip
+        path: xchtmlreport-${{ steps.get_version.outputs.version }}.zip
 
   release:
     runs-on: macos-11
