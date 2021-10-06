@@ -54,7 +54,7 @@ jobs:
 
     - name: Notarize
       run: |
-        xcrun altool --notarize-app --primary-bundle-id com.xctesthtmlreport.xctesthtmlreport -u ${{ secrets.AC_USERNAME }} -p ${{ secrets.AC_PASSWORD }} -f ${{ steps.get_version.outputs.archive_name }} --output-format json
+        xcrun notarytool submit ${{ steps.get_version.outputs.archive_name }} --apple-id ${{ secrets.AC_USERNAME }} --password ${{ secrets.AC_PASSWORD }} --team-id 352UZEKYPP --wait
 #        gon -log-level=info gon.json
 #       env:
 #         AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
@@ -82,6 +82,6 @@ jobs:
       with:
         prerelease: ${{ contains(github.ref, '-') }}
         files: |
-          artifact-*/xchtmlreport-*
+          application/xchtmlreport-*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
