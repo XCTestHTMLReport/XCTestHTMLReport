@@ -22,45 +22,35 @@ jobs:
         p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
         p12-password: ${{ secrets.P12_PASSWORD }}
 
-#     - name: Install Gon
-#       run: |
-#         brew tap mitchellh/gon
-#         brew install mitchellh/gon/gon
-
     - name: Xcode Select
       uses: devbotsxyz/xcode-select@v1.1.0
       with:
         version: latest
 
-    - name: Get version
-      id: get_version
+    - name: Generate Metadata
+      id: metadata
       run: |
         echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
         echo ::set-output name=archive_name::xchtmlreport-${GITHUB_REF/refs\/tags\//}.zip
+        echo ::set-output name=identity::"Developer ID Application: Tyler Vick (${secrets.AC_TEAM_ID})"
 
     - name: Build
       run: swift build -v -c release
       
     - name: Sign
       run: |
-        codesign --verbose --verify --options=runtime -f -s "Developer ID Application: Tyler Vick (352UZEKYPP)" .build/x86_64-apple-macosx/release/xchtmlreport
+        codesign --verbose --verify --options=runtime -f -s ${{ steps.metadata.outputs.identity }} .build/x86_64-apple-macosx/release/xchtmlreport
     
     - name: Verify
       run: codesign -vvv --deep --strict .build/x86_64-apple-macosx/release/xchtmlreport
 
     - name: Package
       run: |
-        ditto -c -k --keepParent ".build/x86_64-apple-macosx/release/xchtmlreport" ${{ steps.get_version.outputs.archive_name }}
+        ditto -c -k --keepParent ".build/x86_64-apple-macosx/release/xchtmlreport" ${{ steps.metadata.outputs.archive_name }}
 
     - name: Notarize
       run: |
-        xcrun notarytool submit ${{ steps.get_version.outputs.archive_name }} --apple-id ${{ secrets.AC_USERNAME }} --password ${{ secrets.AC_PASSWORD }} --team-id 352UZEKYPP --wait
-#        gon -log-level=info gon.json
-#       env:
-#         AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
-#         AC_USERNAME: ${{ secrets.AC_USERNAME }}
-#         ARCHIVE_NAME: ${{ steps.get_version.outputs.archive_name }}
-        
+        xcrun notarytool submit ${{ steps.metadata.outputs.archive_name }} --apple-id ${{ secrets.AC_USERNAME }} --password ${{ secrets.AC_PASSWORD }} --team-id ${{ secrets.AC_TEAM_ID }} --wait
 
     - name: Archive
       uses: actions/upload-artifact@v2
