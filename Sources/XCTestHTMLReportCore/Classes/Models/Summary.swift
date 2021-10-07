@@ -67,9 +67,7 @@ public struct Summary
     public func deleteUnattachedFiles() {
         Logger.substep("Deleting unattached files..")
         var deletedFilesCount = 0
-        for run in runs {
-            deletedFilesCount += removeUnattachedFiles(run: run)
-        }
+        deletedFilesCount = removeUnattachedFiles(runs: runs)
         Logger.substep("Deleted \(deletedFilesCount) unattached files")
     }
 }
