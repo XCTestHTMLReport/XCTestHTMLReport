@@ -24,15 +24,19 @@ When reporting issues, please include the following:
 * The version of Xcode you're using
 * The version of iOS or OS X you're targeting
 * The full output of the command
-* An archive of the resultBundlePath
+* An archive of the resultBundlePath (Whenever possible)
 * Any other details that would be useful in understanding the problem
 
 This information will help  review and fix your issue faster.
 
-[Create an issue](https://github.com/TitouanVanBelle/XCTestHTMLReport/issues/new)
+[Create an issue](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/new)
 
 ## Submitting Pull Requests
 
 Pull requests are welcome, and greatly encouraged. When submitting a pull request, please add a description that explains what the changes are about. Link the ticket whenever possible.
+
+* As usual, anyone can clone the repository. Then do the fixes/improvements as needed in own repository. When it is finished you can start the request to pull code from your own repo to XCTestHTMLReport repo. 
+
+
 
 *Some of the ideas and wording for the statements above were based on [AFNetworking](https://github.com/AFNetworking/AFNetworking).
