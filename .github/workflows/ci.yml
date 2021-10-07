@@ -1,0 +1,31 @@
+name: CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        xcode_version: [12.5, 13.0]
+    runs-on: macos-11
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Xcode Select
+      uses: devbotsxyz/xcode-select@v1.1.0
+      with:
+        version: ${{ matrix.xcode_version }}
+
+    - name: Build
+      run: swift build -v -c release
+      
+    - name: Test
+      run: |
+        ./prepareTestResults.sh
+        swift test -v
