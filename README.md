@@ -43,9 +43,9 @@ Install latest stable version
 mint install XCTestHTMLReport/XCTestHTMLReport
 ```
 
-Install latest from develop branch
+Install latest from `main` branch
 ```
-mint install XCTestHTMLReport/XCTestHTMLReport@develop
+mint install XCTestHTMLReport/XCTestHTMLReport@main
 ```
 
 ### Homebrew
@@ -57,9 +57,9 @@ Install latest stable version
 brew install XCTestHtmlReport/xchtmlreport/xchtmlreport
 ```
 
-Install latest from develop branch
+Install latest from `main` branch
 ```
-$ wget https://raw.githubusercontent.com/XCTestHTMLReport/XCTestHTMLReport/develop/xchtmlreport.rb
+$ wget https://raw.githubusercontent.com/XCTestHTMLReport/XCTestHTMLReport/main/xchtmlreport.rb
 $ brew install --HEAD --build-from-source xchtmlreport.rb
 ```
 
@@ -107,8 +107,8 @@ JUnit report successfully created at TestResults1.xcresult/report.junit
 
 ## Contribution
 
-Please create an issue whenever you find an issue or think a feature could be a good addition to XCTestHTMLReport. Always make sure to follow the [Contributing Guidelines](https://github.com/TitouanVanBelle/XCTestHTMLReport/blob/master/CONTRIBUTING.md). Feel free to take a shot at these issues.
+Please create an issue whenever you find an issue or think a feature could be a good addition to XCTestHTMLReport. Always make sure to follow the [Contributing Guidelines](https://github.com/XCTestHTMLReport/XCTestHTMLReport/blob/main/CONTRIBUTING.md). Feel free to take a shot at these issues.
 
 ## License
 
-XCTestHTMLReport is [available under the MIT license](https://github.com/TitouanVanBelle/XCTestHTMLReport/blob/master/LICENSE).
+XCTestHTMLReport is [available under the MIT license](https://github.com/XCTestHTMLReport/XCTestHTMLReport/blob/main/LICENSE).
