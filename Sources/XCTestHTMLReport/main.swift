@@ -2,30 +2,25 @@ import ArgumentParser
 import Foundation
 import XCTestHTMLReportCore
 
-
 struct XcTestHtmlReport: ParsableCommand {
-    static var configuration = CommandConfiguration(
-        commandName: "xchtmlreport",
-        version: "2.1.1",
-        shouldDisplay: true)
+    static var configuration = CommandConfiguration(commandName: "xchtmlreport",
+                                                    version: "2.1.1",
+                                                    shouldDisplay: true)
 
-    @Argument(
-        help: ArgumentHelp("results_arg_help".localized),
-        completion: .file(extensions: ["xcresult"]))
+    @Argument(help: ArgumentHelp("results_arg_help".localized),
+              completion: .file(extensions: ["xcresult"]))
     var results: [String] = []
 
     @available(*, deprecated, message: "Result bundle paths may be passed as arguments.")
-    @Option(
-        name: .shortAndLong,
-        help: ArgumentHelp("resultBundlePath_opt_help".localized))
+    @Option(name: .shortAndLong,
+            help: ArgumentHelp("resultBundlePath_opt_help".localized))
     var resultBundlePath: [String] = []
 
     @Option(help: ArgumentHelp("renderingMode_opt_help".localized))
     var renderingMode: Summary.RenderingMode = .linking
 
-    @Option(
-        name: .shortAndLong, parsing: .next,
-        help: ArgumentHelp("output_opt_help".localized), completion: .directory)
+    @Option(name: .shortAndLong, parsing: .next,
+            help: ArgumentHelp("output_opt_help".localized), completion: .directory)
     var output: String?
 
     @Flag(name: .shortAndLong, help: ArgumentHelp("verbose_flag_help".localized))
@@ -45,7 +40,7 @@ struct XcTestHtmlReport: ParsableCommand {
             throw ValidationError("result_bundle_not_provided".localized)
         }
 
-        for result in (results + resultBundlePath) {
+        for result in results + resultBundlePath {
             guard FileManager.default.fileExists(atPath: result) else {
                 throw ValidationError(String(format: "result_bundle_missing".localized, result))
             }
@@ -59,9 +54,9 @@ struct XcTestHtmlReport: ParsableCommand {
 
         guard
             let path = output
-                ?? completeResults.first?
-                .dropLastPathComponent()
-                .addPathComponent("index.html")
+            ?? completeResults.first?
+            .dropLastPathComponent()
+            .addPathComponent("index.html")
         else {
             throw ExitCode(EXIT_FAILURE)
         }
@@ -111,8 +106,8 @@ XcTestHtmlReport.main()
 
 extension Summary.RenderingMode: ExpressibleByArgument {}
 
-extension String {
-    fileprivate var localized: String {
+private extension String {
+    var localized: String {
         NSLocalizedString(self, bundle: .module, comment: "")
     }
 }
