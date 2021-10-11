@@ -1,0 +1,14 @@
+
+// MARK: Command
+"results_arg_help" = "Path to one or more .xcresult bundles";
+"resultBundlePath_opt_help" = "Path to a result bundle (allows multiple)\nDEPRECATED: Result bundle paths may be passed as arguments.";
+"renderingMode_opt_help" = "Render attachments inline or as linked assets";
+"output_opt_help" = "Output directory, defaults to the first provided xcresult";
+"verbose_flag_help" = "Provide additional logs";
+"junitEnabled_flag_help" = "Provide JUnit XML output";
+"downsizeImages_flag_help" = "Downsize image screenshots";
+"deleteUnattachedFiles_flag_help" = "Delete unattached files from bundle, reducing bundle size";
+
+// MARK: Validation
+"result_bundle_not_provided" = "Bundles must be provided either by args or the -r option";
+"result_bundle_missing" = "Bundle %@ not found";
