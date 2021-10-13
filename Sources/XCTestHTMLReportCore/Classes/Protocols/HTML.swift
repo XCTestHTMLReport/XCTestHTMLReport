@@ -18,7 +18,9 @@ extension HTML
 {
     var html: String {
         return htmlPlaceholderValues.reduce(htmlTemplate, { (accumulator: String, rel: (String, String)) -> String in
-            return accumulator.replacingOccurrences(of: "[[\(rel.0)]]", with: rel.1)
+            return autoreleasepool {
+                accumulator.replacingOccurrences(of: "[[\(rel.0)]]", with: rel.1)
+            }
         })
     }
 }
