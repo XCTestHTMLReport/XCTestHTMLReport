@@ -59,8 +59,8 @@ brew install XCTestHtmlReport/xchtmlreport/xchtmlreport
 
 Install latest from `main` branch
 ```
-$ wget https://raw.githubusercontent.com/XCTestHTMLReport/XCTestHTMLReport/main/xchtmlreport.rb
-$ brew install --HEAD --build-from-source xchtmlreport.rb
+
+brew install XCTestHtmlReport/xchtmlreport/xchtmlreport --HEAD
 ```
 
 ## Usage
