@@ -13,7 +13,7 @@ public struct Summary
 {
     let runs: [Run]
 
-    public enum RenderingMode {
+    public enum RenderingMode: String {
         case inline
         case linking
     }

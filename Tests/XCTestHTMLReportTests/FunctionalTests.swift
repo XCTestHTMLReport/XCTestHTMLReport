@@ -8,10 +8,10 @@ final class FunctionalTests: XCTestCase {
 
         let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(args: [])
 
-        XCTAssertEqual(status, 1)
-        XCTAssertEqual(maybeStdErr?.isEmpty, true)
-        let stdOut = try XCTUnwrap(maybeStdOut)
-        XCTAssertContains(stdOut, "Error: Argument -r is required")
+        XCTAssertEqual(status, 64)
+        XCTAssertEqual(maybeStdOut?.isEmpty, true)
+        let stdErr = try XCTUnwrap(maybeStdErr)
+        XCTAssertContains(stdErr, "Error: Bundles must be provided either by args or the -r option")
     }
 
     func testBasicFunctionality() throws {
