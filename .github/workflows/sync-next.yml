@@ -24,4 +24,4 @@ jobs:
 #           PULL_REQUEST_TITLE: # optional
           # What you would like in the body of the pull request. Default: 'New code has just landed in {fromBranch} so let's bring {toBranch} up to speed!'
 #           PULL_REQUEST_BODY: # optional
-          REVIEWERS: "['tylervick', 'nacho4d' ]"
+          REVIEWERS: '["tylervick"]'
