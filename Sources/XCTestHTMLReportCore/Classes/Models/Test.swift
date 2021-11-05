@@ -73,35 +73,46 @@ struct Test: HTML
         let a = subTests.reduce(0) { $0 + $1.amountSubTests }
         return a == 0 ? subTests.count : a
     }
+    
+    var isEmpty: Bool {
+        return allSubTests.isEmpty && activities.isEmpty
+    }
 
-    init(group: ActionTestSummaryGroup, file: ResultFile, renderingMode: Summary.RenderingMode) {
+    init?(group: ActionTestSummaryGroup, file: ResultFile, renderingArgs: RenderingArguments) {
         self.uuid = NSUUID().uuidString
         self.identifier = group.identifier ?? "---identifier-not-found---"
         self.duration = group.duration
         self.name = group.name ?? "---group-name-not-found---"
         if group.subtests.isEmpty {
-            self.subTests = group.subtestGroups.map { Test(group: $0, file: file, renderingMode: renderingMode) }
+            self.subTests = group.subtestGroups.compactMap { Test(group: $0, file: file, renderingArgs: renderingArgs) }
         } else {
-            self.subTests = group.subtests.map { Test(metadata: $0, file: file, renderingMode: renderingMode) }
+            self.subTests = group.subtests.compactMap { Test(metadata: $0, file: file, renderingArgs: renderingArgs) }
         }
         self.objectClass = .testSummaryGroup
         self.activities = []
         self.status = .unknown // ???: Usefull?
         testScreenshotFlow = TestScreenshotFlow(activities: activities)
+        if isEmpty {
+            return nil
+        }
     }
 
-    init(metadata: ActionTestMetadata, file: ResultFile, renderingMode: Summary.RenderingMode) {
+    init?(metadata: ActionTestMetadata, file: ResultFile, renderingArgs: RenderingArguments) {
+        let status = Status(rawValue: metadata.testStatus) ?? .failure
+        if status == .success && renderingArgs.failingTestsOnly {
+            return nil
+        }
         self.uuid = NSUUID().uuidString
         self.identifier = metadata.identifier
         self.duration = metadata.duration ?? 0
         self.name = metadata.name
         self.subTests = []
-        self.status = Status(rawValue: metadata.testStatus) ?? .failure
+        self.status = status
         self.objectClass = .testSummary
         if let id = metadata.summaryRef?.id,
             let actionTestSummary = file.getActionTestSummary(id: id) {
             self.activities = actionTestSummary.activitySummaries.map {
-                Activity(summary: $0, file: file, padding: 20, renderingMode: renderingMode)
+                Activity(summary: $0, file: file, padding: 20, renderingMode: renderingArgs.renderingMode)
             }
         } else {
             self.activities = []

@@ -46,7 +46,7 @@ struct Run: HTML
         return allTests.filter { $0.status == .failure }.count
     }
 
-    init?(action: ActionRecord, file: ResultFile, renderingMode: Summary.RenderingMode) {
+    init?(action: ActionRecord, file: ResultFile, renderingArgs: RenderingArguments) {
         self.file = file
         self.runDestination = RunDestination(record: action.runDestination)
 
@@ -62,7 +62,7 @@ struct Run: HTML
         if let logReference = action.actionResult.logRef {
             self.logContent = file.exportLogsContent(
                 id: logReference.id,
-                renderingMode: renderingMode
+                renderingMode: renderingArgs.renderingMode
             )
         } else {
             Logger.warning("Can't find test reference for action \(action.title ?? "")")
@@ -70,7 +70,7 @@ struct Run: HTML
         }
         self.testSummaries = testPlanSummaries.summaries
             .flatMap { $0.testableSummaries }
-            .map { TestSummary(summary: $0, file: file, renderingMode: renderingMode) }
+            .compactMap { TestSummary(summary: $0, file: file, renderingArgs: renderingArgs) }
     }
 
     private var logSource: String? {

@@ -16,7 +16,6 @@ class Argument
     }
 
     let shortFlag: String
-
     let optionName: String?
     let helpMessage: String
     let type: ArgumentType

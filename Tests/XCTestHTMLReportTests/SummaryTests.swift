@@ -14,7 +14,7 @@ final class SummaryTests: XCTestCase {
 
     func testBasicFunctionality() throws {
         let testResultsUrl = try XCTUnwrap(Bundle.testBundle.url(forResource: "TestResults", withExtension: "xcresult"))
-        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking)
+        let summary = Summary(resultPaths: [testResultsUrl.path], renderingArgs: RenderingArguments(renderingMode: .linking, failingTestsOnly: false))
         let html = summary.html
         let parser = NDHpple(htmlData: html)
 
