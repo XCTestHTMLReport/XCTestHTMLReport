@@ -121,8 +121,7 @@ struct Test: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "UUID": uuid,
-            ///"NAME": name + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
-            "NAME": name + (" - \(subTests.count) tests"),
+            "NAME": name + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
             "TIME": duration.timeString,
             "SUB_TESTS": subTests.reduce("") { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
