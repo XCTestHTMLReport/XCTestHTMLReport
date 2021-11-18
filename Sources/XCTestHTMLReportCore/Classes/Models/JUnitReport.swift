@@ -24,7 +24,6 @@ struct JUnitReport
         var tests: Int
         var failures: Int {
             return uniqueCases.filter { $0.state == .failed }.count
-            //return cases.filter { $0.state == .failed }.count
         }
         var cases: [TestCase]
         var uniqueCases: [TestCase] {
