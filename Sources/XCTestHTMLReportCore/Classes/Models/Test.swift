@@ -54,7 +54,7 @@ struct Test: HTML
     let uuid: String
     let identifier: String
     let duration: Double
-    let name: String
+    var name: String
     var subTests: [Test]
     let activities: [Activity]
     let status: Status
@@ -134,22 +134,26 @@ struct Test: HTML
     }
     
     func removeDuplicateElements(testcases: [Test]) -> [Test] {
-        print("running removeDuplicateElements")
         var uniqueTests = [Test]()
         for testcase in testcases {
-            print("testcase.identifier is \(testcase.identifier)")
-            print("testcase.name is \(testcase.name)")
-            print("testcase.activities is \(testcase.activities)")
-            print("testcase.uuid is \(testcase.uuid)")
-            print("testcase.subTests is \(testcase.subTests)")
-            print("testcase.subTests count is \(testcase.subTests.count)")
-            print("testcase.objectClass is \(testcase.objectClass)")
-            print("testcase.status is \(testcase.status)")
-            print("testcase.testScreenshotFlow is \(testcase.testScreenshotFlow)")
             if !uniqueTests.contains(where: {$0.identifier == testcase.identifier && $0.objectClass == .testSummary }) {
                 uniqueTests.append(testcase)
             }
         }
         return uniqueTests
     }
+    
+    func appendNameForRetriedTests(testcases: [Test]) -> [Test] {
+        var allTests = [Test]()
+        for var testcase in testcases {
+            let duplicateTest = allTests.filter({ $0.identifier == testcase.identifier && $0.objectClass == .testSummary })
+            let count = duplicateTest.count
+            if count > 0 {
+                testcase.name = testcase.name + " - retry iteration \(count + 1)"
+            }
+            allTests.append(testcase)
+        }
+        return allTests
+    }
+
 }
