@@ -83,12 +83,12 @@ struct Test: HTML
             self.subTests = group.subtestGroups.map { Test(group: $0, file: file, renderingMode: renderingMode) }
         } else {
             self.subTests = group.subtests.map { Test(metadata: $0, file: file, renderingMode: renderingMode) }
-            
         }
         self.objectClass = .testSummaryGroup
         self.activities = []
         self.status = .unknown // ???: Usefull?
         testScreenshotFlow = TestScreenshotFlow(activities: activities)
+        subTests = removeDuplicateElements(testcases: self.subTests)
     }
 
     init(metadata: ActionTestMetadata, file: ResultFile, renderingMode: Summary.RenderingMode) {
@@ -107,8 +107,7 @@ struct Test: HTML
         } else {
             self.activities = []
         }
-        testScreenshotFlow = TestScreenshotFlow(activities: activities)
-        subTests = removeDuplicateElements(testcases: self.subTests)
+        testScreenshotFlow = TestScreenshotFlow(activities: activities)        
     }
 
     // PRAGMA MARK: - HTML
