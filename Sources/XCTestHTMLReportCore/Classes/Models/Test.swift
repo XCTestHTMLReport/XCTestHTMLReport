@@ -108,7 +108,7 @@ struct Test: HTML
             self.activities = []
         }
         testScreenshotFlow = TestScreenshotFlow(activities: activities)
-        subTests = removeDuplicateElements(testcases: self.subTests)        
+        subTests = removeDuplicateElements(testcases: self.subTests)
     }
 
     // PRAGMA MARK: - HTML
