@@ -32,18 +32,26 @@ struct Run: HTML
                 : test.allSubTests
         }
     }
+    var allUniqueTests: [Test] {
+        let tests = testSummaries.flatMap { $0.tests }
+        return tests.flatMap { test -> [Test] in
+            return test.allUniqueSubTests.isEmpty
+                ? [test]
+                : test.allUniqueSubTests
+        }
+    }
     var numberOfTests : Int {
-        let a = allTests
+        let a = allUniqueTests
         return a.count
     }
     var numberOfPassedTests : Int {
-        return allTests.filter { $0.status == .success }.count
+        return allUniqueTests.filter { $0.status == .success }.count
     }
     var numberOfSkippedTests : Int {
-        return allTests.filter { $0.status == .skipped }.count
+        return allUniqueTests.filter { $0.status == .skipped }.count
     }
     var numberOfFailedTests : Int {
-        return allTests.filter { $0.status == .failure }.count
+        return allUniqueTests.filter { $0.status == .failure }.count
     }
 
     init?(action: ActionRecord, file: ResultFile, renderingMode: Summary.RenderingMode) {

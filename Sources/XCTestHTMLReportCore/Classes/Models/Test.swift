@@ -54,8 +54,7 @@ struct Test: HTML
     let uuid: String
     let identifier: String
     let duration: Double
-    let name: String
-    var reportName: String
+    var name: String
     var subTests: [Test]
     let activities: [Activity]
     let status: Status
@@ -66,8 +65,16 @@ struct Test: HTML
         return removeDuplicateElements(testcases: subTests)
     }
     
-    var allSubTests: [Test] {
+    var allUniqueSubTests: [Test] {
         return subTestsUnique.flatMap { test -> [Test] in
+            return test.allUniqueSubTests.isEmpty
+                ? [test]
+                : test.allUniqueSubTests
+        }
+    }
+    
+    var allSubTests: [Test] {
+        return subTests.flatMap { test -> [Test] in
             return test.allSubTests.isEmpty
                 ? [test]
                 : test.allSubTests
@@ -83,9 +90,7 @@ struct Test: HTML
         self.uuid = NSUUID().uuidString
         self.identifier = group.identifier ?? "---identifier-not-found---"
         self.duration = group.duration
-        let name = group.name ?? "---group-name-not-found---"
-        self.name = name
-        self.reportName = name
+        self.name = group.name ?? "---group-name-not-found---"
         if group.subtests.isEmpty {
             self.subTests = group.subtestGroups.map { Test(group: $0, file: file, renderingMode: renderingMode) }
         } else {
@@ -102,9 +107,7 @@ struct Test: HTML
         self.uuid = NSUUID().uuidString
         self.identifier = metadata.identifier
         self.duration = metadata.duration ?? 0
-        let name = metadata.name
-        self.name = name
-        self.reportName = name
+        self.name = metadata.name
         self.subTests = []
         self.status = Status(rawValue: metadata.testStatus) ?? .failure
         self.objectClass = .testSummary
@@ -126,7 +129,7 @@ struct Test: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "UUID": uuid,
-            "NAME": reportName + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
+            "NAME": name + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
             "TIME": duration.timeString,
             "SUB_TESTS": subTests.reduce("") { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
@@ -165,7 +168,7 @@ struct Test: HTML
         for var testcase in testcases {
             let duplicateTestCount = allTests.filter({ $0.identifier == testcase.identifier && $0.objectClass == .testSummary }).count
             if duplicateTestCount > 0 {
-                testcase.reportName = testcase.reportName + " - retry iteration \(duplicateTestCount + 1)"
+                testcase.name = testcase.name + " - retry iteration \(duplicateTestCount + 1)"
             }
             allTests.append(testcase)
         }
