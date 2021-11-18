@@ -55,7 +55,7 @@ struct Test: HTML
     let identifier: String
     let duration: Double
     let name: String
-    let subTests: [Test]
+    var subTests: [Test]
     let activities: [Activity]
     let status: Status
     let objectClass: ObjectClass
@@ -83,6 +83,7 @@ struct Test: HTML
             self.subTests = group.subtestGroups.map { Test(group: $0, file: file, renderingMode: renderingMode) }
         } else {
             self.subTests = group.subtests.map { Test(metadata: $0, file: file, renderingMode: renderingMode) }
+            
         }
         self.objectClass = .testSummaryGroup
         self.activities = []
@@ -107,6 +108,7 @@ struct Test: HTML
             self.activities = []
         }
         testScreenshotFlow = TestScreenshotFlow(activities: activities)
+        subTests = removeDuplicateElements(testcases: self.subTests)        
     }
 
     // PRAGMA MARK: - HTML
@@ -116,7 +118,8 @@ struct Test: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "UUID": uuid,
-            "NAME": name + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
+            ///"NAME": name + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
+            "NAME": name + (" - \(subTests.count) tests"),
             "TIME": duration.timeString,
             "SUB_TESTS": subTests.reduce("") { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
@@ -129,5 +132,25 @@ struct Test: HTML
             "SCREENSHOT_FLOW": testScreenshotFlow?.screenshots.accumulateHTMLAsString ?? "",
             "SCREENSHOT_TAIL": testScreenshotFlow?.screenshotsTail.accumulateHTMLAsString ?? ""
         ]
+    }
+    
+    func removeDuplicateElements(testcases: [Test]) -> [Test] {
+        print("running removeDuplicateElements")
+        var uniqueTests = [Test]()
+        for testcase in testcases {
+            print("testcase.identifier is \(testcase.identifier)")
+            print("testcase.name is \(testcase.name)")
+            print("testcase.activities is \(testcase.activities)")
+            print("testcase.uuid is \(testcase.uuid)")
+            print("testcase.subTests is \(testcase.subTests)")
+            print("testcase.subTests count is \(testcase.subTests.count)")
+            print("testcase.objectClass is \(testcase.objectClass)")
+            print("testcase.status is \(testcase.status)")
+            print("testcase.testScreenshotFlow is \(testcase.testScreenshotFlow)")
+            if !uniqueTests.contains(where: {$0.identifier == testcase.identifier && $0.objectClass == .testSummary }) {
+                uniqueTests.append(testcase)
+            }
+        }
+        return uniqueTests
     }
 }
