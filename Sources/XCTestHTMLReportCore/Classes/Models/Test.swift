@@ -100,7 +100,7 @@ struct Test: HTML
         self.identifier = metadata.identifier
         self.duration = metadata.duration ?? 0
         self.name = metadata.name
-        self.subTests = []        
+        self.subTests = []
         self.status = Status(rawValue: metadata.testStatus) ?? .failure
         self.objectClass = .testSummary
         if let id = metadata.summaryRef?.id,
@@ -136,12 +136,21 @@ struct Test: HTML
             "SCREENSHOT_TAIL": testScreenshotFlow?.screenshotsTail.accumulateHTMLAsString ?? ""
         ]
     }
-    
+
     func removeDuplicateElements(testcases: [Test]) -> [Test] {
         var uniqueTests = [Test]()
         for testcase in testcases {
-            if !uniqueTests.contains(where: {$0.identifier == testcase.identifier && $0.objectClass == .testSummary }) {
+            let duplicatecases = uniqueTests.filter({ $0.identifier == testcase.identifier && $0.objectClass == .testSummary })
+            if duplicatecases.count == 0 {
                 uniqueTests.append(testcase)
+            } else {
+                /// Passed test should take presendence over failed for counting purposes
+                for duplicatecase in duplicatecases {
+                    if duplicatecase.status != .success && testcase.status == .success {
+                        uniqueTests.removeAll { $0.identifier == testcase.identifier && $0.objectClass == .testSummary }
+                        uniqueTests.append(testcase)
+                    }
+                }
             }
         }
         return uniqueTests
@@ -150,10 +159,9 @@ struct Test: HTML
     func appendNameForRetriedTests(testcases: [Test]) -> [Test] {
         var allTests = [Test]()
         for var testcase in testcases {
-            let duplicateTest = allTests.filter({ $0.identifier == testcase.identifier && $0.objectClass == .testSummary })
-            let count = duplicateTest.count
-            if count > 0 {
-                testcase.name = testcase.name + " - retry iteration \(count + 1)"
+            let duplicateTestCount = allTests.filter({ $0.identifier == testcase.identifier && $0.objectClass == .testSummary }).count
+            if duplicateTestCount > 0 {
+                testcase.name = testcase.name + " - retry iteration \(duplicateTestCount + 1)"
             }
             allTests.append(testcase)
         }
