@@ -194,7 +194,6 @@ extension JUnitReport.TestSuite
         name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.deviceInfo
         tests = run.numberOfTests        
         cases = run.allTests.map { JUnitReport.TestCase(run: run, test: $0) }
-        cases = appendNameForRetriedTestCases(testcases: cases)
     }
     
     func removeDuplicateTestCases(testcases: [JUnitReport.TestCase]) -> [JUnitReport.TestCase] {
@@ -214,18 +213,6 @@ extension JUnitReport.TestSuite
             }
         }
         return uniqueTests
-    }
-    
-    func appendNameForRetriedTestCases(testcases: [JUnitReport.TestCase]) -> [JUnitReport.TestCase] {
-        var allTests = [JUnitReport.TestCase]()
-        for var testcase in testcases {
-            let duplicateTestCount = allTests.filter({ $0.classname == testcase.classname && $0.name == testcase.name }).count
-            if duplicateTestCount > 0 {
-                testcase.name = testcase.name + " - retry iteration \(duplicateTestCount + 1)"
-            }
-            allTests.append(testcase)
-        }
-        return allTests
     }
 }
 
