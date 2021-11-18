@@ -14,7 +14,7 @@ struct JUnitReport
     var tests: Int {
         return suites.map { $0.tests }.reduce(0, { $0 + $1 })
     }
-    var failures: Int {
+    var failures: Int {        
         return suites.map { $0.failures }.reduce(0, { $0 + $1 })
     }
     var suites: [TestSuite]
@@ -23,9 +23,13 @@ struct JUnitReport
         var name: String
         var tests: Int
         var failures: Int {
-            return cases.filter { $0.state == .failed }.count
+            return uniqueCases.filter { $0.state == .failed }.count
+            //return cases.filter { $0.state == .failed }.count
         }
         var cases: [TestCase]
+        var uniqueCases: [TestCase] {
+            return removeDuplicateTestCases(testcases: cases)
+        }
     }
 
     struct TestCase {
@@ -189,8 +193,27 @@ extension JUnitReport.TestSuite
     init(run: Run)
     {
         name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.deviceInfo
-        tests = run.numberOfTests
+        tests = run.numberOfTests        
         cases = run.allTests.map { JUnitReport.TestCase(run: run, test: $0) }
+    }
+    
+    func removeDuplicateTestCases(testcases: [JUnitReport.TestCase]) -> [JUnitReport.TestCase] {
+        var uniqueTests = [JUnitReport.TestCase]()
+        for testcase in testcases {
+            let duplicatecases = uniqueTests.filter({ $0.classname == testcase.classname && $0.name == testcase.name })
+            if duplicatecases.count == 0 {
+                uniqueTests.append(testcase)
+            } else {
+                /// Passed test should take presendence over failed for counting purposes
+                for duplicatecase in duplicatecases {
+                    if duplicatecase.state == .failed && testcase.state != .failed {
+                        uniqueTests.removeAll { $0.classname == testcase.classname && $0.name == testcase.name }
+                        uniqueTests.append(testcase)
+                    }
+                }
+            }
+        }
+        return uniqueTests
     }
 }
 
