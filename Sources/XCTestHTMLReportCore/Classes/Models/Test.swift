@@ -61,8 +61,12 @@ struct Test: HTML
     let objectClass: ObjectClass
     let testScreenshotFlow: TestScreenshotFlow?
 
+    var subTestsUnique: [Test] {
+        return removeDuplicateElements(testcases: subTests)
+    }
+    
     var allSubTests: [Test] {
-        return subTests.flatMap { test -> [Test] in
+        return subTestsUnique.flatMap { test -> [Test] in
             return test.allSubTests.isEmpty
                 ? [test]
                 : test.allSubTests
@@ -70,8 +74,8 @@ struct Test: HTML
     }
 
     var amountSubTests: Int {
-        let a = subTests.reduce(0) { $0 + $1.amountSubTests }
-        return a == 0 ? subTests.count : a
+        let a = subTestsUnique.reduce(0) { $0 + $1.amountSubTests }
+        return a == 0 ? subTestsUnique.count : a
     }
 
     init(group: ActionTestSummaryGroup, file: ResultFile, renderingMode: Summary.RenderingMode) {
@@ -88,7 +92,7 @@ struct Test: HTML
         self.activities = []
         self.status = .unknown // ???: Usefull?
         testScreenshotFlow = TestScreenshotFlow(activities: activities)
-        subTests = removeDuplicateElements(testcases: self.subTests)
+        self.subTests = appendNameForRetriedTests(testcases: self.subTests)
     }
 
     init(metadata: ActionTestMetadata, file: ResultFile, renderingMode: Summary.RenderingMode) {
@@ -96,7 +100,7 @@ struct Test: HTML
         self.identifier = metadata.identifier
         self.duration = metadata.duration ?? 0
         self.name = metadata.name
-        self.subTests = []
+        self.subTests = []        
         self.status = Status(rawValue: metadata.testStatus) ?? .failure
         self.objectClass = .testSummary
         if let id = metadata.summaryRef?.id,
