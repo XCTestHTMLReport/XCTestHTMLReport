@@ -79,4 +79,12 @@ class FirstSuite: XCTestCase {
             XCTAssert(false, "Test with \(specialChars) failed on purpose")
         }
     }
+    
+    /// This test is a good candidate to test retry test counts for a partial failed case
+    func testThree() {
+        let array = [1, 2, 3, 5, 7, 8, 9]
+        let randomItem = array.randomElement() ?? 3
+        print("random item selected from the array is \(randomItem)")
+        XCTAssert(randomItem % 2 == 0, "random item is not an even number")
+    }
 }

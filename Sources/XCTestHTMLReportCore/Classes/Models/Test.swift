@@ -54,7 +54,8 @@ struct Test: HTML
     let uuid: String
     let identifier: String
     let duration: Double
-    var name: String
+    let name: String
+    var reportName: String
     var subTests: [Test]
     let activities: [Activity]
     let status: Status
@@ -82,7 +83,9 @@ struct Test: HTML
         self.uuid = NSUUID().uuidString
         self.identifier = group.identifier ?? "---identifier-not-found---"
         self.duration = group.duration
-        self.name = group.name ?? "---group-name-not-found---"
+        let name = group.name ?? "---group-name-not-found---"
+        self.name = name
+        self.reportName = name
         if group.subtests.isEmpty {
             self.subTests = group.subtestGroups.map { Test(group: $0, file: file, renderingMode: renderingMode) }
         } else {
@@ -99,7 +102,9 @@ struct Test: HTML
         self.uuid = NSUUID().uuidString
         self.identifier = metadata.identifier
         self.duration = metadata.duration ?? 0
-        self.name = metadata.name
+        let name = metadata.name
+        self.name = name
+        self.reportName = name
         self.subTests = []
         self.status = Status(rawValue: metadata.testStatus) ?? .failure
         self.objectClass = .testSummary
@@ -121,7 +126,7 @@ struct Test: HTML
     var htmlPlaceholderValues: [String: String] {
         return [
             "UUID": uuid,
-            "NAME": name + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
+            "NAME": reportName + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
             "TIME": duration.timeString,
             "SUB_TESTS": subTests.reduce("") { (accumulator: String, test: Test) -> String in
                 return accumulator + test.html
@@ -160,11 +165,10 @@ struct Test: HTML
         for var testcase in testcases {
             let duplicateTestCount = allTests.filter({ $0.identifier == testcase.identifier && $0.objectClass == .testSummary }).count
             if duplicateTestCount > 0 {
-                testcase.name = testcase.name + " - retry iteration \(duplicateTestCount + 1)"
+                testcase.reportName = testcase.reportName + " - retry iteration \(duplicateTestCount + 1)"
             }
             allTests.append(testcase)
         }
         return allTests
     }
-
 }
