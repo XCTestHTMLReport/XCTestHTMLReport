@@ -9,7 +9,7 @@ rm -rf "$FILENAME"
 xcodebuild test \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
-    -destination 'platform=iOS Simulator,name=iPhone 8 15.0' \
+    -destination 'platform=iOS Simulator,name=iPhone 8,OS=latest' \
     -resultBundlePath "$FILENAME" \
     -only-testing:SampleAppUITests/FirstSuite \
     -only-testing:SampleAppUITests/SecondSuite \
@@ -20,7 +20,7 @@ rm -rf "$RETRY_FILENAME"
 xcodebuild test \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
-    -destination 'platform=iOS Simulator,name=iPhone 8 15.0' \
+    -destination 'platform=iOS Simulator,name=iPhone 8,OS=latest' \
     -resultBundlePath "$RETRY_FILENAME" \
     -test-iterations 2 \
     -retry-tests-on-failure \
