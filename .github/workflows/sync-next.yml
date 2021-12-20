@@ -1,0 +1,27 @@
+name: Sync \"next\" branch
+
+on:
+  push:
+    branches: [ main ]
+
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions: 
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Sync branches
+        uses: TreTuna/sync-branches@1.4.0
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FROM_BRANCH: main
+          TO_BRANCH: next
+          # What you would like as the title of the pull request. Default: 'sync: {FROM_BRANCH} to {TO_BRANCH}'
+#           PULL_REQUEST_TITLE: # optional
+          # What you would like in the body of the pull request. Default: 'New code has just landed in {fromBranch} so let's bring {toBranch} up to speed!'
+#           PULL_REQUEST_BODY: # optional
+          REVIEWERS: '["tylervick"]'
