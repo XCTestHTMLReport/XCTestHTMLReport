@@ -10,21 +10,20 @@ xcodebuild test \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
     -destination 'platform=iOS Simulator,name=iPhone 8,OS=latest' \
-    -resultBundlePath "$FILENAME" \
-    -only-testing:SampleAppUITests/FirstSuite \
-    -only-testing:SampleAppUITests/SecondSuite \
-    -only-testing:SampleAppUITests/ThirdSuite || true
-    
+    -skip-testing:SampleAppUITests/RetryTests \
+    -resultBundlePath "$FILENAME" || true
+
+# "Mixed" test results must be run separately to use -retry-tests-on-failure
 RETRY_FILENAME='RetryResults.xcresult'
 rm -rf "$RETRY_FILENAME"
 xcodebuild test \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
     -destination 'platform=iOS Simulator,name=iPhone 8,OS=latest' \
-    -resultBundlePath "$RETRY_FILENAME" \
     -test-iterations 2 \
     -retry-tests-on-failure \
-    -only-testing:SampleAppUITests/RetryTests || true
+    -only-testing:SampleAppUITests/RetryTests \
+    -resultBundlePath "$RETRY_FILENAME" || true
 
 echo "Even if some test failed this is OK."
 
