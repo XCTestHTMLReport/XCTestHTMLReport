@@ -39,6 +39,7 @@
 
 /* Begin PBXFileReference section */
 		30EF691427712BD600F96080 /* RetryTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RetryTests.swift; sourceTree = "<group>"; };
+		30F4276027727197005E8FC8 /* TestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; name = TestPlan.xctestplan; path = ../../../../../Desktop/TestPlan.xctestplan; sourceTree = "<group>"; };
 		77239F5720CFAD7000BAB94E /* ThirdSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThirdSuite.swift; sourceTree = "<group>"; };
 		F3223CEF1F26341D00BEDA4A /* iPhone.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = iPhone.png; sourceTree = "<group>"; };
 		F39729071F2471A7006B1EF3 /* SecondSuite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecondSuite.swift; sourceTree = "<group>"; };
@@ -118,6 +119,7 @@
 		F3AB013F1F2459FA00334580 /* SampleAppUITests */ = {
 			isa = PBXGroup;
 			children = (
+				30F4276027727197005E8FC8 /* TestPlan.xctestplan */,
 				F3223CEF1F26341D00BEDA4A /* iPhone.png */,
 				F3AB01401F2459FA00334580 /* FirstSuite.swift */,
 				F39729071F2471A7006B1EF3 /* SecondSuite.swift */,

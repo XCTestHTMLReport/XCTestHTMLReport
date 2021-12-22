@@ -35,6 +35,7 @@ struct JUnitReport
             case passed
             case skipped
             case errored
+            case mixed
         }
         var classname: String
         var name: String
@@ -152,6 +153,8 @@ extension JUnitReport.TestCase
             state = .passed
         case .skipped:
             state = .skipped
+        case .mixed:
+            state = .mixed
         case .unknown:
             state = .unknown
         }

@@ -23,6 +23,10 @@ class RetryTests: XCTestCase {
     private func shouldSucceed() -> Bool {
         FileManager.default.fileExists(atPath: filePath.path)
     }
+    
+    func testJustPass() {
+        XCTAssertTrue(true)
+    }
 
     // First iteration will always fail, retry will succeed
     func testRetryOnFailure() throws {
