@@ -13,12 +13,7 @@ public struct Summary
 {
     let runs: [Run]
 
-    public enum RenderingMode {
-        case inline
-        case linking
-    }
-
-    public init(resultPaths: [String], renderingMode: RenderingMode) {
+    public init(resultPaths: [String], renderingArgs: RenderingArguments) {
         var runs: [Run] = []
         for resultPath in resultPaths {
             Logger.step("Parsing \(resultPath)")
@@ -29,7 +24,7 @@ public struct Summary
                 break
             }
             let resultRuns = invocationRecord.actions.compactMap {
-                Run(action: $0, file: resultFile, renderingMode: renderingMode)
+                Run(action: $0, file: resultFile, renderingArgs: renderingArgs)
             }
             runs.append(contentsOf: resultRuns)
         }

@@ -90,7 +90,7 @@ struct Attachment: HTML
     let type: AttachmentType
     let name: AttachmentName?
 
-    init(attachment: ActionTestAttachment, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode) {
+    init(attachment: ActionTestAttachment, file: ResultFile, padding: Int = 0, renderingMode: RenderingMode) {
         self.filename = attachment.filename ?? ""
         self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknown
         self.name = attachment.name.map(AttachmentName.init(rawValue:))

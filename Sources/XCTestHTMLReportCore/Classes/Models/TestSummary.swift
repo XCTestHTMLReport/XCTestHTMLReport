@@ -45,11 +45,18 @@ struct TestSummary: HTML
 
         return status
     }
+    
+    var isEmpty: Bool {
+        return tests.isEmpty
+    }
 
-    init(summary: ActionTestableSummary, file: ResultFile, renderingMode: Summary.RenderingMode) {
+    init?(summary: ActionTestableSummary, file: ResultFile, renderingArgs: RenderingArguments) {
         self.uuid = UUID().uuidString
         self.testName = summary.targetName ?? ""
-        self.tests = summary.tests.map { Test(group: $0, file: file, renderingMode: renderingMode) }
+        self.tests = summary.tests.compactMap { Test(group: $0, file: file, renderingArgs: renderingArgs) }
+        if isEmpty {
+            return nil
+        }
     }
 
     // PRAGMA MARK: - HTML

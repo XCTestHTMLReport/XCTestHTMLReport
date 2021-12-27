@@ -16,8 +16,7 @@ struct Command
     var isValid: Bool {
         let flagIndexes = CommandLine.arguments.enumerated().map { $0.element.first == "-" ? $0.offset : nil }.compactMap { $0 }
 
-        for index in 0..<arguments.count {
-            let argument = arguments[index]
+        for argument in arguments {
             let argWithDash = "-" + argument.shortFlag
 
             var argIndexes = CommandLine.arguments.enumerated().filter { $0.element == argWithDash }.map { $0.offset }

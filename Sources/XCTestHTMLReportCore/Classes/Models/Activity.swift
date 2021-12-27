@@ -80,7 +80,7 @@ struct Activity: HTML
         return cls
     }
 
-    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode) {
+    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0, renderingMode: RenderingMode) {
         self.uuid = summary.uuid
         self.startTime = summary.start?.timeIntervalSince1970 ?? 0
         self.finishTime = summary.finish?.timeIntervalSince1970 ?? 0
