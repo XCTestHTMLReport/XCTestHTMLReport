@@ -31,10 +31,10 @@ if [[ $XCODE_VERSION != 12.* && $XCODE_VERSION != 11.* ]]; then
         -retry-tests-on-failure \
         -only-testing:SampleAppUITests/RetryTests \
         -resultBundlePath "$RETRY_FILENAME" || true
-fi
 
-echo "${RETRY_FILENAME} will contain mixed test results"
-rm -rf "../Tests/XCTestHTMLReportTests/${RETRY_FILENAME}"
-mv "$RETRY_FILENAME" "../Tests/XCTestHTMLReportTests/"
+    echo "${RETRY_FILENAME} will contain mixed test results"
+    rm -rf "../Tests/XCTestHTMLReportTests/${RETRY_FILENAME}"
+    mv "$RETRY_FILENAME" "../Tests/XCTestHTMLReportTests/"
+fi
 
 echo "$(tput setaf 2)$(basename "$0") successfully finished$(tput sgr 0)"
