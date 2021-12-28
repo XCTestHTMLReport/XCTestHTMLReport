@@ -31,4 +31,17 @@ final class SummaryTests: XCTestCase {
     static var allTests = [
         ("testBasicFunctionality", testBasicFunctionality),
     ]
+    
+    func testRetryFunctionality() throws {
+        let testResultsUrl = try XCTUnwrap(Bundle.testBundle.url(forResource: "RetryResults", withExtension: "xcresult"))
+        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking)
+        let html = summary.html
+        let parser = NDHpple(htmlData: html)
+        
+        try XCTContext.runActivity(named: "blah", block: { _ in
+            let uls = try XCTUnwrap(parser.peekAtSearch(withQuery: "//div[@class='tests-header']/ul"))
+            let texts = uls.children.filter { $0.name == "li" }.compactMap { $0.text }
+            XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 3)
+        })
+    }
 }

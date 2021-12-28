@@ -9,6 +9,7 @@
 import Foundation
 import XCResultKit
 
+// TODO: Check usages, Status already contains cssClass property
 private extension Status {
     /// e.g. <span class="icon left failure"></span>
     var iconCssClass: String {
@@ -19,6 +20,8 @@ private extension Status {
             return "success"
         case .skipped:
             return "skip"
+        case .mixed:
+            return "mixed"
         default:
             return ""
         }
@@ -27,15 +30,15 @@ private extension Status {
     /// Only show icon for failures
     var iconHTML: String {
         guard self == .failure ||
-              self == .success else {
+            self == .success
+        else {
             return ""
         }
         return "<span class=\"device-result icon left \(iconCssClass)\"></span>"
     }
 }
 
-struct RunDestination : HTML
-{
+struct RunDestination: HTML {
     let name: String
     let targetDevice: TargetDevice
     let status: Status
@@ -52,7 +55,7 @@ struct RunDestination : HTML
     var htmlTemplate = HTMLTemplates.device
 
     var htmlPlaceholderValues: [String: String] {
-        return [
+        [
             "DEVICE_RESULT": status.iconHTML,
             "DEVICE_NAME": name,
             "DEVICE_IDENTIFIER": targetDevice.uniqueIdentifier,

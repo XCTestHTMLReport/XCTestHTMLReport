@@ -8,23 +8,25 @@
 
 import Foundation
 
-struct JUnitReport
-{
+struct JUnitReport {
     var name: String
     var tests: Int {
-        return suites.map { $0.tests }.reduce(0, { $0 + $1 })
+        suites.map(\.tests).reduce(0) { $0 + $1 }
     }
+
     var failures: Int {
-        return suites.map { $0.failures }.reduce(0, { $0 + $1 })
+        suites.map(\.failures).reduce(0) { $0 + $1 }
     }
+
     var suites: [TestSuite]
 
     struct TestSuite {
         var name: String
         var tests: Int
         var failures: Int {
-            return cases.filter { $0.state == .failed }.count
+            cases.filter { $0.state == .failed }.count
         }
+
         var cases: [TestCase]
     }
 
@@ -35,7 +37,9 @@ struct JUnitReport
             case passed
             case skipped
             case errored
+            case mixed
         }
+
         var classname: String
         var name: String
         var time: TimeInterval
@@ -50,19 +54,19 @@ struct JUnitReport
             case systemOut
             case skipped
         }
+
         var title: String
         var state: State
     }
 }
 
-extension JUnitReport: XMLRepresentable
-{
+extension JUnitReport: XMLRepresentable {
     /// e.g. <testsuites name='BonMot-iOSTests.xctest' tests='990' failures='2'>
     var xmlString: String {
         var xml = "<?xml version='1.0' encoding='UTF-8'?>\n"
         xml += "<testsuites name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)'>\n"
 
-        suites.forEach { (suite) in
+        suites.forEach { suite in
             xml += suite.xmlString
         }
 
@@ -72,13 +76,12 @@ extension JUnitReport: XMLRepresentable
     }
 }
 
-extension JUnitReport.TestSuite: XMLRepresentable
-{
+extension JUnitReport.TestSuite: XMLRepresentable {
     /// e.g. <testsuite name='AccessTests' tests='1' failures='0'>
     var xmlString: String {
         var xml = "  <testsuite name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)'>\n"
 
-        cases.forEach { (testcase) in
+        cases.forEach { testcase in
             xml += testcase.xmlString
         }
 
@@ -88,8 +91,7 @@ extension JUnitReport.TestSuite: XMLRepresentable
     }
 }
 
-extension JUnitReport.TestCase: XMLRepresentable
-{
+extension JUnitReport.TestCase: XMLRepresentable {
     /// e.g. <testcase classname='AccessTests' name='testThatThingsThatShouldBePublicArePublic-iPhone8' time='0.007'/>
     var xmlString: String {
         let timeString = String(format: "%.02f", time)
@@ -99,15 +101,14 @@ extension JUnitReport.TestCase: XMLRepresentable
             xml += "/>\n"
         } else {
             xml += ">\n"
-            xml += results.map { $0.xmlString }.joined(separator: "\n")
+            xml += results.map(\.xmlString).joined(separator: "\n")
             xml += "\n    </testcase>\n"
         }
         return xml
     }
 }
 
-extension JUnitReport.TestResult: XMLRepresentable
-{
+extension JUnitReport.TestResult: XMLRepresentable {
     /// e.g.
     ///   <failure message='XCTAssertEqual failed: (&quot;0.0&quot;) is not equal to (&quot;1.0&quot;)'/>
     ///   <system-out>Some message logged to std out</system-out>
@@ -126,20 +127,15 @@ extension JUnitReport.TestResult: XMLRepresentable
     }
 }
 
-
-extension JUnitReport
-{
-    init(summary: Summary)
-    {
+extension JUnitReport {
+    init(summary: Summary) {
         name = "All"
         suites = summary.runs.map { JUnitReport.TestSuite(run: $0) }
     }
 }
 
-extension JUnitReport.TestCase
-{
-    init(run: Run, test: Test)
-    {
+extension JUnitReport.TestCase {
+    init(run: Run, test: Test) {
         let components = test.identifier.components(separatedBy: "/")
         time = test.duration
         name = components.last ?? ""
@@ -152,6 +148,8 @@ extension JUnitReport.TestCase
             state = .passed
         case .skipped:
             state = .skipped
+        case .mixed:
+            state = .mixed
         case .unknown:
             state = .unknown
         }
@@ -161,16 +159,20 @@ extension JUnitReport.TestCase
             let t = activity.subActivities.flatMap { flatSubActivities(of: $0, indent: indent + 1) }
             return [JUnitReport.TestResult(activity: activity, indent: indent)] + t
         }
-        results = test.activities.map {
-            return flatSubActivities(of: $0, indent: 0)
-        }.flatMap { $0 }
+
+        // TODO: Need a better way to represent multiple iterations
+        results = []
+        if let testCase = test as? TestCase {
+            results = testCase.iterations
+                .flatMap(\.activities)
+                .map { flatSubActivities(of: $0, indent: 0) }
+                .flatMap { $0 }
+        }
     }
 }
 
-extension JUnitReport.TestResult
-{
-    init(activity: Activity, indent: Int)
-    {
+extension JUnitReport.TestResult {
+    init(activity: Activity, indent: Int) {
         title = String(repeating: " ", count: indent * 2) + activity.title
         if activity.type == .assertionFailure {
             state = .failed
@@ -184,19 +186,16 @@ extension JUnitReport.TestResult
     }
 }
 
-extension JUnitReport.TestSuite
-{
-    init(run: Run)
-    {
+extension JUnitReport.TestSuite {
+    init(run: Run) {
         name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.deviceInfo
         tests = run.numberOfTests
         cases = run.allTests.map { JUnitReport.TestCase(run: run, test: $0) }
     }
 }
 
-extension RunDestination
-{
+extension RunDestination {
     var deviceInfo: String {
-        return name + " - " + targetDevice.osVersion
+        name + " - " + targetDevice.osVersion
     }
 }
