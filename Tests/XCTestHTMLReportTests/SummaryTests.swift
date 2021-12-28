@@ -33,7 +33,10 @@ final class SummaryTests: XCTestCase {
     ]
     
     func testRetryFunctionality() throws {
-        let testResultsUrl = try XCTUnwrap(Bundle.testBundle.url(forResource: "RetryResults", withExtension: "xcresult"))
+        guard let testResultsUrl = Bundle.testBundle.url(forResource: "RetryResults", withExtension: "xcresult") else {
+            throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
+        }
+
         let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking)
         let html = summary.html
         let parser = NDHpple(htmlData: html)
