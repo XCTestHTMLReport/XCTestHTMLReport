@@ -45,7 +45,7 @@ if !command.isValid {
     exit(EXIT_FAILURE)
 }
 
-let summary = Summary(resultPaths: result.values, renderingMode: renderingMode)
+let summary = Summary(resultPaths: result.values, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
 
 Logger.step("Building HTML..")
 let html = summary.generatedHtmlReport()
@@ -76,10 +76,6 @@ if junitEnabled {
     catch let e {
         Logger.error("An error has occured while creating the JUnit report. Error: \(e)")
     }
-}
-
-if downsizeImagesEnabled && renderingMode == .linking {
-    summary.reduceImageSizes()
 }
 
 if deleteUnattachedFilesEnabled && renderingMode == .linking {

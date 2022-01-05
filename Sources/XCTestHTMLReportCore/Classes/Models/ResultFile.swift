@@ -22,17 +22,17 @@ class ResultFile {
 
     // MARK: - Public
 
-    func exportPayload(id: String) -> URL? {
+    func exportPayload(id: String, fileName: String?) -> URL? {
         guard let savedURL = file.exportPayload(id: id) else {
             Logger.warning("Can't export payload with id \(id)")
             return nil
         }
-        let url = self.url.appendingPathComponent(id)
+        let url = url.appendingPathComponent(fileName ?? id)
         let fileManager = FileManager.default
         do {
             try? fileManager.removeItem(at: url)
             try fileManager.moveItem(at: savedURL, to: url)
-            return relativeUrl.appendingPathComponent(id)
+            return url
         } catch {
             Logger.warning("Can't move item from \(savedURL) to \(url). \(error.localizedDescription)")
             return nil
@@ -98,12 +98,14 @@ class ResultFile {
 extension ResultFile {
 
     func exportPayloadContent(id: String,
-                              renderingMode: Summary.RenderingMode) -> RenderingContent {
+                              renderingMode: Summary.RenderingMode,
+                              fileName: String?
+    ) -> RenderingContent {
         switch renderingMode {
         case .inline:
             return exportPayloadData(id: id).map(RenderingContent.data) ?? .none
         case .linking:
-            return exportPayload(id: id).map(RenderingContent.url) ?? .none
+            return exportPayload(id: id, fileName: fileName).map(RenderingContent.url) ?? .none
         }
     }
 
