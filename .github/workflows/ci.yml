@@ -26,6 +26,8 @@ jobs:
       run: swift build -v -c release
       
     - name: Test
+      env:
+        XCODE_VERSION: ${{ matrix.xcode_version }}
       run: |
         ./prepareTestResults.sh
         swift test -v
