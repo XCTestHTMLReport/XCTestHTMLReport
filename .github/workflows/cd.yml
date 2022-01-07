@@ -33,7 +33,7 @@ jobs:
       run: |
         [[ "$GITHUB_REF" =~ refs/tags ]] && VERSION=${GITHUB_REF/refs\/tags\//} || exit
         echo ::set-output name=version::${VERSION}
-        echo ::set-output name=archive_name::xchtmlreport-${VERSION}.zip
+        echo ::set-output name=archive_name::xchtmlreport-${VERSION}-${{ matrix.arch }}.zip
 
     - name: Build
       run: swift build -v -c release --triple ${{ matrix.arch }}
