@@ -78,7 +78,7 @@ class ResultFile {
         let fileManager = FileManager.default
         do {
             try? fileManager.removeItem(at: url)
-            try logSection.emittedOutput?.write(to: url, atomically: true, encoding: .utf8)
+            try logSection.formatEmittedOutput().write(to: url, atomically: true, encoding: .utf8)
             return relativeUrl.appendingPathComponent(fileName)
         } catch {
             Logger.warning("Can't write output to \(url). \(error.localizedDescription)")
@@ -91,7 +91,7 @@ class ResultFile {
             Logger.warning("Can't get logss with id \(id)")
             return nil
         }
-        return logSection.emittedOutput?.data(using: .utf8)
+        return logSection.formatEmittedOutput().data(using: .utf8)
     }
 }
 
