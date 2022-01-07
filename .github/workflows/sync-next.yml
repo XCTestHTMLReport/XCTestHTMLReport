@@ -1,4 +1,4 @@
-name: Sync \"next\" branch
+name: Sync "next" branch
 
 on:
   push:
