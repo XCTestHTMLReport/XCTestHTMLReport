@@ -4,7 +4,10 @@ index=`cat Sources/XCTestHTMLReport/HTML/index.html | sed 's,",\\\\",g'`
 testSummary=`cat Sources/XCTestHTMLReport/HTML/test_summary.html | sed 's,",\\\\",g'`
 run=`cat Sources/XCTestHTMLReport/HTML/run.html | sed 's,",\\\\",g'`
 device=`cat Sources/XCTestHTMLReport/HTML/device.html | sed 's,",\\\\",g'`
-test=`cat Sources/XCTestHTMLReport/HTML/test.html | sed 's,",\\\\",g'`
+testGroup=`cat Sources/XCTestHTMLReport/HTML/test_group.html | sed 's,",\\\\",g'`
+testCase=`cat Sources/XCTestHTMLReport/HTML/test_case.html | sed 's,",\\\\",g'`
+testCaseWithIterations=`cat Sources/XCTestHTMLReport/HTML/test_case_with_iterations.html | sed 's,",\\\\",g'`
+iteration=`cat Sources/XCTestHTMLReport/HTML/iteration.html | sed 's,",\\\\",g'`
 activity=`cat Sources/XCTestHTMLReport/HTML/activity.html | sed 's,",\\\\",g'`
 screenshot=`cat Sources/XCTestHTMLReport/HTML/screenshot.html | sed 's,",\\\\",g'`
 text=`cat Sources/XCTestHTMLReport/HTML/text.html | sed 's,",\\\\",g'`
@@ -30,8 +33,20 @@ $run
 $testSummary
   \"\"\"
 
-  static let test = \"\"\"
-$test
+  static let testGroup = \"\"\"
+$testGroup
+  \"\"\"
+
+  static let testCase = \"\"\"
+$testCase
+  \"\"\"
+
+  static let testCaseWithIterations = \"\"\"
+$testCaseWithIterations
+  \"\"\"
+  
+  static let iteration = \"\"\"
+$iteration
   \"\"\"
 
   static let activity = \"\"\"

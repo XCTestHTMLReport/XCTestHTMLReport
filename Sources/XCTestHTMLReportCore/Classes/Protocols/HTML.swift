@@ -8,29 +8,31 @@
 
 import Foundation
 
-protocol HTML
-{
+protocol HTML {
     var htmlTemplate: String { get }
     var htmlPlaceholderValues: [String: String] { get }
 }
 
-extension HTML
-{
+extension HTML {
     var html: String {
-        return htmlPlaceholderValues.reduce(htmlTemplate, { (accumulator: String, rel: (String, String)) -> String in
-            return autoreleasepool {
+        htmlPlaceholderValues.reduce(htmlTemplate) { (accumulator: String, rel: (String, String)) -> String in
+            autoreleasepool {
                 accumulator.replacingOccurrences(of: "[[\(rel.0)]]", with: rel.1)
             }
-        })
+        }
     }
 }
 
-extension Sequence where Element : HTML {
-
+extension Sequence where Element: HTML {
     var accumulateHTMLAsString: String {
-        return reduce("", { (accumulator: String, element: HTML) -> String in
-            return accumulator + element.html
-        })
+        reduce("") { (accumulator: String, element: HTML) -> String in
+            accumulator + element.html
+        }
     }
+}
 
+extension Sequence where Element: Test {
+    func accumulateHtml() -> String {
+        reduce("") { $0 + $1.html }
+    }
 }

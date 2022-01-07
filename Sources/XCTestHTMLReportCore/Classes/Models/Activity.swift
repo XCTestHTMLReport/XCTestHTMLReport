@@ -36,8 +36,7 @@ enum ActivityType: String {
     }
 }
 
-struct Activity: HTML
-{
+struct Activity: HTML {
     let uuid: String
     let padding: Int
     let attachments: [Attachment]
@@ -50,6 +49,7 @@ struct Activity: HTML
 
         return 0.0
     }
+
     var title: String
     var subActivities: [Activity]
     var type: ActivityType?
@@ -58,21 +58,25 @@ struct Activity: HTML
         let subActivitesHaveAttachments = subActivities.reduce(false) { $0 || $1.hasGlobalAttachment }
         return hasDirectAttachment || subActivitesHaveAttachments
     }
+
     var hasFailingSubActivities: Bool {
-		return failingActivityRecursive != nil
+        failingActivityRecursive != nil
     }
+
     var failingActivity: Activity? {
-        return type == .assertionFailure ? self : nil
+        type == .assertionFailure ? self : nil
     }
+
     var failingActivityRecursive: Activity? {
-        return subActivities.first(where: { $0.failingActivityRecursive != nil }) ?? failingActivity
+        subActivities.first(where: { $0.failingActivityRecursive != nil }) ?? failingActivity
     }
+
     var cssClasses: String {
         var cls = ""
         if let type = type {
             cls += type.cssClass
 
-            if type == .userCreated && hasFailingSubActivities {
+            if type == .userCreated, hasFailingSubActivities {
                 cls += " activity-assertion-failure"
             }
         }
@@ -81,15 +85,15 @@ struct Activity: HTML
     }
 
     init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode) {
-        self.uuid = summary.uuid
-        self.startTime = summary.start?.timeIntervalSince1970 ?? 0
-        self.finishTime = summary.finish?.timeIntervalSince1970 ?? 0
-        self.title = summary.title
-        self.subActivities = summary.subactivities.map {
+        uuid = summary.uuid
+        startTime = summary.start?.timeIntervalSince1970 ?? 0
+        finishTime = summary.finish?.timeIntervalSince1970 ?? 0
+        title = summary.title
+        subActivities = summary.subactivities.map {
             Activity(summary: $0, file: file, padding: padding + 10, renderingMode: renderingMode)
         }
-        self.type = ActivityType(rawValue: summary.activityType)
-        self.attachments = summary.attachments.map {
+        type = ActivityType(rawValue: summary.activityType)
+        attachments = summary.attachments.map {
             Attachment(attachment: $0, file: file, padding: padding + 16, renderingMode: renderingMode)
         }
         self.padding = padding
@@ -100,16 +104,30 @@ struct Activity: HTML
     var htmlTemplate = HTMLTemplates.activity
 
     var htmlPlaceholderValues: [String: String] {
-        return [
+        [
             "UUID": uuid,
             "TITLE": title.stringByEscapingXMLChars,
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
             "PADDING": (subActivities.isEmpty && attachments.isEmpty) ? String(padding + 18) : String(padding),
-            "TIME": totalTime.timeString,
+            "TIME": totalTime.formattedSeconds,
             "ACTIVITY_TYPE_CLASS": cssClasses,
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && attachments.isEmpty) ? "no-drop-down" : "",
             "SUB_ACTIVITY": subActivities.accumulateHTMLAsString,
             "ATTACHMENTS": attachments.accumulateHTMLAsString,
         ]
+    }
+}
+
+extension Activity: ContainingAttachment {
+    var screenshotAttachments: [Attachment] {
+        allAttachments.filter(\.isScreenshot)
+    }
+
+    var allAttachments: [Attachment] {
+        attachments + subAttachments
+    }
+
+    var subAttachments: [Attachment] {
+        subActivities.map(\.allAttachments).reduce([], +)
     }
 }

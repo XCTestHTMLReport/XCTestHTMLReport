@@ -9,8 +9,7 @@
 import Foundation
 import XCResultKit
 
-struct Run: HTML
-{
+struct Run: HTML {
     let file: ResultFile
     let runDestination: RunDestination
     let testSummaries: [TestSummary]
@@ -24,52 +23,64 @@ struct Run: HTML
         }
         return .success
     }
+
     var allTests: [Test] {
-        let tests = testSummaries.flatMap { $0.tests }
+        let tests = testSummaries.flatMap(\.tests)
         return tests.flatMap { test -> [Test] in
-            return test.allSubTests.isEmpty
-                ? [test]
-                : test.allSubTests
+            let subTests = test.descendantSubTests
+            if subTests.isEmpty {
+                return [test]
+            }
+            return subTests
         }
     }
-    var numberOfTests : Int {
+
+    var numberOfTests: Int {
         let a = allTests
         return a.count
     }
-    var numberOfPassedTests : Int {
-        return allTests.filter { $0.status == .success }.count
+
+    var numberOfPassedTests: Int {
+        allTests.filter { $0.status == .success }.count
     }
-    var numberOfSkippedTests : Int {
-        return allTests.filter { $0.status == .skipped }.count
+
+    var numberOfSkippedTests: Int {
+        allTests.filter { $0.status == .skipped }.count
     }
-    var numberOfFailedTests : Int {
-        return allTests.filter { $0.status == .failure }.count
+
+    var numberOfFailedTests: Int {
+        allTests.filter { $0.status == .failure }.count
+    }
+
+    var numberOfMixedTests: Int {
+        allTests.filter { $0.status == .mixed }.count
     }
 
     init?(action: ActionRecord, file: ResultFile, renderingMode: Summary.RenderingMode) {
         self.file = file
-        self.runDestination = RunDestination(record: action.runDestination)
+        runDestination = RunDestination(record: action.runDestination)
 
         guard
             let testReference = action.actionResult.testsRef,
-            let testPlanSummaries = file.getTestPlanRunSummaries(id: testReference.id) else {
-                Logger.warning("Can't find test reference for action \(action.title ?? "")")
-                return nil
+            let testPlanSummaries = file.getTestPlanRunSummaries(id: testReference.id)
+        else {
+            Logger.warning("Can't find test reference for action \(action.title ?? "")")
+            return nil
         }
 
         // TODO: (Pierre Felgines) 02/10/2019 Use only emittedOutput from logs objects
         // For now XCResultKit do not handle logs
         if let logReference = action.actionResult.logRef {
-            self.logContent = file.exportLogsContent(
+            logContent = file.exportLogsContent(
                 id: logReference.id,
                 renderingMode: renderingMode
             )
         } else {
             Logger.warning("Can't find test reference for action \(action.title ?? "")")
-            self.logContent = .none
+            logContent = .none
         }
-        self.testSummaries = testPlanSummaries.summaries
-            .flatMap { $0.testableSummaries }
+        testSummaries = testPlanSummaries.summaries
+            .flatMap(\.testableSummaries)
             .map { TestSummary(summary: $0, file: file, renderingMode: renderingMode) }
     }
 
@@ -89,15 +100,25 @@ struct Run: HTML
     var htmlTemplate = HTMLTemplates.run
 
     var htmlPlaceholderValues: [String: String] {
-        return [
+        [
             "DEVICE_IDENTIFIER": runDestination.targetDevice.uniqueIdentifier,
             "LOG_SOURCE": logSource ?? "",
             "N_OF_TESTS": String(numberOfTests),
             "N_OF_PASSED_TESTS": String(numberOfPassedTests),
             "N_OF_SKIPPED_TESTS": String(numberOfSkippedTests),
             "N_OF_FAILED_TESTS": String(numberOfFailedTests),
-            "TEST_SUMMARIES": testSummaries.map { $0.html }.joined()
+            "N_OF_MIXED_TESTS": String(numberOfMixedTests),
+            "TEST_SUMMARIES": testSummaries.map(\.html).joined(),
         ]
     }
+}
 
+extension Run: ContainingAttachment {
+    var screenshotAttachments: [Attachment] {
+        allAttachments.filter(\.isScreenshot)
+    }
+
+    var allAttachments: [Attachment] {
+        allTests.map(\.allAttachments).reduce([], +)
+    }
 }

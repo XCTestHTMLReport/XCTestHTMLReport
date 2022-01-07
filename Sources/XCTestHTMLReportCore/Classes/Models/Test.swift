@@ -14,6 +14,7 @@ enum Status: String {
     case failure = "Failure"
     case success = "Success"
     case skipped = "Skipped"
+    case mixed = "Mixed"
 
     var cssClass: String {
         switch self {
@@ -23,18 +24,21 @@ enum Status: String {
             return "succeeded"
         case .skipped:
             return "skipped"
+        case .mixed:
+            return "mixed"
         default:
             return ""
         }
     }
 }
 
+// Will be deprecated as each case is now a unique object
 enum ObjectClass: String {
     case unknwown = ""
     case testableSummary = "IDESchemeActionTestableSummary"
     case testSummary = "IDESchemeActionTestSummary"
     case testSummaryGroup = "IDESchemeActionTestSummaryGroup"
-    
+
     var cssClass: String {
         switch self {
         case .testSummary:
@@ -49,85 +53,181 @@ enum ObjectClass: String {
     }
 }
 
-struct Test: HTML
-{
-    let uuid: String
+/// A grouping of test cases, typically representing a single XCTestCase class or test suite
+public struct TestGroup: Test {
+    let uuid = UUID().uuidString
+    let title: String
     let identifier: String
-    let duration: Double
-    let name: String
-    let subTests: [Test]
-    let activities: [Activity]
-    let status: Status
-    let objectClass: ObjectClass
-    let testScreenshotFlow: TestScreenshotFlow?
-
-    var allSubTests: [Test] {
-        return subTests.flatMap { test -> [Test] in
-            return test.allSubTests.isEmpty
-                ? [test]
-                : test.allSubTests
+    let objectClass: ObjectClass = .testSummaryGroup
+    let duration: TimeInterval
+    var status: Status {
+        if subTests.allSatisfy({ $0.status == .success }) {
+            return .success
         }
-    }
 
-    var amountSubTests: Int {
-        let a = subTests.reduce(0) { $0 + $1.amountSubTests }
-        return a == 0 ? subTests.count : a
-    }
-
-    init(group: ActionTestSummaryGroup, file: ResultFile, renderingMode: Summary.RenderingMode) {
-        self.uuid = NSUUID().uuidString
-        self.identifier = group.identifier ?? "---identifier-not-found---"
-        self.duration = group.duration
-        self.name = group.name ?? "---group-name-not-found---"
-        if group.subtests.isEmpty {
-            self.subTests = group.subtestGroups.map { Test(group: $0, file: file, renderingMode: renderingMode) }
-        } else {
-            self.subTests = group.subtests.map { Test(metadata: $0, file: file, renderingMode: renderingMode) }
-        }
-        self.objectClass = .testSummaryGroup
-        self.activities = []
-        self.status = .unknown // ???: Usefull?
-        testScreenshotFlow = TestScreenshotFlow(activities: activities)
-    }
-
-    init(metadata: ActionTestMetadata, file: ResultFile, renderingMode: Summary.RenderingMode) {
-        self.uuid = NSUUID().uuidString
-        self.identifier = metadata.identifier
-        self.duration = metadata.duration ?? 0
-        self.name = metadata.name
-        self.subTests = []
-        self.status = Status(rawValue: metadata.testStatus) ?? .failure
-        self.objectClass = .testSummary
-        if let id = metadata.summaryRef?.id,
-            let actionTestSummary = file.getActionTestSummary(id: id) {
-            self.activities = actionTestSummary.activitySummaries.map {
-                Activity(summary: $0, file: file, padding: 20, renderingMode: renderingMode)
+        for s: Status in [.failure, .mixed, .skipped] {
+            if subTests.contains(where: { $0.status == s }) {
+                return s
             }
-        } else {
-            self.activities = []
         }
-        testScreenshotFlow = TestScreenshotFlow(activities: activities)
+
+        return .unknown
     }
 
-    // PRAGMA MARK: - HTML
+    let subTests: [Test]
 
-    var htmlTemplate = HTMLTemplates.test
+    var descendantSubTests: [Test] {
+        subTests.flatMap { subTest -> [Test] in
+            if let testSummaryGroup = subTest as? TestGroup,
+               !testSummaryGroup.subTests.isEmpty
+            {
+                return testSummaryGroup.descendantSubTests
+            }
+            return [subTest]
+        }
+    }
 
+    init(group: ActionTestSummaryGroup, resultFile: ResultFile, renderingMode: Summary.RenderingMode) {
+        title = group.name ?? "---group-name-not-found---"
+        identifier = group.identifier ?? "---group-identifier-not-found---"
+        duration = group.duration
+
+        if group.subtests.isEmpty {
+            subTests = group.subtestGroups.map { TestGroup(group: $0, resultFile: resultFile, renderingMode: renderingMode) }
+        } else {
+            subTests = Array(group.subtests.reduce(into: Set<TestCase>()) { subTestSet, metadata in
+                let newTest = TestCase(metadata: metadata, resultFile: resultFile, renderingMode: renderingMode)
+                if let index = subTestSet.firstIndex(of: newTest) {
+                    var existingTest = subTestSet[index]
+                    existingTest.iterations.append(contentsOf: newTest.iterations)
+                    subTestSet.update(with: existingTest)
+                } else {
+                    subTestSet.insert(newTest)
+                }
+            })
+        }
+    }
+}
+
+extension TestGroup {
+    var htmlPlaceholderValues: [String: String] { [
+        "UUID": uuid,
+        "TITLE": title,
+        "DURATION": duration.formattedSeconds,
+        "ICON_CLASS": status.cssClass,
+        "ITEM_CLASS": objectClass.cssClass,
+        "SUB_TESTS": subTests.reduce("") { $0 + $1.html },
+    ] }
+
+    var htmlTemplate: String { HTMLTemplates.testGroup }
+}
+
+extension TestGroup: ContainingAttachment {
+    var allAttachments: [Attachment] {
+        subTests.map(\.allAttachments).reduce([], +)
+    }
+}
+
+// MARK: TestCase
+
+/// Generally represents a single test method, the smallest unit of test status when considering "Mixed" results
+/// Contains one or more `Iteration`s as defined by the RepetitionPolicy. When only one iteration is present, the activities will be bubbled up to `TestCase`.
+struct TestCase: Test {
+    let uuid = UUID().uuidString
+    let title: String
+    let identifier: String
+    var objectClass: ObjectClass = .testSummary
+    var duration: TimeInterval {
+        iterations.reduce(0) { $0 + $1.duration }
+    }
+
+    // Test case status is computed from the combined statuses of iterations.
+    // If all iterations have the same status, the test case will have that status,
+    // otherwise the status will report as "mixed".
+    var status: Status {
+        let statusCountMap = iterationStatusCount()
+
+        if statusCountMap.count == 1,
+           let first = statusCountMap.first
+        {
+            return first.key
+        }
+
+        return .mixed
+    }
+
+    private func iterationStatusCount() -> [Status: Int] {
+        if iterations.isEmpty {
+            return [.unknown: 1]
+        }
+
+        if iterations.count == 1 {
+            return [iterations[0].status: 1]
+        }
+
+        return iterations.reduce(into: [:]) { map, i in
+            map[i.status] = (map[i.status] ?? 0) + 1
+        }
+    }
+
+    // This should be the only mutable property
+    var iterations: [Iteration]
+
+    init(metadata: ActionTestMetadata, resultFile: ResultFile, renderingMode: Summary.RenderingMode) {
+        title = metadata.name
+        identifier = metadata.identifier
+
+        iterations = [Iteration(metadata: metadata, resultFile: resultFile, renderingMode: renderingMode)]
+    }
+}
+
+// HTML conforming
+extension TestCase {
     var htmlPlaceholderValues: [String: String] {
-        return [
-            "UUID": uuid,
-            "NAME": name + (amountSubTests > 0 ? " - \(amountSubTests) tests" : ""),
-            "TIME": duration.timeString,
-            "SUB_TESTS": subTests.reduce("") { (accumulator: String, test: Test) -> String in
-                return accumulator + test.html
-            },
-            "HAS_ACTIVITIES_CLASS": activities.isEmpty ? "no-drop-down" : "",
-            "ACTIVITIES": activities.accumulateHTMLAsString,
-            "ICON_CLASS": status.cssClass,
-            "ITEM_CLASS": objectClass.cssClass,
-			"LIST_ITEM_CLASS": objectClass == .testSummary ? (status == .failure ? "list-item list-item-failed" : "list-item") : "",
-            "SCREENSHOT_FLOW": testScreenshotFlow?.screenshots.accumulateHTMLAsString ?? "",
-            "SCREENSHOT_TAIL": testScreenshotFlow?.screenshotsTail.accumulateHTMLAsString ?? ""
-        ]
+        if iterations.count == 1 {
+            let iteration = iterations[0]
+            return [
+                "UUID": uuid,
+                "TITLE": title,
+                "DURATION": duration.formattedSeconds,
+                "ICON_CLASS": status.cssClass,
+                "ITEM_CLASS": objectClass.cssClass,
+                "SCREENSHOT_TAIL": iteration.testScreenshotFlow?.screenshotsTail.accumulateHTMLAsString ?? "",
+                "SCREENSHOT_FLOW": iteration.testScreenshotFlow?.screenshots.accumulateHTMLAsString ?? "",
+                "ACTIVITIES": iteration.activities.accumulateHTMLAsString,
+            ]
+        } else {
+            return [
+                "UUID": uuid,
+                "TITLE": title,
+                "DURATION": duration.formattedSeconds,
+                "ICON_CLASS": status.cssClass,
+                "ITEM_CLASS": objectClass.cssClass,
+                "ITERATIONS": iterations.reduce("") { $0 + $1.html },
+                "RESULT_STRING": iterationStatusCount().map { "\($0.value) \($0.key.cssClass)" }.joined(separator: ", "),
+                // Add something for repetition policy/results breakdown
+            ]
+        }
+    }
+
+    var htmlTemplate: String {
+        iterations.count == 1 ? HTMLTemplates.testCase : HTMLTemplates.testCaseWithIterations
+    }
+}
+
+// Needed to dedupe iterations
+extension TestCase: Hashable {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(identifier)
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.identifier == rhs.identifier
+    }
+}
+
+extension TestCase: ContainingAttachment {
+    var allAttachments: [Attachment] {
+        iterations.map(\.allAttachments).reduce([], +)
     }
 }
