@@ -9,30 +9,33 @@ import Foundation
 import XCResultKit
 
 protocol EmittableOutput {
-    var emittedOutput: String? { get }
+    func formatEmittedOutput() -> String
 }
 
-extension ActivityLogUnitTestSection: EmittableOutput {}
+extension ActivityLogUnitTestSection: EmittableOutput {
 
+    // Recursively collect emitted output from each subsection, adding an additional indent to each nested log
+    // This is how test steps are formatted in Xcode, including the repeated log lines
+    func formatEmittedOutput() -> String {
+        "-------- \(title) --------\n" +
+        (emittedOutput ?? "") +
+        unitTestSubsections
+            .compactMap {
+                "\t" + $0.formatEmittedOutput()
+                    .split(separator: "\n")
+                    .joined(separator: "\n\t")
+            }
+            .joined(separator: "\n")
+    }
+
+}
 
 extension ActivityLogSection: EmittableOutput {
 
-    var emittedOutput: String? {
-        return "\(title)\n\n"
-            + subsections
-                .compactMap { $0.emittedOutput }
-                .joined(separator: "\n")
+    func formatEmittedOutput() -> String {
+        "\(title)\n\n" + unitTestSubsections
+            .compactMap { $0.formatEmittedOutput() }
+            .joined(separator: "\n")
     }
+
 }
-
-extension ActivityLogMajorSection: EmittableOutput {
-
-    var emittedOutput: String? {
-        let t = [title, subtitle].compactMap { $0 }.joined(separator: " - ")
-        return "\(t)\n\n"
-            + unitTestSubsections
-                .compactMap { $0.emittedOutput }
-                .joined(separator: "\n")
-    }
-}
-
