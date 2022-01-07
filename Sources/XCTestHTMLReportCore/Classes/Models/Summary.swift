@@ -9,8 +9,7 @@
 import Foundation
 import XCResultKit
 
-public struct Summary
-{
+public struct Summary {
     let runs: [Run]
 
     public enum RenderingMode: String {
@@ -54,13 +53,13 @@ public struct Summary
     /// Generate HTML report
     /// - Returns: Generated HTML report string
     public func generatedHtmlReport() -> String {
-        return html
+        html
     }
 
     /// Generate JUnit report
     /// - Returns: Generated JUnit XML report string
     public func generatedJunitReport() -> String {
-        return junit.xmlString
+        junit.xmlString
     }
 
     /// Delete all unattached files in runs
@@ -72,32 +71,36 @@ public struct Summary
     }
 }
 
-extension Summary: HTML
-{
+extension Summary: HTML {
     var htmlTemplate: String {
-        return HTMLTemplates.index
+        HTMLTemplates.index
     }
 
     var htmlPlaceholderValues: [String: String] {
         let resultClass: String
-        if runs.first(where: { $0.status == .failure }) != nil {
+        if runs.contains(where: { $0.status == .failure }) {
             resultClass = "failure"
-        } else if runs.first(where: { $0.status == .success }) != nil {
+        } else if runs.contains(where: { $0.status == .success }) {
             resultClass = "success"
         } else {
             resultClass = "skip"
         }
         return [
-            "DEVICES": runs.map { $0.runDestination.html }.joined(),
+            "DEVICES": runs.map(\.runDestination.html).joined(),
             "RESULT_CLASS": resultClass,
-            "RUNS": runs.map { $0.html }.joined()
+            "RUNS": runs.map(\.html).joined(),
         ]
     }
 }
 
-extension Summary: JUnitRepresentable
-{
+extension Summary: JUnitRepresentable {
     var junit: JUnitReport {
-        return JUnitReport(summary: self)
+        JUnitReport(summary: self)
+    }
+}
+
+extension Summary: ContainingAttachment {
+    var allAttachments: [Attachment] {
+        runs.map(\.allAttachments).reduce([], +)
     }
 }

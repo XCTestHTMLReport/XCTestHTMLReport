@@ -4,7 +4,7 @@ import XCTestHTMLReportCore
 
 struct XcTestHtmlReport: ParsableCommand {
     static var configuration = CommandConfiguration(commandName: "xchtmlreport",
-                                                    version: "2.1.1",
+                                                    version: "2.2.1",
                                                     shouldDisplay: true)
 
     @Argument(help: ArgumentHelp("results_arg_help".localized),

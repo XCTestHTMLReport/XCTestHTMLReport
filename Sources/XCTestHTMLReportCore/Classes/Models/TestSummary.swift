@@ -9,25 +9,20 @@
 import Foundation
 import XCResultKit
 
-struct TestSummary: HTML
-{
+struct TestSummary: HTML {
     let uuid: String
     let testName: String
-    let tests: [Test]
+    let tests: [TestGroup]
     var status: Status {
         let currentTests = tests
         var status: Status = .unknown
-        
-        var currentSubtests: [Test] = []
-        for test in currentTests {
-            currentSubtests += test.allTestSummaries()
-        }
-        
-        if currentSubtests.count == 0 {
+
+        if currentTests.count == 0 {
             return .success
         }
 
-        status = currentSubtests.reduce(.unknown, { (accumulator: Status, test: Test) -> Status in
+        // TODO: Include mixed status
+        status = currentTests.reduce(.unknown) { (accumulator: Status, test: TestGroup) -> Status in
             if accumulator == .unknown {
                 return test.status
             }
@@ -41,15 +36,18 @@ struct TestSummary: HTML
             }
 
             return .unknown
-        })
+        }
 
         return status
     }
 
     init(summary: ActionTestableSummary, file: ResultFile, renderingMode: Summary.RenderingMode) {
-        self.uuid = UUID().uuidString
-        self.testName = summary.targetName ?? ""
-        self.tests = summary.tests.map { Test(group: $0, file: file, renderingMode: renderingMode) }
+        uuid = UUID().uuidString
+        testName = summary.targetName ?? ""
+        // TODO: Reduce this with iterations & accum with hashmap
+        tests = summary.tests.map {
+            TestGroup(group: $0, resultFile: file, renderingMode: renderingMode)
+        }
     }
 
     // PRAGMA MARK: - HTML
@@ -57,18 +55,15 @@ struct TestSummary: HTML
     var htmlTemplate = HTMLTemplates.testSummary
 
     var htmlPlaceholderValues: [String: String] {
-        return [
+        [
             "UUID": uuid,
-            "TESTS": tests.accumulateHTMLAsString
+            "TESTS": tests.accumulateHtml(),
         ]
     }
 }
 
-extension Test {
-    func allTestSummaries() -> [Test] {
-        if self.objectClass == .testSummary {
-            return [self]
-        }
-        return subTests.flatMap { $0.allTestSummaries() }
+extension TestSummary: ContainingAttachment {
+    var allAttachments: [Attachment] {
+        tests.map(\.allAttachments).reduce([], +)
     }
 }

@@ -18,7 +18,9 @@ final class FunctionalTests: XCTestCase {
         let testResultsUrl = try XCTUnwrap(Bundle.testBundle.url(forResource: "TestResults", withExtension: "xcresult"))
         let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(args: ["-r", testResultsUrl.path])
         XCTAssertEqual(status, 0)
+        #if !DEBUG // XCResultKit outputs non-fatals to stderr in debug mode
         XCTAssertEqual((maybeStdErr ?? "").isEmpty, true)
+        #endif
         let stdOut = try XCTUnwrap(maybeStdOut)
         let htmlUrl = try XCTUnwrap(urlFromXCHtmlreportStdout(stdOut))
 

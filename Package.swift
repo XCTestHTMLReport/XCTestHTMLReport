@@ -14,9 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/onevcat/Rainbow.git", .upToNextMajor(from: "3.0.0")),
-        .package(
-            url: "https://github.com/davidahouse/XCResultKit.git", .upToNextMinor(from: "0.9.2")
-        ),
+        .package(url: "https://github.com/davidahouse/XCResultKit.git", .upToNextMinor(from: "0.9.3")),
         .package(url: "https://github.com/nacho4d/NDHpple.git", .upToNextMajor(from: "2.0.1")),
         .package(
             url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.0.0")
@@ -39,7 +37,10 @@ let package = Package(
         .testTarget(
             name: "XCTestHTMLReportTests",
             dependencies: ["XCTestHTMLReport", "NDHpple"],
-            resources: [.copy("TestResults.xcresult")]
-        ),
+            resources: [
+                .copy("TestResults.xcresult"),
+                .copy("RetryResults.xcresult"),
+            ]
+        )
     ]
 )
