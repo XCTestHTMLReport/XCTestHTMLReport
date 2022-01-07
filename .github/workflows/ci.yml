@@ -1,4 +1,4 @@
-name: CD
+name: CI
 
 on:
   push:
@@ -11,9 +11,9 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        xcode_version: [12.5, 13.0]
+        xcode_version: [ 13.0 ]
     runs-on: macos-11
-    
+
     steps:
     - uses: actions/checkout@v2
     
@@ -23,9 +23,15 @@ jobs:
         version: ${{ matrix.xcode_version }}
 
     - name: Build
-      run: swift build -v -c release
+      run: swift build -v -c release --arch arm64 --arch x86_64
+
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 2.7
+        bundler-cache: true
+    - run: gem install xcpretty
       
     - name: Test
       run: |
         ./prepareTestResults.sh
-        swift test -v
+        swift test -c release 2>&1 | xcpretty

@@ -10,6 +10,8 @@ jobs:
   build:
     strategy:
       fail-fast: true
+      matrix:
+        arch: [ "arm64-apple-macosx", "x86_64-apple-macosx" ]
     runs-on: macos-11
     
     steps:
@@ -31,25 +33,25 @@ jobs:
       run: |
         [[ "$GITHUB_REF" =~ refs/tags ]] && VERSION=${GITHUB_REF/refs\/tags\//} || exit
         echo ::set-output name=version::${VERSION}
-        echo ::set-output name=archive_name::xchtmlreport-${VERSION}.zip
+        echo ::set-output name=archive_name::xchtmlreport-${VERSION}-${{ matrix.arch }}.zip
 
     - name: Build
-      run: swift build -v -c release
+      run: swift build -v -c release --triple ${{ matrix.arch }}
       
     - name: Sign
       run: |
         codesign --verbose --verify --options=runtime -f \
         -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }})" \
-        .build/x86_64-apple-macosx/release/xchtmlreport
+        .build/${{ matrix.arch }}/release/xchtmlreport
     
     - name: Verify
       run: |
-        codesign -vvv --deep --strict .build/x86_64-apple-macosx/release/xchtmlreport
+        codesign -vvv --deep --strict .build/${{ matrix.arch }}/release/xchtmlreport
 
     - name: Package
       run: |
         ditto -c -k \
-        --keepParent ".build/x86_64-apple-macosx/release/xchtmlreport" \
+        --keepParent ".build/${{ matrix.arch }}/release/xchtmlreport" \
         ${{ steps.metadata.outputs.archive_name }}
 
     - name: Notarize
