@@ -85,3 +85,19 @@ jobs:
           application/xchtmlreport-*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update_brew_formula:
+    runs-on: ubuntu-latest
+
+    needs: release
+
+    steps:
+    - name: Repository Dispatch
+      uses: peter-evans/repository-dispatch@v1
+      env:
+        VERSION: ${GITHUB_REF/refs\/tags\//}
+      with:
+        token: ${{ secrets.DISPATCH_ACCESS_TOKEN }}
+        event-type: release
+        client-payload: '{"tag": "${{ VERSION }}"}'
+        repository: XCTestHTMLReport/homebrew-xchtmlreport
