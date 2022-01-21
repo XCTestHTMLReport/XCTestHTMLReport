@@ -99,5 +99,5 @@ jobs:
       with:
         token: ${{ secrets.DISPATCH_ACCESS_TOKEN }}
         event-type: release
-        client-payload: '{"tag": "${{ VERSION }}"}'
+        client-payload: '{"tag": "${{ env.VERSION }}"}'
         repository: XCTestHTMLReport/homebrew-xchtmlreport
