@@ -19,6 +19,18 @@ enum AttachmentType: String {
     case mp4 = "public.mpeg-4"
     case text = "public.plain-text"
     case log = "com.apple.log"
+    
+    var isImage: Bool {
+        [.jpeg, .png, .heic].contains(self)
+    }
+    
+    var isVideo: Bool {
+        [.mp4].contains(self)
+    }
+    
+    var isFile: Bool {
+        [.text, .html, .data, .log].contains(self)
+    }
 
     var cssClass: String {
         switch self {
@@ -90,19 +102,33 @@ struct Attachment: HTML
     let type: AttachmentType
     let name: AttachmentName?
 
-    init(attachment: ActionTestAttachment, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode) {
+    init(attachment: ActionTestAttachment,
+         file: ResultFile,
+         padding: Int = 0,
+         renderingMode: Summary.RenderingMode,
+         downsizeImagesEnabled: Bool
+    ) {
         self.filename = attachment.filename ?? ""
         self.type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknown
         self.name = attachment.name.map(AttachmentName.init(rawValue:))
-        if let id = attachment.payloadRef?.id {
-            self.content = file.exportPayloadContent(
-                id: id,
-                renderingMode: renderingMode
-            )
-        } else {
-            self.content = .none
-        }
         self.padding = padding
+        var content: RenderingContent = .none
+        if let id = attachment.payloadRef?.id {
+            content = file.exportPayloadContent(
+                id: id,
+                renderingMode: renderingMode,
+                fileName: attachment.filename
+            )
+            if downsizeImagesEnabled && type.isImage {
+                do {
+                    content = try RenderingContent.downsizeFrom(content)
+                } catch {
+                    Logger.error("Image resize failed with error: \(error.localizedDescription)")
+                }
+            }
+        }
+        self.content = content
+        
     }
 
     var fallbackDisplayName: String {
@@ -142,12 +168,7 @@ struct Attachment: HTML
     }
 
     var isScreenshot: Bool {
-        switch type {
-        case .png, .jpeg, .heic:
-            return true
-        default:
-            return false
-        }
+        type.isImage
     }
     
     // PRAGMA MARK: - HTML

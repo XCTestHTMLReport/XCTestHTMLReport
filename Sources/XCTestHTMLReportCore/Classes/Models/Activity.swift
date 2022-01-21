@@ -84,17 +84,17 @@ struct Activity: HTML {
         return cls
     }
 
-    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode) {
+    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
         uuid = summary.uuid
         startTime = summary.start?.timeIntervalSince1970 ?? 0
         finishTime = summary.finish?.timeIntervalSince1970 ?? 0
         title = summary.title
         subActivities = summary.subactivities.map {
-            Activity(summary: $0, file: file, padding: padding + 10, renderingMode: renderingMode)
+            Activity(summary: $0, file: file, padding: padding + 10, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
         }
         type = ActivityType(rawValue: summary.activityType)
         attachments = summary.attachments.map {
-            Attachment(attachment: $0, file: file, padding: padding + 16, renderingMode: renderingMode)
+            Attachment(attachment: $0, file: file, padding: padding + 16, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
         }
         self.padding = padding
     }
