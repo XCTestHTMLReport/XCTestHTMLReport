@@ -22,7 +22,7 @@ struct Iteration: Test {
         TestScreenshotFlow(activities: activities)
     }
 
-    init(metadata: ActionTestMetadata, resultFile: ResultFile, renderingMode: Summary.RenderingMode) {
+    init(metadata: ActionTestMetadata, resultFile: ResultFile, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
         title = metadata.name
         identifier = metadata.identifier
         status = Status(rawValue: metadata.testStatus) ?? .unknown
@@ -32,7 +32,7 @@ struct Iteration: Test {
            let actionTestSummary = resultFile.getActionTestSummary(id: id)
         {
             activities = actionTestSummary.activitySummaries.map {
-                Activity(summary: $0, file: resultFile, padding: 20, renderingMode: renderingMode)
+                Activity(summary: $0, file: resultFile, padding: 20, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
             }
 
             repetitionPolicy = actionTestSummary.repetitionPolicySummary

@@ -14,7 +14,7 @@ final class SummaryTests: XCTestCase {
 
     func testBasicFunctionality() throws {
         let testResultsUrl = try XCTUnwrap(Bundle.testBundle.url(forResource: "TestResults", withExtension: "xcresult"))
-        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking)
+        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking, downsizeImagesEnabled: false)
         let html = summary.html
         let parser = NDHpple(htmlData: html)
 
@@ -37,7 +37,7 @@ final class SummaryTests: XCTestCase {
             throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
         }
 
-        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking)
+        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking, downsizeImagesEnabled: false)
         let html = summary.html
         let parser = NDHpple(htmlData: html)
         

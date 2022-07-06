@@ -87,16 +87,16 @@ public struct TestGroup: Test {
         }
     }
 
-    init(group: ActionTestSummaryGroup, resultFile: ResultFile, renderingMode: Summary.RenderingMode) {
+    init(group: ActionTestSummaryGroup, resultFile: ResultFile, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
         title = group.name ?? "---group-name-not-found---"
         identifier = group.identifier ?? "---group-identifier-not-found---"
         duration = group.duration
 
         if group.subtests.isEmpty {
-            subTests = group.subtestGroups.map { TestGroup(group: $0, resultFile: resultFile, renderingMode: renderingMode) }
+            subTests = group.subtestGroups.map { TestGroup(group: $0, resultFile: resultFile, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled) }
         } else {
             subTests = Array(group.subtests.reduce(into: Set<TestCase>()) { subTestSet, metadata in
-                let newTest = TestCase(metadata: metadata, resultFile: resultFile, renderingMode: renderingMode)
+                let newTest = TestCase(metadata: metadata, resultFile: resultFile, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
                 if let index = subTestSet.firstIndex(of: newTest) {
                     var existingTest = subTestSet[index]
                     existingTest.iterations.append(contentsOf: newTest.iterations)
@@ -173,11 +173,11 @@ struct TestCase: Test {
     // This should be the only mutable property
     var iterations: [Iteration]
 
-    init(metadata: ActionTestMetadata, resultFile: ResultFile, renderingMode: Summary.RenderingMode) {
+    init(metadata: ActionTestMetadata, resultFile: ResultFile, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
         title = metadata.name
         identifier = metadata.identifier
 
-        iterations = [Iteration(metadata: metadata, resultFile: resultFile, renderingMode: renderingMode)]
+        iterations = [Iteration(metadata: metadata, resultFile: resultFile, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)]
     }
 }
 

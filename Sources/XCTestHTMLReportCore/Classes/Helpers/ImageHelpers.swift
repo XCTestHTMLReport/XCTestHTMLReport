@@ -6,8 +6,6 @@
 import Foundation
 import Cocoa
 
-let imageWidth: CGFloat = 200
-let imageCompression: Float = 0.8
 
 /// Performs an image resize for the image at the provided path
 /// image is resized to be 200px width - aspect ratio maintaned
@@ -16,33 +14,91 @@ let imageCompression: Float = 0.8
 /// is not modified
 ///
 /// - Parameter path: path to an image
-func resizeImage(atPath path: String) -> Bool {
-    guard let image = NSImage(contentsOfFile: path) else {
-        return false
-    }
-    let sizeRatio = imageWidth/image.size.width
-    guard sizeRatio<1.0 else {
-        return false
-    }
-    let resizedImage = resize(image: image,
-                              w: Int(image.size.width*sizeRatio),
-                              h: Int(image.size.height*sizeRatio))
-    let destinationURL = URL(fileURLWithPath: path)
-    resizedImage.jpegWrite(to: destinationURL, options: .atomic, compression: imageCompression)
-    return true
+
+
+enum ResizeError: Error {
+    case largerThanOriginal
+    case contentNotImage
+    case imageFileNotFound
+    case imageEncodingFailed
 }
 
-func resize(image: NSImage, w: Int, h: Int) -> NSImage {
-    let destSize = NSMakeSize(CGFloat(w), CGFloat(h))
-    let newImage = NSImage(size: destSize)
-    newImage.lockFocus()
-    image.draw(in: NSMakeRect(0, 0, destSize.width, destSize.height), from: NSMakeRect(0, 0, image.size.width, image.size.height), operation: NSCompositingOperation.sourceOver, fraction: CGFloat(1))
-    newImage.unlockFocus()
-    newImage.size = destSize
-    return NSImage(data: newImage.tiffRepresentation!)!
+extension RenderingContent {
+    static let downsizedWidth: CGFloat = 200
+    static let imageCompression: Float = 0.8
+
+    static func downsizeFrom(_ content: RenderingContent) throws -> RenderingContent {
+        switch content {
+        case .data(let data):
+            return .data(try RenderingContent.resize(content: data))
+        case .url(let url):
+            return .url(try RenderingContent.resize(content: url))
+        case .none:
+            throw ResizeError.contentNotImage
+        }
+    }
+    
+    private static func resize<C: NSImageResizable>(content: C) throws -> C {
+        let image = try content.asNSImage()
+        let newSize = CGSize.scaleFrom(image.size, usingMaxWidth: downsizedWidth)
+        let resizedImage = NSImage.from(image: image, scaledTo: newSize)
+        return try C.from(content: content, image: resizedImage)
+    }
+}
+
+protocol NSImageResizable {
+    
+    associatedtype Format = Self
+
+    func asNSImage() throws -> NSImage
+    
+    static func from(content: Self, image: NSImage) throws -> Self
+
+}
+
+extension Data: NSImageResizable {
+    static func from(content _: Data, image: NSImage) throws -> Data {
+        guard let data = image.jpegData(compression: RenderingContent.imageCompression) else {
+            throw ResizeError.imageEncodingFailed
+        }
+        return data
+    }
+    
+    func asNSImage() throws -> NSImage {
+        guard let image = NSImage(data: self) else {
+            throw ResizeError.contentNotImage
+        }
+        return image
+    }
+}
+
+extension URL: NSImageResizable {
+    static func from(content url: URL, image: NSImage) throws -> URL {
+        try FileManager.default.removeItem(at: url)
+        try image.jpegData(compression: RenderingContent.imageCompression)?.write(to: url, options: .atomic)
+        return url
+    }
+    
+    func asNSImage() throws -> NSImage {
+        guard let image = NSImage(contentsOf: self) else {
+            throw ResizeError.imageFileNotFound
+        }
+        return image
+    }
 }
 
 extension NSImage {
+    
+    static func from(image: NSImage, scaledTo newSize: CGSize) -> NSImage {
+        let newImage = NSImage(size: newSize)
+        newImage.lockFocus()
+        image.draw(in: NSRect(origin: .zero, size: newSize),
+                   from: NSRect(origin: .zero, size: image.size),
+                   operation: .sourceOver,
+                   fraction: 1)
+        newImage.unlockFocus()
+        return newImage
+    }
 
     func jpegData(compression: Float) -> Data? {
         guard let tiffRepresentation = tiffRepresentation, let bitmapImage = NSBitmapImageRep(data: tiffRepresentation) else { return nil }
@@ -60,4 +116,16 @@ extension NSImage {
         }
     }
 
+}
+
+extension CGSize: Comparable {
+    public static func scaleFrom(_ size: CGSize, usingMaxWidth width: CGFloat) -> CGSize {
+        let ratio = width / size.width
+        return CGSize(width: size.width * ratio, height: size.height * ratio)
+    }
+    
+    // Compares by area
+    public static func < (lhs: CGSize, rhs: CGSize) -> Bool {
+        return (lhs.width * lhs.height) < (rhs.width * rhs.height)
+    }
 }
