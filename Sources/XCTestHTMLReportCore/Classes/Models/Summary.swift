@@ -17,7 +17,7 @@ public struct Summary {
         case linking
     }
 
-    public init(resultPaths: [String], renderingMode: RenderingMode) {
+    public init(resultPaths: [String], renderingMode: RenderingMode, downsizeImagesEnabled: Bool) {
         var runs: [Run] = []
         for resultPath in resultPaths {
             Logger.step("Parsing \(resultPath)")
@@ -28,26 +28,11 @@ public struct Summary {
                 break
             }
             let resultRuns = invocationRecord.actions.compactMap {
-                Run(action: $0, file: resultFile, renderingMode: renderingMode)
+                Run(action: $0, file: resultFile, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
             }
             runs.append(contentsOf: resultRuns)
         }
         self.runs = runs
-    }
-
-    /// Reduce size of all images in attachments
-    public func reduceImageSizes() {
-        Logger.substep("Resizing images..")
-        var resizedCount = 0
-        for run in runs {
-            for screenshotAttachment in run.screenshotAttachments {
-                let resized = resizeImage(atPath: run.file.url.path + "/../" + (screenshotAttachment.source ?? ""))
-                if resized {
-                    resizedCount += 1
-                }
-            }
-        }
-        Logger.substep("Finished resizing \(resizedCount) images")
     }
 
     /// Generate HTML report

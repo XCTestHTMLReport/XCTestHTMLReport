@@ -62,7 +62,7 @@ struct XcTestHtmlReport: ParsableCommand {
         }
         Logger.substep("Writing report to \(path)")
 
-        let summary = Summary(resultPaths: completeResults, renderingMode: renderingMode)
+        let summary = Summary(resultPaths: completeResults, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImages)
 
         Logger.step("Building HTML..")
         let html = summary.generatedHtmlReport()
@@ -77,10 +77,6 @@ struct XcTestHtmlReport: ParsableCommand {
         Logger.success("\nReport successfully created at \(path)")
 
         if renderingMode == .linking {
-            if downsizeImages {
-                summary.reduceImageSizes()
-            }
-
             if deleteUnattachedFiles {
                 summary.deleteUnattachedFiles()
             }
