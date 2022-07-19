@@ -128,7 +128,6 @@ struct Attachment: HTML
             }
         }
         self.content = content
-        
     }
 
     var fallbackDisplayName: String {
