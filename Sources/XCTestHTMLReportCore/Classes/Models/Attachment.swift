@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import UniformTypeIdentifiers
 import XCResultKit
 
 enum AttachmentType: String {
@@ -19,6 +20,8 @@ enum AttachmentType: String {
     case mp4 = "public.mpeg-4"
     case text = "public.plain-text"
     case log = "com.apple.log"
+    // TODO: Use UTType instead of handling each mime
+    case zip = "public.zip-archive"
     
     var isImage: Bool {
         [.jpeg, .png, .heic].contains(self)
@@ -46,6 +49,13 @@ enum AttachmentType: String {
     }
 
     fileprivate var mimeType: String? {
+        if #available(macOS 11.0, *) {
+            if let systemType = UTType(rawValue),
+               let mimeType = systemType.preferredMIMEType {
+                return mimeType
+            }
+        }
+        
         switch self {
         case .png:
             return "image/png"
@@ -61,6 +71,8 @@ enum AttachmentType: String {
             return "text/html"
         case .data:
             return "application/octet-stream"
+        case .zip:
+            return "application/zip"
         case .unknown:
             return nil
         }
@@ -128,7 +140,6 @@ struct Attachment: HTML
             }
         }
         self.content = content
-        
     }
 
     var fallbackDisplayName: String {
@@ -137,7 +148,7 @@ struct Attachment: HTML
             return "Screenshot"
         case .mp4:
             return "Video"
-        case .text, .html, .data, .log:
+        case .text, .html, .data, .log, .zip:
             return "File"
         case .unknown:
             return "Attachment"
@@ -181,8 +192,8 @@ struct Attachment: HTML
             return HTMLTemplates.video
         case .text, .html, .data, .log:
             return HTMLTemplates.text
-        case .unknown:
-            return ""
+        case .zip, .unknown:
+            return HTMLTemplates.link // If not known, link/download the resource
         }
     }
 
