@@ -36,6 +36,17 @@ final class FunctionalTests: XCTestCase {
             XCTAssertEqual(texts[3].intGroupMatch("Failed \\((\\d+)\\)"), 5)
         }
 
+        try XCTContext.runActivity(named: "Images should use the relative path") { _ in
+            let imgTags = parser.search(withQuery: "//img[@class='screenshot']")
+                + parser.search(withQuery: "//img[@class='screenshot-flow']")
+            XCTAssertFalse(imgTags.isEmpty)
+
+            try imgTags.forEach { img in
+                let src = try XCTUnwrap(img.attributes["src"])
+                let content = try XCTUnwrap(src["nodeContent"] as? String)
+                XCTAssertTrue(content.starts(with: "TestResults.xcresult"))
+            }
+        }
     }
 
     static var allTests = [

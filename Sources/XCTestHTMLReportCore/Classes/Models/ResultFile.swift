@@ -27,12 +27,14 @@ class ResultFile {
             Logger.warning("Can't export payload with id \(id)")
             return nil
         }
-        let url = url.appendingPathComponent(fileName ?? id)
+
         let fileManager = FileManager.default
         do {
+            let resolvedName = fileName ?? id
+            let url = url.appendingPathComponent(resolvedName)
             try? fileManager.removeItem(at: url)
             try fileManager.moveItem(at: savedURL, to: url)
-            return url
+            return relativeUrl.appendingPathComponent(resolvedName)
         } catch {
             Logger.warning("Can't move item from \(savedURL) to \(url). \(error.localizedDescription)")
             return nil
