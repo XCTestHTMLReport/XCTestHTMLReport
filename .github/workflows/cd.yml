@@ -81,6 +81,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         prerelease: ${{ contains(github.ref, '-') }}
+        generate_release_notes: true
         files: |
           application/xchtmlreport-*
       env:
