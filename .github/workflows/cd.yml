@@ -95,10 +95,8 @@ jobs:
     steps:
     - name: Repository Dispatch
       uses: peter-evans/repository-dispatch@v1
-      env:
-        VERSION: ${{ GITHUB_REF/refs\/tags\// }}
       with:
         token: ${{ secrets.DISPATCH_ACCESS_TOKEN }}
         event-type: release
-        client-payload: '{"tag": "${{ env.VERSION }}"}'
+        client-payload: '{"tag": "${{ github.ref_name }}"}'
         repository: XCTestHTMLReport/homebrew-xchtmlreport
