@@ -430,6 +430,10 @@ struct HTMLTemplates
       display:none;
       z-index: 1000;
     }
+  
+    .file-attachment-link {
+      display:none;
+    }
 
     .screenshot-flow {
         border: 1px solid #021a40;
@@ -612,6 +616,7 @@ struct HTMLTemplates
           <h2>No Selected Attachment</h2>
           <img src=\"\" class=\"displayed-screenshot\" id=\"screenshot\"/>
           <iframe id=\"text-attachment\" src=\"\"></iframe>
+          <h2 id=\"file-attachment\"><a target=\"_blank\"/></h2>
           <video class=\"displayed-video\" controls src=\"\" id=\"video\"/>
         </div>
         <div class=\"clear\"></div>
@@ -625,7 +630,8 @@ struct HTMLTemplates
     sidebar, startX, startWidth, originalWidth,
     screenshot = document.getElementById('screenshot'),
     video = document.getElementById('video'),
-    iframe = document.getElementById('text-attachment');
+    iframe = document.getElementById('text-attachment'),
+    fileAttachment = document.getElementById('file-attachment');
 
     for (var i = 0; i < resizers.length; i++) {
         resizers[i].addEventListener('mousedown', initDrag, false);
@@ -666,6 +672,7 @@ struct HTMLTemplates
         hideScreenshot();
         hideLog();
         hideVideo();
+        hideLinkAttachment();
         showAttachmentPlaceholder();
         return;
       }
@@ -673,12 +680,15 @@ struct HTMLTemplates
       var path = firstAttachment.attributes[\"data\"].value;
       var extension = path.split('.').pop();
       var textExtension = [\"txt\", \"crash\", \"html\", \"log\"];
+      const photoExtensions = [\"png\", \"jpeg\", \"heic\"];
       if (textExtension.indexOf(extension) != -1 || extension.startsWith(\"data:text/plain\")) {
         showText(path);
       } else if (extension == \"mp4\") {
         showVideo(path);
-      } else {
+      } else if (photoExtensions.indexOf(extension) > 0 || extension.startsWith(\"data:image\")) {
         showScreenshot(path);
+      } else {
+        showLinkAttachment(path);
       }
     }
 
@@ -855,6 +865,7 @@ struct HTMLTemplates
       hideAttachmentPlaceholder();
       hideScreenshot();
       hideVideo();
+      hideLinkAttachment();
       iframe.style.display = \"block\";
       iframe.src = path;
     }
@@ -871,6 +882,7 @@ struct HTMLTemplates
       hideAttachmentPlaceholder();
       hideLog();
       hideVideo();
+      hideLinkAttachment();
       var image = document.getElementById('screenshot-'+filename);
       screenshot.style.display = \"block\";
       screenshot.src = image.src;
@@ -880,10 +892,27 @@ struct HTMLTemplates
       hideAttachmentPlaceholder();
       hideLog();
       hideScreenshot();
+      hideLinkAttachment();
       var vid = document.getElementById('video-'+filename);
       video.style.display = \"block\";
       video.src = vid.src;
       video.play();
+    }
+    
+    function hideLinkAttachment() {
+      fileAttachment.style.display = \"none\";
+    }
+  
+    function showLinkAttachment(filename) {
+      hideAttachmentPlaceholder();
+      hideLog();
+      hideScreenshot();
+      hideVideo();
+      const fileAttachmentPath = document.getElementById(`file-attachment-${filename}`)
+      const link = document.querySelector(\"#file-attachment > a\")
+      link.textContent = `Download ${filename}`
+      link.href = fileAttachmentPath.href
+      fileAttachment.style.display = \"block\";
     }
 
     function setDisplayToElementsWithSelector(sel, display) {
@@ -1131,5 +1160,13 @@ struct HTMLTemplates
     <span class=\"icon preview-icon\" data=\"[[SOURCE]]\" onclick=\"showText('[[SOURCE]]')\"></span>
   </p>
   """
-}
 
+  static let link = """
+  <p class=\"attachment list-item\">
+    <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
+    [[NAME]]
+    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showLinkAttachment('[[FILENAME]]')\"></span>
+    <a class=\"file-attachment-link\" href=\"[[SOURCE]]\" id=\"file-attachment-[[FILENAME]]\"></a>
+  </p>
+  """
+}

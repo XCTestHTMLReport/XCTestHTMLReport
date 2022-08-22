@@ -18,7 +18,7 @@ let package = Package(
         .package(url: "https://github.com/nacho4d/NDHpple.git", .upToNextMajor(from: "2.0.1")),
     ],
     targets: [
-        .target(
+        .executableTarget(
             name: "XCTestHTMLReport",
             dependencies: ["XCTestHTMLReportCore"]),
         .target(
