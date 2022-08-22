@@ -96,7 +96,7 @@ jobs:
     - name: Repository Dispatch
       uses: peter-evans/repository-dispatch@v1
       env:
-        VERSION: ${GITHUB_REF/refs\/tags\//}
+        VERSION: ${{ GITHUB_REF/refs\/tags\// }}
       with:
         token: ${{ secrets.DISPATCH_ACCESS_TOKEN }}
         event-type: release
