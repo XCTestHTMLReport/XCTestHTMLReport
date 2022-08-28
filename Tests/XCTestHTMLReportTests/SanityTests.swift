@@ -1,21 +1,12 @@
-import class Foundation.Bundle
-import SwiftSoup
 import XCTest
+import SwiftSoup
 
-final class FunctionalTests: XCTestCase {
-    func testExample() throws {
-        let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(args: [])
-
-        XCTAssertEqual(status, 1)
-        XCTAssertEqual(maybeStdErr?.isEmpty, true)
-        let stdOut = try XCTUnwrap(maybeStdOut)
-        XCTAssertContains(stdOut, "Error: Argument -r is required")
-    }
-
+final class SanityTests: XCTestCase {
+    
     func testBasicFunctionality() throws {
         let testResultsUrl = try XCTUnwrap(
             Bundle.testBundle
-                .url(forResource: "TestResults", withExtension: "xcresult")
+                .url(forResource: "SanityResults", withExtension: "xcresult")
         )
         let (
             status,
@@ -36,10 +27,10 @@ final class FunctionalTests: XCTestCase {
             let elements = try XCTUnwrap(parser.select("div.tests-header > ul:first-of-type > li"))
             let texts = try elements.eachText()
             XCTAssertEqual(texts.count, 5)
-            XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 13)
-            XCTAssertEqual(texts[1].intGroupMatch("Passed \\((\\d+)\\)"), 7)
-            XCTAssertEqual(texts[2].intGroupMatch("Skipped \\((\\d+)\\)"), 1)
-            XCTAssertEqual(texts[3].intGroupMatch("Failed \\((\\d+)\\)"), 5)
+            XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 1)
+            XCTAssertEqual(texts[1].intGroupMatch("Passed \\((\\d+)\\)"), 1)
+            XCTAssertEqual(texts[2].intGroupMatch("Skipped \\((\\d+)\\)"), 0)
+            XCTAssertEqual(texts[3].intGroupMatch("Failed \\((\\d+)\\)"), 0)
             XCTAssertEqual(texts[4].intGroupMatch("Mixed \\((\\d+)\\)"), 0)
         }
 
@@ -67,4 +58,5 @@ final class FunctionalTests: XCTestCase {
                 }
             }
     }
+    
 }
