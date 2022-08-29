@@ -31,6 +31,7 @@ let package = Package(
             resources: [
                 .process("Resources/TestResults.xcresult"),
                 .process("Resources/RetryResults.xcresult"),
+                .process("Resources/SanityResults.xcresult"),
             ]
         )
     ]
