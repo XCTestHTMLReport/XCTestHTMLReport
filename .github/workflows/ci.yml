@@ -36,5 +36,5 @@ jobs:
         XCODE_VERSION: ${{ matrix.xcode_version }}
       shell: bash
       run: |
-        ./prepareTestResults.sh 2>&1 | xcpretty
-        swift test -c release 2>&1 | xcpretty
+        ./prepareTestResults.sh
+        swift test -c release
