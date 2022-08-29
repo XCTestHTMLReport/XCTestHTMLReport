@@ -34,29 +34,6 @@ final class SanityTests: XCTestCase {
             XCTAssertEqual(texts[4].intGroupMatch("Mixed \\((\\d+)\\)"), 0)
         }
 
-        try XCTContext
-            .runActivity(named: "Attachments' reference should use the relative path") { _ in
-                let imgTags = try parser.select("img.screenshot, img.screenshot-flow")
-                XCTAssertFalse(imgTags.isEmpty())
-
-                try imgTags.forEach { img in
-                    let src = try img.attr("src")
-                    XCTAssertContains(src, ".xcresult/")
-                }
-
-                let spanTags = try parser.select("span.icon.preview-icon")
-                XCTAssertFalse(imgTags.isEmpty())
-
-                try spanTags.forEach { span in
-                    let onClick = try span.attr("onclick")
-                    guard onClick.starts(with: "showText") else {
-                        return
-                    }
-
-                    let data = try span.attr("data")
-                    XCTAssertContains(data, ".xcresult/")
-                }
-            }
     }
     
 }
