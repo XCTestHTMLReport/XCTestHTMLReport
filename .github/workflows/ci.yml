@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    
+
     - name: Xcode Select
       uses: devbotsxyz/xcode-select@v1.1.0
       with:
@@ -30,10 +30,11 @@ jobs:
         ruby-version: 2.7
         bundler-cache: true
     - run: gem install xcpretty
-      
+
     - name: Test
       env:
         XCODE_VERSION: ${{ matrix.xcode_version }}
+      shell: bash
       run: |
         ./prepareTestResults.sh 2>&1 | xcpretty
         swift test -c release 2>&1 | xcpretty
