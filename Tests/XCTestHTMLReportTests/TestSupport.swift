@@ -6,6 +6,7 @@
 //
 
 import class Foundation.Bundle
+import SwiftSoup
 import XCTest
 
 func XCTAssertContains(
@@ -58,13 +59,18 @@ extension String {
 
 extension Bundle {
     static let testBundle: Bundle = {
-        // This is needed because `Bundle.module` will not work in tests.
-        // https://roundwallsoftware.com/swift-package-testing/
-        let baseBundle = Bundle(for: FunctionalTests.classForCoder())
-        return Bundle(
-            path: baseBundle
-                .bundlePath + "/../XCTestHTMLReport_XCTestHTMLReportTests.bundle"
-        )!
+        #if compiler(>=5.7)
+            // Fixed in Xcode 14 beta 4
+            return Bundle.module
+        #else
+            // This is needed because `Bundle.module` will not work in tests.
+            // https://roundwallsoftware.com/swift-package-testing/
+            let baseBundle = Bundle(for: CoreTests.classForCoder())
+            return Bundle(
+                path: baseBundle
+                    .bundlePath + "/../XCTestHTMLReport_XCTestHTMLReportTests.bundle"
+            )!
+        #endif
     }()
 }
 
@@ -108,5 +114,24 @@ extension XCTestCase {
         let outputErr = String(data: dataErr, encoding: .utf8)
 
         return (process.terminationStatus, outputOut, outputErr)
+    }
+
+    func parseReportDocument(xchtmlreportArgs: [String]) throws -> Document {
+        try XCTContext.runActivity(named: #function) { _ in
+            let (
+                status,
+                maybeStdOut,
+                maybeStdErr
+            ) = try xchtmlreportCmd(args: xchtmlreportArgs)
+            XCTAssertEqual(status, 0)
+            #if !DEBUG // XCResultKit outputs non-fatals to stderr in debug mode
+                XCTAssertEqual((maybeStdErr ?? "").isEmpty, true)
+            #endif
+            let stdOut = try XCTUnwrap(maybeStdOut)
+            let htmlUrl = try XCTUnwrap(urlFromXCHtmlreportStdout(stdOut))
+
+            let htmlString = try String(contentsOf: htmlUrl, encoding: .utf8)
+            return try SwiftSoup.parse(htmlString)
+        }
     }
 }
