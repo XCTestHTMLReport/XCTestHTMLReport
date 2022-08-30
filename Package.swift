@@ -29,9 +29,9 @@ let package = Package(
             name: "XCTestHTMLReportTests",
             dependencies: ["XCTestHTMLReport", "SwiftSoup"],
             resources: [
-                .copy("Resources/TestResults.xcresult"),
-                .copy("Resources/RetryResults.xcresult"),
-                .copy("Resources/SanityResults.xcresult"),
+                .process("Resources/TestResults.xcresult"),
+                .process("Resources/RetryResults.xcresult"),
+                .process("Resources/SanityResults.xcresult"),
             ]
         )
     ]
