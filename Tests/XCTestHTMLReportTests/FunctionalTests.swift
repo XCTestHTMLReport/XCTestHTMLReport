@@ -1,11 +1,9 @@
-import XCTest
-import NDHpple
 import class Foundation.Bundle
+import SwiftSoup
+import XCTest
 
 final class FunctionalTests: XCTestCase {
-
     func testExample() throws {
-
         let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(args: [])
 
         XCTAssertEqual(status, 1)
@@ -15,58 +13,58 @@ final class FunctionalTests: XCTestCase {
     }
 
     func testBasicFunctionality() throws {
-        let testResultsUrl = try XCTUnwrap(Bundle.testBundle.url(forResource: "TestResults", withExtension: "xcresult"))
-        let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(args: ["-r", testResultsUrl.path])
+        let testResultsUrl = try XCTUnwrap(
+            Bundle.testBundle
+                .url(forResource: "TestResults", withExtension: "xcresult")
+        )
+        let (
+            status,
+            maybeStdOut,
+            maybeStdErr
+        ) = try xchtmlreportCmd(args: ["-r", testResultsUrl.path])
         XCTAssertEqual(status, 0)
         #if !DEBUG // XCResultKit outputs non-fatals to stderr in debug mode
-        XCTAssertEqual((maybeStdErr ?? "").isEmpty, true)
+            XCTAssertEqual((maybeStdErr ?? "").isEmpty, true)
         #endif
         let stdOut = try XCTUnwrap(maybeStdOut)
         let htmlUrl = try XCTUnwrap(urlFromXCHtmlreportStdout(stdOut))
 
         let htmlString = try String(contentsOf: htmlUrl, encoding: .utf8)
-        let parser = NDHpple(htmlData: htmlString)
+        let parser = try SwiftSoup.parse(htmlString)
 
         try XCTContext.runActivity(named: "Test header contain the right number of results") { _ in
-            let uls = try XCTUnwrap(parser.peekAtSearch(withQuery: "//div[@class='tests-header']/ul"))
-            let texts = uls.children.filter { $0.name == "li" }.compactMap { $0.text }
+            let elements = try XCTUnwrap(parser.select("div.tests-header > ul:first-of-type > li"))
+            let texts = try elements.eachText()
+            XCTAssertEqual(texts.count, 5)
             XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 13)
             XCTAssertEqual(texts[1].intGroupMatch("Passed \\((\\d+)\\)"), 7)
             XCTAssertEqual(texts[2].intGroupMatch("Skipped \\((\\d+)\\)"), 1)
             XCTAssertEqual(texts[3].intGroupMatch("Failed \\((\\d+)\\)"), 5)
+            XCTAssertEqual(texts[4].intGroupMatch("Mixed \\((\\d+)\\)"), 0)
         }
 
-        try XCTContext.runActivity(named: "Attachments' reference should use the relative path") { _ in
-            let imgTags = parser.search(withQuery: "//img[@class='screenshot']")
-                + parser.search(withQuery: "//img[@class='screenshot-flow']")
-            XCTAssertFalse(imgTags.isEmpty)
+        try XCTContext
+            .runActivity(named: "Attachments' reference should use the relative path") { _ in
+                let imgTags = try parser.select("img.screenshot, img.screenshot-flow")
+                XCTAssertFalse(imgTags.isEmpty())
 
-            try imgTags.forEach { img in
-                let src = try XCTUnwrap(img.attributes["src"])
-                try expectContent(of: src, toStartWith: "TestResults.xcresult")
+                try imgTags.forEach { img in
+                    let src = try img.attr("src")
+                    XCTAssertContains(src, ".xcresult/")
+                }
+
+                let spanTags = try parser.select("span.icon.preview-icon")
+                XCTAssertFalse(imgTags.isEmpty())
+
+                try spanTags.forEach { span in
+                    let onClick = try span.attr("onclick")
+                    guard onClick.starts(with: "showText") else {
+                        return
+                    }
+
+                    let data = try span.attr("data")
+                    XCTAssertContains(data, ".xcresult/")
+                }
             }
-
-            let spanTags = parser.search(withQuery: "//span[@class='icon preview-icon']")
-            XCTAssertFalse(spanTags.isEmpty)
-
-            try spanTags.forEach { span in
-                guard let onClick = span.attributes["onclick"],
-                      (onClick["nodeContent"] as? String ?? "").starts(with: "showText")
-                else { return }
-
-                let data = try XCTUnwrap(span.attributes["data"])
-                try expectContent(of: data, toStartWith: "TestResults.xcresult")
-            }
-
-            func expectContent(of node: Node, toStartWith prefix: String) throws {
-                let content = try XCTUnwrap(node["nodeContent"] as? String)
-                XCTAssertTrue(content.starts(with: prefix))
-            }
-        }
     }
-
-    static var allTests = [
-        ("testExample", testExample),
-        ("testBasicFunctionality", testBasicFunctionality),
-    ]
 }

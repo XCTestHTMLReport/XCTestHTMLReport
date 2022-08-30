@@ -1,20 +1,31 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Guillermo Ignacio Enriquez Gutierrez on 2020/09/22.
 //
 
-import XCTest
 import class Foundation.Bundle
+import XCTest
 
-func XCTAssertContains(_ target: @autoclosure () throws -> String, _ substring: @autoclosure () -> String, file: StaticString = #filePath, line: UInt = #line) {
+func XCTAssertContains(
+    _ target: @autoclosure () throws -> String,
+    _ substring: @autoclosure () -> String,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) {
     XCTAssertTrue(try target().contains(substring()), file: file, line: line)
 }
 
 func urlFromXCHtmlreportStdout(_ stdOut: String) -> URL? {
     let regex = try! NSRegularExpression(pattern: ".*successfully created at (.+)$", options: [])
-    guard let match = regex.firstMatch(in: stdOut, options: [], range: NSRange(location: 0, length: stdOut.count)) else { return nil }
+    guard let match = regex.firstMatch(
+        in: stdOut,
+        options: [],
+        range: NSRange(location: 0, length: stdOut.count)
+    ) else {
+        return nil
+    }
     let htmlPath = (stdOut as NSString).substring(with: match.range(at: 1))
     return URL(fileURLWithPath: htmlPath)
 }
@@ -24,7 +35,11 @@ extension String {
     /// `"What ever here is ok(.+)Also here. anything is ok."`
     func groupMatch(_ pattern: String) -> String? {
         let regex = try! NSRegularExpression(pattern: pattern, options: [])
-        guard let match = regex.firstMatch(in: self, options: [], range: NSRange(location: 0, length: count)) else {
+        guard let match = regex.firstMatch(
+            in: self,
+            options: [],
+            range: NSRange(location: 0, length: count)
+        ) else {
             return nil
         }
         if match.numberOfRanges > 0 {
@@ -46,22 +61,24 @@ extension Bundle {
         // This is needed because `Bundle.module` will not work in tests.
         // https://roundwallsoftware.com/swift-package-testing/
         let baseBundle = Bundle(for: FunctionalTests.classForCoder())
-        return Bundle(path: baseBundle.bundlePath + "/../XCTestHTMLReport_XCTestHTMLReportTests.bundle")!
+        return Bundle(
+            path: baseBundle
+                .bundlePath + "/../XCTestHTMLReport_XCTestHTMLReportTests.bundle"
+        )!
     }()
 }
 
 extension XCTestCase {
-
     /// Returns path to the built products directory.
     var productsDirectory: URL {
-      #if os(macOS)
-        for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
-            return bundle.bundleURL.deletingLastPathComponent()
-        }
-        fatalError("couldn't find the products directory")
-      #else
-        return Bundle.main.bundleURL
-      #endif
+        #if os(macOS)
+            for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
+                return bundle.bundleURL.deletingLastPathComponent()
+            }
+            fatalError("couldn't find the products directory")
+        #else
+            return Bundle.main.bundleURL
+        #endif
     }
 
     /// Helper function to execute xchtmlreport command
