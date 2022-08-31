@@ -18,8 +18,17 @@ final class CliTests: XCTestCase {
     }
 
     func testAttachmentsExist() throws {
+        try _testAttachmentsExist()
+    }
+
+    func testDownsizedAttachmentsExist() throws {
+        try _testAttachmentsExist(extraArgs: ["-z"])
+    }
+
+    func _testAttachmentsExist(extraArgs: [String] = []) throws {
         let testResultsUrl = try XCTUnwrap(testResultsUrl)
-        let document = try parseReportDocument(xchtmlreportArgs: ["-r", testResultsUrl.path])
+        let defaultArgs = ["-r", testResultsUrl.path]
+        let document = try parseReportDocument(xchtmlreportArgs: defaultArgs + extraArgs)
         let reportDir = testResultsUrl.deletingLastPathComponent()
 
         try XCTContext.runActivity(named: "Image attachments exist") { _ in
