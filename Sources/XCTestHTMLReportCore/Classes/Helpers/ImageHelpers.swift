@@ -37,7 +37,7 @@ extension RenderingContent {
             throw ResizeError.contentNotImage
         }
     }
-    
+
     private static func resize<C: NSImageResizable>(content: C) throws -> C {
         let image = try content.asNSImage()
         let newSize = CGSize.scaleFrom(image.size, usingMaxWidth: downsizedWidth)
@@ -63,7 +63,7 @@ extension Data: NSImageResizable {
         }
         return data
     }
-    
+
     func asNSImage() throws -> NSImage {
         guard let image = NSImage(data: self) else {
             throw ResizeError.contentNotImage
@@ -75,10 +75,16 @@ extension Data: NSImageResizable {
 extension URL: NSImageResizable {
     static func from(content url: URL, image: NSImage) throws -> URL {
         try FileManager.default.removeItem(at: url)
-        try image.jpegData(compression: RenderingContent.imageCompression)?.write(to: url, options: .atomic)
+        // Rewrite the URL from .heic to .jpeg
+        let jpegUrl = url.deletingPathExtension().appendingPathExtension("jpeg")
+        try image.jpegData(compression: RenderingContent.imageCompression)?.write(to: jpegUrl, options: .atomic)
+        // Do our best to return url relative to xcresult for portability
+        if let newRelativeUrl = URL(string: Array(jpegUrl.pathComponents.suffix(2)).joined(separator: "/")) {
+            return newRelativeUrl
+        }
         return url
     }
-    
+
     func asNSImage() throws -> NSImage {
         guard let image = NSImage(contentsOf: self) else {
             throw ResizeError.imageFileNotFound

@@ -133,7 +133,15 @@ struct Attachment: HTML
             )
             if downsizeImagesEnabled && type.isImage {
                 do {
-                    content = try RenderingContent.downsizeFrom(content)
+                    if case .url(let url) = content {
+                        // At this point, `url` is relative, this will break if the cwd is different from the xcresult path
+                        // As a workaround, the absolute URL is reconstructed
+                        content = try RenderingContent.downsizeFrom(.url(
+                            file.url.deletingLastPathComponent().appendingPathComponent(url.relativeString)
+                        ))
+                    } else {
+                        content = try RenderingContent.downsizeFrom(content)
+                    }
                 } catch {
                     Logger.error("Image resize failed with error: \(error.localizedDescription)")
                 }
