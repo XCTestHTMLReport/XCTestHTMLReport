@@ -32,7 +32,7 @@ final class JUnitReportTests: XCTestCase {
         )]
     )
 
-    func testBasicFunctionality() throws {
+    func testXmlTreeLayoutAndAttributes() throws {
         let parser = try SwiftSoup.parse(jUnitReport.xmlString, "", Parser.xmlParser())
         print(parser)
 
