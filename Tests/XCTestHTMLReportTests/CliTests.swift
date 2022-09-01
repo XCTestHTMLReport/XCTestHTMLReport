@@ -37,7 +37,7 @@ final class CliTests: XCTestCase {
 
             try imgTags.forEach { img in
                 let src = try img.attr("src")
-                XCTAssertContains(src, ".xcresult/")
+                XCTAssertTrue(src.starts(with: "TestResults.xcresult/"))
                 let attachmentUrl = try XCTUnwrap(URL(string: src, relativeTo: reportDir))
                 XCTAssertNoThrow(try attachmentUrl.checkResourceIsReachable())
             }
@@ -54,7 +54,7 @@ final class CliTests: XCTestCase {
                 }
 
                 let data = try span.attr("data")
-                XCTAssertContains(data, ".xcresult/")
+                XCTAssertTrue(data.starts(with: "TestResults.xcresult/"))
                 let attachmentUrl = try XCTUnwrap(URL(string: data, relativeTo: reportDir))
                 XCTAssertNoThrow(try attachmentUrl.checkResourceIsReachable())
             }
