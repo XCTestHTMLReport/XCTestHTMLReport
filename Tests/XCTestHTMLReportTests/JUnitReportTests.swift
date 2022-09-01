@@ -23,6 +23,7 @@ final class JUnitReportTests: XCTestCase {
                 state: .failed,
                 results: [
                     JUnitReport.TestResult(title: "TitleHere<'&\\>", state: .systemOut),
+                    JUnitReport.TestResult(title: "SystemErrorHere<'&\\>", state: .systemErr),
                     JUnitReport.TestResult(
                         title: "Assertion Failure: <unknown>:0: Application com.example.test is not running",
                         state: .failed
@@ -59,6 +60,10 @@ final class JUnitReportTests: XCTestCase {
         let systemOutElem = try XCTUnwrap(testCaseElem.getElementsByTag("system-out").first)
         let systemOutText = try systemOutElem.text()
         XCTAssertEqual(Entities.escape(systemOutText), "TitleHere&lt;\'&amp;\\&gt;")
+
+        let systemErrElem = try XCTUnwrap(testCaseElem.getElementsByTag("system-err").first)
+        let systemErrText = try systemErrElem.text()
+        XCTAssertEqual(Entities.escape(systemErrText), "SystemErrorHere&lt;\'&amp;\\&gt;")
 
         let failureElem = try XCTUnwrap(testCaseElem.getElementsByTag("failure").first)
         let failureMessage = try failureElem.attr("message")

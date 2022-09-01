@@ -52,6 +52,10 @@ struct JUnitReport {
             case unknown
             case failed
             case systemOut
+            // Support error output in teamcity
+            // For example, find here how teamcity parses system-err: https://github.com/JetBrains/teamcity-xml-tests-reporting/blob/b86b9336679a04653792b2915af8de4941304c75/agent/src/jetbrains/buildServer/xmlReportPlugin/parsers/antJUnit/AntJUnitXmlReportParser.java#L145
+            // For more context see: https://github.com/XCTestHTMLReport/XCTestHTMLReport/pull/280
+            case systemErr
             case skipped
         }
 
@@ -118,9 +122,11 @@ extension JUnitReport.TestResult: XMLRepresentable {
             return "        <failure message='\(title.stringByEscapingXMLChars)'>\n        </failure>"
         case .systemOut:
             return "        <system-out>\(title.stringByEscapingXMLChars)</system-out>"
+        case .systemErr:
+            return "        <system-err>\(title.stringByEscapingXMLChars)</system-err>"
         case .skipped:
             return "        <skipped />"
-        default:
+        case .unknown:
             // falback to system-out. This is better than printing nothing
             return "        <system-out>\(title.stringByEscapingXMLChars)</system-out>"
         }
@@ -155,27 +161,34 @@ extension JUnitReport.TestCase {
         }
         // Activities can be nested in infinite levels so here everything should be flatted
         // To replicate cascading we add some indent
-        func flatSubActivities(of activity: Activity, indent: Int) -> [JUnitReport.TestResult] {
-            let t = activity.subActivities.flatMap { flatSubActivities(of: $0, indent: indent + 1) }
-            return [JUnitReport.TestResult(activity: activity, indent: indent)] + t
+        func flatSubActivities(of activity: Activity, indent: Int, isFailureFatal: Bool) -> [JUnitReport.TestResult] {
+            let t = activity.subActivities.flatMap { flatSubActivities(of: $0, indent: indent + 1, isFailureFatal: isFailureFatal) }
+            return [JUnitReport.TestResult(activity: activity, indent: indent, isFailureFatal: isFailureFatal)] + t
         }
 
-        // TODO: Need a better way to represent multiple iterations
+        // TODO: Is there any better way to represent multiple iterations in a junit report?
         results = []
         if let testCase = test as? TestCase {
-            results = testCase.iterations
-                .flatMap(\.activities)
-                .map { flatSubActivities(of: $0, indent: 0) }
-                .flatMap { $0 }
+            for (index, iteration) in testCase.iterations.enumerated() {
+                let isLastIteration = index == testCase.iterations.indices.last
+                results += iteration
+                    .activities
+                    .map { flatSubActivities(of: $0, indent: 0, isFailureFatal: isLastIteration) }
+                    .flatMap { $0 }
+            }
         }
     }
 }
 
-extension JUnitReport.TestResult {
-    init(activity: Activity, indent: Int) {
+private extension JUnitReport.TestResult {
+    init(activity: Activity, indent: Int, isFailureFatal: Bool) {
         title = String(repeating: " ", count: indent * 2) + activity.title
         if activity.type == .assertionFailure {
-            state = .failed
+            if isFailureFatal {
+                state = .failed
+            } else {
+                state = .systemErr
+            }
         } else if activity.type == .userCreated {
             state = .systemOut
         } else if activity.type == .skippedTest {
