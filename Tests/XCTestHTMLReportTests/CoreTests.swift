@@ -41,10 +41,10 @@ final class CoreTests: XCTestCase {
             )
             let texts = try elements.eachText()
             XCTAssertEqual(texts.count, 5)
-            XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 2)
+            XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 3)
             XCTAssertEqual(texts[1].intGroupMatch("Passed \\((\\d+)\\)"), 1)
             XCTAssertEqual(texts[2].intGroupMatch("Skipped \\((\\d+)\\)"), 0)
-            XCTAssertEqual(texts[3].intGroupMatch("Failed \\((\\d+)\\)"), 0)
+            XCTAssertEqual(texts[3].intGroupMatch("Failed \\((\\d+)\\)"), 1)
             XCTAssertEqual(texts[4].intGroupMatch("Mixed \\((\\d+)\\)"), 1)
         })
     }

@@ -28,6 +28,10 @@ class RetryTests: XCTestCase {
         XCTAssertTrue(true)
     }
 
+    func testJustFail() {
+        XCTAssertTrue(false)
+    }
+
     // First iteration will always fail, retry will succeed
     func testRetryOnFailure() throws {
         try XCTContext.runActivity(named: "Retryable Activity") { _ in
