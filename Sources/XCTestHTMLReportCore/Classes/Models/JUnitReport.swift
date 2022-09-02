@@ -27,6 +27,7 @@ struct JUnitReport {
             cases.filter { $0.state == .failed }.count
         }
 
+        var runDestination: RunDestination
         var cases: [TestCase]
     }
 
@@ -47,9 +48,8 @@ struct JUnitReport {
         var results: [TestResult]
     }
 
-    struct TestResult {
-        enum State {
-            case unknown
+    struct TestResult: Equatable {
+        enum State: Equatable {
             case failed
             case systemOut
             // Support error output in teamcity
@@ -57,6 +57,7 @@ struct JUnitReport {
             // For more context see: https://github.com/XCTestHTMLReport/XCTestHTMLReport/pull/280
             case systemErr
             case skipped
+            case unknown
         }
 
         var title: String
@@ -84,6 +85,7 @@ extension JUnitReport.TestSuite: XMLRepresentable {
     /// e.g. <testsuite name='AccessTests' tests='1' failures='0'>
     var xmlString: String {
         var xml = "  <testsuite name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)'>\n"
+        xml += runDestination.xmlString(indent: 1)
 
         cases.forEach { testcase in
             xml += testcase.xmlString
@@ -99,14 +101,14 @@ extension JUnitReport.TestCase: XMLRepresentable {
     /// e.g. <testcase classname='AccessTests' name='testThatThingsThatShouldBePublicArePublic-iPhone8' time='0.007'/>
     var xmlString: String {
         let timeString = String(format: "%.02f", time)
-        var xml = "    <testcase classname='\(classname.stringByEscapingXMLChars)' name='\(name.stringByEscapingXMLChars)' time='\(timeString)'"
+        var xml = "  <testcase classname='\(classname.stringByEscapingXMLChars)' name='\(name.stringByEscapingXMLChars)' time='\(timeString)'"
 
         if results.isEmpty {
             xml += "/>\n"
         } else {
             xml += ">\n"
             xml += results.map(\.xmlString).joined(separator: "\n")
-            xml += "\n    </testcase>\n"
+            xml += "\n  </testcase>\n"
         }
         return xml
     }
@@ -119,16 +121,16 @@ extension JUnitReport.TestResult: XMLRepresentable {
     var xmlString: String {
         switch state {
         case .failed:
-            return "        <failure message='\(title.stringByEscapingXMLChars)'>\n        </failure>"
+            return "    <failure message='\(title.stringByEscapingXMLChars)'>\n    </failure>"
         case .systemOut:
-            return "        <system-out>\(title.stringByEscapingXMLChars)</system-out>"
+            return "    <system-out>\(title.stringByEscapingXMLChars)</system-out>"
         case .systemErr:
-            return "        <system-err>\(title.stringByEscapingXMLChars)</system-err>"
+            return "    <system-err>\(title.stringByEscapingXMLChars)</system-err>"
         case .skipped:
-            return "        <skipped />"
+            return "    <skipped />"
         case .unknown:
             // falback to system-out. This is better than printing nothing
-            return "        <system-out>\(title.stringByEscapingXMLChars)</system-out>"
+            return "    <system-out>\(title.stringByEscapingXMLChars)</system-out>"
         }
     }
 }
@@ -140,12 +142,12 @@ extension JUnitReport {
     }
 }
 
-extension JUnitReport.TestCase {
+private extension JUnitReport.TestCase {
     init(run: Run, test: Test) {
         let components = test.identifier.components(separatedBy: "/")
         time = test.duration
         name = components.last ?? ""
-        classname = (components.first ?? "") + " - " + run.runDestination.deviceInfo
+        classname = (components.first ?? "")
 
         switch test.status {
         case .failure:
@@ -199,16 +201,34 @@ private extension JUnitReport.TestResult {
     }
 }
 
-extension JUnitReport.TestSuite {
+private extension JUnitReport.TestSuite {
     init(run: Run) {
-        name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.deviceInfo
+        name = (run.testSummaries.first?.testName ?? "")
         tests = run.numberOfTests
+        runDestination = run.runDestination
         cases = run.allTests.map { JUnitReport.TestCase(run: run, test: $0) }
     }
 }
 
-extension RunDestination {
-    var deviceInfo: String {
-        name + " - " + targetDevice.osVersion
+private extension RunDestination {
+    private func asDict() -> [(String, String)] {
+        return [
+            ("DestinationName", name),
+            ("DestinationModel", targetDevice.model),
+            ("DestinationOS", targetDevice.osVersion),
+            ("DestinationId", targetDevice.identifier)
+        ]
+    }
+
+    func xmlString(indent: Int) -> String {
+        let indentation = String(repeating: " ", count: indent * 2)
+        let propertiesString = self.asDict()
+            .map { "\(indentation)  <property name='\($0.stringByEscapingXMLChars)' value='\($1.stringByEscapingXMLChars)'/>" }
+            .joined(separator: "\n")
+        return [
+            "\(indentation)<properties>",
+            propertiesString,
+            "\(indentation)</properties>\n"
+        ].joined(separator: "\n")
     }
 }

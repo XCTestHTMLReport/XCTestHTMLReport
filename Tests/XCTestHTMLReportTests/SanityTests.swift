@@ -47,6 +47,10 @@ final class SanityTests: XCTestCase {
         let suite = try XCTUnwrap(junit.suites.first)
         XCTAssertEqual(suite.cases.count, 3)
 
+        XCTAssertEqual(suite.runDestination.name, "iPhone 8")
+        XCTAssertEqual(suite.runDestination.targetDevice.osVersion, "15.2")
+        XCTAssertEqual(suite.runDestination.targetDevice.model, "iPhone 8")
+
         let testRetryOnFailure = try XCTUnwrap(suite.cases.first { $0.name == "testRetryOnFailure()" })
         XCTAssertEqual(testRetryOnFailure.state, .mixed)
         assertJunitResults(testRetryOnFailure.results, count: 10, failed: 0, systemErr: 1, systemOut: 2, unknown: 7, skipped: 0)

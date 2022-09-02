@@ -38,10 +38,20 @@ private extension Status {
     }
 }
 
-struct RunDestination: HTML {
+struct RunDestination: HTML, Equatable {
     let name: String
     let targetDevice: TargetDevice
     let status: Status
+
+    init(
+        name: String,
+        targetDevice: TargetDevice,
+        status: Status
+    ) {
+        self.name = name
+        self.targetDevice = targetDevice
+        self.status = status
+    }
 
     init(record: ActionRunDestinationRecord) {
         Logger.substep("Parsing ActionRunDestinationRecord")

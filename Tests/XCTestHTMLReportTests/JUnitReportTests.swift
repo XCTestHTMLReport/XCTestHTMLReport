@@ -8,7 +8,18 @@
 import Foundation
 import SwiftSoup
 import XCTest
+import XCResultKit
 @testable import XCTestHTMLReportCore
+
+extension RunDestination {
+    static func sample() -> RunDestination {
+        return RunDestination(
+            name: "MySimulator",
+            targetDevice: .init(identifier: "id", uniqueIdentifier: "uid", osVersion: "iOS15.2", model: "iPhone 8"),
+            status: .success
+        )
+    }
+}
 
 final class JUnitReportTests: XCTestCase {
     let jUnitReport = JUnitReport(
@@ -16,6 +27,7 @@ final class JUnitReportTests: XCTestCase {
         suites: [JUnitReport.TestSuite(
             name: "JUnitReportTestSuiteName<'&\\>",
             tests: 1,
+            runDestination: .sample(),
             cases: [JUnitReport.TestCase(
                 classname: "MyClassName<'&\\>",
                 name: "MyName<'&\\>",
@@ -35,7 +47,6 @@ final class JUnitReportTests: XCTestCase {
 
     func testXmlTreeLayoutAndAttributes() throws {
         let parser = try SwiftSoup.parse(jUnitReport.xmlString, "", Parser.xmlParser())
-        print(parser)
 
         let testSuitesElem = try XCTUnwrap(parser.getElementsByTag("testsuites").first())
         let name = try testSuitesElem.attr("name")
@@ -47,7 +58,13 @@ final class JUnitReportTests: XCTestCase {
         XCTAssertEqual(Entities.escape(suiteName), "JUnitReportTestSuiteName&lt;\'&amp;\\&gt;")
         XCTAssertEqual(tests, "1")
 
-        let testCaseElem = testSuiteElem.child(0)
+        let properties = testSuiteElem.child(0).children()
+        XCTAssertEqual(try properties[0].nameAndValue(), ["DestinationName", "MySimulator"])
+        XCTAssertEqual(try properties[1].nameAndValue(), ["DestinationModel", "iPhone 8"])
+        XCTAssertEqual(try properties[2].nameAndValue(), ["DestinationOS", "iOS15.2"])
+        XCTAssertEqual(try properties[3].nameAndValue(), ["DestinationId", "id"])
+
+        let testCaseElem = testSuiteElem.child(1)
         let testCaseName = try testCaseElem.attr("name")
         let testCaseClassName = try testCaseElem.attr("classname")
         let testCaseTime = try testCaseElem.attr("time")
@@ -71,5 +88,37 @@ final class JUnitReportTests: XCTestCase {
             Entities.escape(failureMessage),
             "Assertion Failure: &lt;unknown&gt;:0: Application com.example.test is not running"
         )
+    }
+
+    func testXmlString() throws {
+        let string = jUnitReport.xmlString
+        let expectedString = #"""
+        <?xml version='1.0' encoding='UTF-8'?>
+        <testsuites name='JUnitReportName&lt;&apos;&amp;\&gt;' tests='1' failures='1'>
+          <testsuite name='JUnitReportTestSuiteName&lt;&apos;&amp;\&gt;' tests='1' failures='1'>
+          <properties>
+            <property name='DestinationName' value='MySimulator'/>
+            <property name='DestinationModel' value='iPhone 8'/>
+            <property name='DestinationOS' value='iOS15.2'/>
+            <property name='DestinationId' value='id'/>
+          </properties>
+          <testcase classname='MyClassName&lt;&apos;&amp;\&gt;' name='MyName&lt;&apos;&amp;\&gt;' time='0.00'>
+            <system-out>TitleHere&lt;&apos;&amp;\&gt;</system-out>
+            <system-err>SystemErrorHere&lt;&apos;&amp;\&gt;</system-err>
+            <failure message='Assertion Failure: &lt;unknown&gt;:0: Application com.example.test is not running'>
+            </failure>
+          </testcase>
+          </testsuite>
+        </testsuites>
+
+        """#
+        XCTAssertEqual(string, expectedString)
+    }
+
+}
+
+private extension Node {
+    func nameAndValue() throws -> [String] {
+        return try [attr("name"), attr("value")]
     }
 }

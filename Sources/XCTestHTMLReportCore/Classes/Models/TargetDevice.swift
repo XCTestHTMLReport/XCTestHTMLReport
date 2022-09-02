@@ -9,12 +9,18 @@
 import Foundation
 import XCResultKit
 
-struct TargetDevice
-{
+struct TargetDevice: Equatable {
     let identifier: String
     let uniqueIdentifier: String
     let osVersion: String
     let model: String
+
+    init(identifier: String, uniqueIdentifier: String, osVersion: String, model: String) {
+        self.identifier = identifier
+        self.uniqueIdentifier = uniqueIdentifier
+        self.osVersion = osVersion
+        self.model = model
+    }
 
     init(record: ActionDeviceRecord) {
         Logger.substep("Parsing ActionDeviceRecord")
