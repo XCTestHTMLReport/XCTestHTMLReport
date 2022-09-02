@@ -17,6 +17,10 @@ var junitEnabled = false
 var junit = BlockArgument("j", "junit", required: false, helpMessage: "Provide JUnit XML output") {
     junitEnabled = true
 }
+var includeRunDestinationInfo = true
+var runDestinationInfo = BlockArgument("e", "exclude-run-destination-info", required: false, helpMessage: "Removes the run destination information from the generated junit report") {
+    includeRunDestinationInfo = false
+}
 var result = ValueArgument(.path, "r", "resultBundlePath", required: true, allowsMultiple: true, helpMessage: "Path to a result bundle (allows multiple)")
 var renderingMode = Summary.RenderingMode.linking
 var inlineAssets = BlockArgument("i", "inlineAssets", required: false, helpMessage: "Inline all assets in the resulting html-file, making it heavier, but more portable") {
@@ -35,6 +39,7 @@ var deleteUnattachedFiles = BlockArgument("d", "delete-unattached", required: fa
 command.arguments = [help,
                      verbose,
                      junit,
+                     runDestinationInfo,
                      downsizeImages,
                      deleteUnattachedFiles,
                      result,
@@ -65,7 +70,7 @@ catch let e {
 
 if junitEnabled {
     Logger.step("Building JUnit..")
-    let junitXml = summary.generatedJunitReport()
+    let junitXml = summary.generatedJunitReport(includeRunDestinationInfo: includeRunDestinationInfo)
     do {
         let path = "\(result.values.first!)/report.junit"
         Logger.substep("Writing JUnit report to \(path)")

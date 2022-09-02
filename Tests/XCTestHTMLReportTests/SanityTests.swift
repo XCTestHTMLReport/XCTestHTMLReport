@@ -39,7 +39,7 @@ final class SanityTests: XCTestCase {
         }
 
         let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking, downsizeImagesEnabled: false)
-        let junit = summary.junit
+        let junit = summary.junit(includeRunDestinationInfo: false)
 
         XCTAssertEqual(junit.failures, 1)
         XCTAssertEqual(junit.suites.count, 1)
@@ -58,6 +58,36 @@ final class SanityTests: XCTestCase {
         let testJustPass = try XCTUnwrap(suite.cases.first { $0.name == "testJustPass()" })
         XCTAssertEqual(testJustPass.state, .passed)
         assertJunitResults(testJustPass.results, count: 4, failed: 0, systemErr: 0, systemOut: 0, unknown: 4, skipped: 0)
+    }
+
+    func testWithDeviceInformation() throws {
+        guard let testResultsUrl = Bundle.testBundle.url(forResource: "RetryResults", withExtension: "xcresult") else {
+            throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
+        }
+
+        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking, downsizeImagesEnabled: false)
+        let junit = summary.junit(includeRunDestinationInfo: true).xmlString.components(separatedBy: .newlines)
+
+        let suiteString = try XCTUnwrap(junit.first { $0.contains("<testsuite name='SampleAppUITests") })
+        let testCaseString = try XCTUnwrap(junit.first { $0.contains("<testcase classname='RetryTests") })
+
+        try XCTAssertContains(suiteString, "name='SampleAppUITests - iPhone 8 - 15.2'")
+        try XCTAssertContains(testCaseString, "name='RetryTests - iPhone 8 - 15.2'")
+    }
+
+    func testWithoutDeviceInformation() throws {
+        guard let testResultsUrl = Bundle.testBundle.url(forResource: "RetryResults", withExtension: "xcresult") else {
+            throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
+        }
+
+        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking, downsizeImagesEnabled: false)
+        let junit = summary.junit(includeRunDestinationInfo: false).xmlString.components(separatedBy: .newlines)
+
+        let suiteString = try XCTUnwrap(junit.first { $0.contains("<testsuite name='SampleAppUITests") })
+        let testCaseString = try XCTUnwrap(junit.first { $0.contains("<testcase classname='RetryTests") })
+
+        try XCTAssertContains(suiteString, "name='SampleAppUITests'")
+        try XCTAssertContains(testCaseString, "name='RetryTests'")
     }
 }
 

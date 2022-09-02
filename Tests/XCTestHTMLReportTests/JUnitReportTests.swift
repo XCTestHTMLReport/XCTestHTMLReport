@@ -35,7 +35,6 @@ final class JUnitReportTests: XCTestCase {
 
     func testXmlTreeLayoutAndAttributes() throws {
         let parser = try SwiftSoup.parse(jUnitReport.xmlString, "", Parser.xmlParser())
-        print(parser)
 
         let testSuitesElem = try XCTUnwrap(parser.getElementsByTag("testsuites").first())
         let name = try testSuitesElem.attr("name")
@@ -72,4 +71,24 @@ final class JUnitReportTests: XCTestCase {
             "Assertion Failure: &lt;unknown&gt;:0: Application com.example.test is not running"
         )
     }
+
+    func testXmlString() throws {
+        let string = jUnitReport.xmlString
+        let expectedString = #"""
+        <?xml version='1.0' encoding='UTF-8'?>
+        <testsuites name='JUnitReportName&lt;&apos;&amp;\&gt;' tests='1' failures='1'>
+          <testsuite name='JUnitReportTestSuiteName&lt;&apos;&amp;\&gt;' tests='1' failures='1'>
+          <testcase classname='MyClassName&lt;&apos;&amp;\&gt;' name='MyName&lt;&apos;&amp;\&gt;' time='0.00'>
+            <system-out>TitleHere&lt;&apos;&amp;\&gt;</system-out>
+            <system-err>SystemErrorHere&lt;&apos;&amp;\&gt;</system-err>
+            <failure message='Assertion Failure: &lt;unknown&gt;:0: Application com.example.test is not running'>
+            </failure>
+          </testcase>
+          </testsuite>
+        </testsuites>
+
+        """#
+        XCTAssertEqual(string, expectedString)
+    }
+
 }

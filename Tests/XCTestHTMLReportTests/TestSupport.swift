@@ -10,12 +10,14 @@ import SwiftSoup
 import XCTest
 
 func XCTAssertContains(
-    _ target: @autoclosure () throws -> String,
-    _ substring: @autoclosure () -> String,
+    _ targetCosure: @autoclosure () throws -> String,
+    _ substringClosure: @autoclosure () -> String,
     file: StaticString = #filePath,
     line: UInt = #line
-) {
-    XCTAssertTrue(try target().contains(substring()), file: file, line: line)
+) throws {
+    let target = try targetCosure()
+    let substring = substringClosure()
+    XCTAssertTrue(target.contains(substring), "String <\(target)> does not contain substring <\(substring)>", file: file, line: line)
 }
 
 func urlFromXCHtmlreportStdout(_ stdOut: String) -> URL? {
