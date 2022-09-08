@@ -14,7 +14,7 @@ final class CliTests: XCTestCase {
         XCTAssertEqual(status, 1)
         XCTAssertEqual(maybeStdErr?.isEmpty, true)
         let stdOut = try XCTUnwrap(maybeStdOut)
-        XCTAssertContains(stdOut, "Error: Argument -r is required")
+        try XCTAssertContains(stdOut, "Error: Argument -r is required")
     }
 
     func testAttachmentsExist() throws {

@@ -43,8 +43,8 @@ public struct Summary {
 
     /// Generate JUnit report
     /// - Returns: Generated JUnit XML report string
-    public func generatedJunitReport() -> String {
-        junit.xmlString
+    public func generatedJunitReport(includeRunDestinationInfo: Bool) -> String {
+        junit(includeRunDestinationInfo: includeRunDestinationInfo).xmlString
     }
 
     /// Delete all unattached files in runs
@@ -79,8 +79,8 @@ extension Summary: HTML {
 }
 
 extension Summary: JUnitRepresentable {
-    var junit: JUnitReport {
-        JUnitReport(summary: self)
+    func junit(includeRunDestinationInfo: Bool) -> JUnitReport {
+        JUnitReport(summary: self, includeRunDestinationInfo: includeRunDestinationInfo)
     }
 }
 

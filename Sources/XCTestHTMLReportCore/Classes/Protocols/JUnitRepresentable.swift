@@ -10,5 +10,5 @@ import Foundation
 
 protocol JUnitRepresentable
 {
-    var junit: JUnitReport { get }
+    func junit(includeRunDestinationInfo: Bool) -> JUnitReport
 }

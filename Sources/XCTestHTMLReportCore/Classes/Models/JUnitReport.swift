@@ -99,14 +99,14 @@ extension JUnitReport.TestCase: XMLRepresentable {
     /// e.g. <testcase classname='AccessTests' name='testThatThingsThatShouldBePublicArePublic-iPhone8' time='0.007'/>
     var xmlString: String {
         let timeString = String(format: "%.02f", time)
-        var xml = "    <testcase classname='\(classname.stringByEscapingXMLChars)' name='\(name.stringByEscapingXMLChars)' time='\(timeString)'"
+        var xml = "  <testcase classname='\(classname.stringByEscapingXMLChars)' name='\(name.stringByEscapingXMLChars)' time='\(timeString)'"
 
         if results.isEmpty {
             xml += "/>\n"
         } else {
             xml += ">\n"
             xml += results.map(\.xmlString).joined(separator: "\n")
-            xml += "\n    </testcase>\n"
+            xml += "\n  </testcase>\n"
         }
         return xml
     }
@@ -119,33 +119,38 @@ extension JUnitReport.TestResult: XMLRepresentable {
     var xmlString: String {
         switch state {
         case .failed:
-            return "        <failure message='\(title.stringByEscapingXMLChars)'>\n        </failure>"
+            return "    <failure message='\(title.stringByEscapingXMLChars)'>\n    </failure>"
         case .systemOut:
-            return "        <system-out>\(title.stringByEscapingXMLChars)</system-out>"
+            return "    <system-out>\(title.stringByEscapingXMLChars)</system-out>"
         case .systemErr:
-            return "        <system-err>\(title.stringByEscapingXMLChars)</system-err>"
+            return "    <system-err>\(title.stringByEscapingXMLChars)</system-err>"
         case .skipped:
-            return "        <skipped />"
+            return "    <skipped />"
         case .unknown:
             // falback to system-out. This is better than printing nothing
-            return "        <system-out>\(title.stringByEscapingXMLChars)</system-out>"
+            return "    <system-out>\(title.stringByEscapingXMLChars)</system-out>"
         }
     }
 }
 
 extension JUnitReport {
-    init(summary: Summary) {
+    init(summary: Summary, includeRunDestinationInfo: Bool) {
         name = "All"
-        suites = summary.runs.map { JUnitReport.TestSuite(run: $0) }
+        suites = summary.runs.map { JUnitReport.TestSuite(run: $0, includeRunDestinationInfo: includeRunDestinationInfo) }
     }
 }
 
-extension JUnitReport.TestCase {
-    init(run: Run, test: Test) {
+private extension JUnitReport.TestCase {
+    init(run: Run, test: Test, includeRunDestinationInfo: Bool) {
         let components = test.identifier.components(separatedBy: "/")
         time = test.duration
         name = components.last ?? ""
-        classname = (components.first ?? "") + " - " + run.runDestination.deviceInfo
+
+        var classname = components.first ?? ""
+        if includeRunDestinationInfo {
+            classname += " - " + run.runDestination.deviceInfo
+        }
+        self.classname = classname
 
         switch test.status {
         case .failure:
@@ -199,11 +204,15 @@ private extension JUnitReport.TestResult {
     }
 }
 
-extension JUnitReport.TestSuite {
-    init(run: Run) {
-        name = (run.testSummaries.first?.testName ?? "") + " - " + run.runDestination.deviceInfo
+private extension JUnitReport.TestSuite {
+    init(run: Run, includeRunDestinationInfo: Bool) {
+        var name = run.testSummaries.first?.testName ?? ""
+        if includeRunDestinationInfo {
+            name += " - " + run.runDestination.deviceInfo
+        }
+        self.name = name
         tests = run.numberOfTests
-        cases = run.allTests.map { JUnitReport.TestCase(run: run, test: $0) }
+        cases = run.allTests.map { JUnitReport.TestCase(run: run, test: $0, includeRunDestinationInfo: includeRunDestinationInfo) }
     }
 }
 
