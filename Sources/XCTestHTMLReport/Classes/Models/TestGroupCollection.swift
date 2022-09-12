@@ -25,7 +25,7 @@ struct TestGroupCollection: HTML {
         self.identifier = name
         self.duration = testGroups.reduce(0) { $0 + $1.duration }
         self.name = name
-        self.testGroups = testGroups
+        self.testGroups = testGroups.filter { $0.name != name }
     }
 
     // PRAGMA MARK: - HTML

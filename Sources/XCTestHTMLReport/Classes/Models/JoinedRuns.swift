@@ -16,7 +16,7 @@ struct JoinedRuns : HTML
     let testGroupCollections: [TestGroupCollection]
 
     var numberOfTests : Int {
-        return allTestGroups.count
+        return testGroupCollections.reduce(0, { $0 + $1.testGroups.count })
     }
 
     var numberOfPassedTests : Int {
