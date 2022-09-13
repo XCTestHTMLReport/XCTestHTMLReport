@@ -12,11 +12,11 @@ jobs:
       fail-fast: true
       matrix:
         arch: [ "arm64-apple-macosx", "x86_64-apple-macosx" ]
-    runs-on: macos-11
-    
+    runs-on: macos-12
+
     steps:
     - uses: actions/checkout@v2
-    
+
     - name: Configure Signing
       uses: Apple-Actions/import-codesign-certs@v1
       with:
@@ -26,7 +26,7 @@ jobs:
     - name: Xcode Select
       uses: devbotsxyz/xcode-select@v1.1.0
       with:
-        version: latest
+        version: "13.4.1"
 
     - name: Generate Metadata
       id: metadata
