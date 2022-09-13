@@ -89,14 +89,57 @@ jobs:
 
   update_brew_formula:
     runs-on: ubuntu-latest
-
     needs: release
 
     steps:
-    - name: Repository Dispatch
-      uses: peter-evans/repository-dispatch@v1
+#     - name: Repository Dispatch
+#       uses: peter-evans/repository-dispatch@v1
+#       with:
+#         token: ${{ secrets.DISPATCH_ACCESS_TOKEN }}
+#         event-type: release
+#         client-payload: '{"tag": "${{ github.ref_name }}"}'
+#         repository: XCTestHTMLReport/homebrew-xchtmlreport
+
+    - name: Update Homebrew tap
+      uses: dawidd6/action-homebrew-bump-formula@v3
       with:
-        token: ${{ secrets.DISPATCH_ACCESS_TOKEN }}
-        event-type: release
-        client-payload: '{"tag": "${{ github.ref_name }}"}'
-        repository: XCTestHTMLReport/homebrew-xchtmlreport
+        token: ${{ secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
+        org: XCTestHTMLReport
+        tap: XCTestHTMLReport/homebrew-xchtmlreport
+        formula: xctesthtmlreport
+
+    - name: Update Official Homebrew formula
+      uses: dawidd6/action-homebrew-bump-formula@v3
+      with:
+        token: ${{ secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
+        org: XCTestHTMLReport
+        formula: xctesthtmlreport
+
+  bump_version:
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Get next version
+        uses: reecetech/version-increment@2022.5.1
+        id: version
+        with:
+          scheme: semver
+          increment: patch
+
+      - name: Write version file
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+        run: echo 'let version = "${NEW_VERSION}"' > Sources/XCTestHTMLReport/Version.swift
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        env:
+          OLD_VERSION: ${{ steps.version.outputs.current-version }}
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+        with:
+          title: "${NEW_VERSION} Version Bump"
+          body: "Bumping version from ${OLD_VERSION} to ${NEW_VERSION}"
+          commit-message: "${NEW_VERSION} version bump"
+          branch: "version-bump/${NEW_VERSION}"
+          add-paths: Sources/XCTestHTMLReport/Version.swift
+          reviewers: tylervick
