@@ -83,6 +83,21 @@ struct Activity: HTML {
 
         return cls
     }
+    
+    init(failureSummary: ActionTestFailureSummary, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
+        uuid = failureSummary.uuid
+        startTime = failureSummary.timestamp?.timeIntervalSince1970 ?? 0
+        finishTime = failureSummary.timestamp?.timeIntervalSince1970 ?? 0
+        let issueType = failureSummary.issueType ?? "Assertion Failure"
+        let message = failureSummary.message ?? "[message not provided]"
+        title = "\(issueType) at \(failureSummary.fileName.lastPathComponent()):\(failureSummary.lineNumber):\(message)"
+        type = .assertionFailure
+        subActivities = []
+        attachments = failureSummary.attachments.map {
+            Attachment(attachment: $0, file: file, padding: padding + 16, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
+        }
+        self.padding = padding
+    }
 
     init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
         uuid = summary.uuid
