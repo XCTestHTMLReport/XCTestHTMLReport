@@ -22,7 +22,12 @@ struct Iteration: Test {
         TestScreenshotFlow(activities: activities)
     }
 
-    init(metadata: ActionTestMetadata, resultFile: ResultFile, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
+    init(
+        metadata: ActionTestMetadata,
+        resultFile: ResultFile,
+        renderingMode: Summary.RenderingMode,
+        downsizeImagesEnabled: Bool
+    ) {
         title = metadata.name
         identifier = metadata.identifier
         status = Status(rawValue: metadata.testStatus) ?? .unknown
@@ -32,25 +37,37 @@ struct Iteration: Test {
            let actionTestSummary = resultFile.getActionTestSummary(id: id)
         {
             let actionTestActivities = actionTestSummary.activitySummaries.map {
-                Activity(summary: $0, file: resultFile, padding: 20, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
+                Activity(
+                    summary: $0,
+                    file: resultFile,
+                    padding: 20,
+                    renderingMode: renderingMode,
+                    downsizeImagesEnabled: downsizeImagesEnabled
+                )
             }
 
             // As of xcresulttool 3.39, assertion failures are no longer listed within ActionTestActivitySummary.
             // This means that we need to interpolate ActionTestFailureSummaries alongside existing acitivities.
             // If ActionTestSummary already contains "failingSubActivities", it means that we're using xcresulttool < 3.39,
             // and we shouldn't evaluate ActionTestFailureSummaries to avoid duplicate failure statements.
-            if actionTestActivities.first(where: {$0.hasFailingSubActivities }) != nil {
+            if actionTestActivities.first(where: { $0.hasFailingSubActivities }) != nil {
                 activities = actionTestActivities
             } else {
                 let actionTestFailureActivities = actionTestSummary.failureSummaries.map {
-                    Activity(failureSummary: $0, file: resultFile, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
+                    Activity(
+                        failureSummary: $0,
+                        file: resultFile,
+                        renderingMode: renderingMode,
+                        downsizeImagesEnabled: downsizeImagesEnabled
+                    )
                 }
 
                 // Combine ActionTestActivity and ActionTestFailureActivity arrays together, sorted by the finishTime
                 // TODO: We may want to insert the failure activity between subactivities
                 activities = (actionTestActivities + actionTestFailureActivities).sorted(by: {
                     if let finishTime0 = $0.finishTime,
-                       let finishTime1 = $1.finishTime {
+                       let finishTime1 = $1.finishTime
+                    {
                         return finishTime0 < finishTime1
                     }
                     return true
