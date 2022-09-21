@@ -71,8 +71,8 @@ final class SanityTests: XCTestCase {
         let suiteString = try XCTUnwrap(junit.first { $0.contains("<testsuite name='SampleAppUITests") })
         let testCaseString = try XCTUnwrap(junit.first { $0.contains("<testcase classname='RetryTests") })
 
-        try XCTAssertContains(suiteString, "name='SampleAppUITests - iPhone 8 - 15.2'")
-        try XCTAssertContains(testCaseString, "name='RetryTests - iPhone 8 - 15.2'")
+        try XCTAssertContains(suiteString, "name='SampleAppUITests - iPhone 8 - '")
+        try XCTAssertContains(testCaseString, "name='RetryTests - iPhone 8 - '")
     }
 
     func testWithoutDeviceInformation() throws {
