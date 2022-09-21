@@ -75,11 +75,18 @@ final class CoreTests: XCTestCase {
     }
 
     func testRetryFunctionalityJunit() throws {
-        guard let testResultsUrl = Bundle.testBundle.url(forResource: "RetryResults", withExtension: "xcresult") else {
+        guard let testResultsUrl = Bundle.testBundle.url(
+            forResource: "RetryResults",
+            withExtension: "xcresult"
+        ) else {
             throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
         }
 
-        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking, downsizeImagesEnabled: false)
+        let summary = Summary(
+            resultPaths: [testResultsUrl.path],
+            renderingMode: .linking,
+            downsizeImagesEnabled: false
+        )
         let junit = summary.junit(includeRunDestinationInfo: false)
 
         XCTAssertEqual(junit.failures, 1)
@@ -88,29 +95,70 @@ final class CoreTests: XCTestCase {
         let suite = try XCTUnwrap(junit.suites.first)
         XCTAssertEqual(suite.cases.count, 3)
 
-        let testRetryOnFailure = try XCTUnwrap(suite.cases.first { $0.name == "testRetryOnFailure()" })
+        let testRetryOnFailure = try XCTUnwrap(
+            suite.cases
+                .first { $0.name == "testRetryOnFailure()" }
+        )
         XCTAssertEqual(testRetryOnFailure.state, .mixed)
-        assertJunitResults(testRetryOnFailure.results, count: 10, failed: 0, systemErr: 1, systemOut: 2, unknown: 7, skipped: 0)
+        assertJunitResults(
+            testRetryOnFailure.results,
+            count: 10,
+            failed: 0,
+            systemErr: 1,
+            systemOut: 2,
+            unknown: 7,
+            skipped: 0
+        )
 
         let testJustFail = try XCTUnwrap(suite.cases.first { $0.name == "testJustFail()" })
         XCTAssertEqual(testJustFail.state, .failed)
-        assertJunitResults(testJustFail.results, count: 8, failed: 1, systemErr: 1, systemOut: 0, unknown: 6, skipped: 0)
+        assertJunitResults(
+            testJustFail.results,
+            count: 8,
+            failed: 1,
+            systemErr: 1,
+            systemOut: 0,
+            unknown: 6,
+            skipped: 0
+        )
 
         let testJustPass = try XCTUnwrap(suite.cases.first { $0.name == "testJustPass()" })
         XCTAssertEqual(testJustPass.state, .passed)
-        assertJunitResults(testJustPass.results, count: 4, failed: 0, systemErr: 0, systemOut: 0, unknown: 4, skipped: 0)
+        assertJunitResults(
+            testJustPass.results,
+            count: 4,
+            failed: 0,
+            systemErr: 0,
+            systemOut: 0,
+            unknown: 4,
+            skipped: 0
+        )
     }
 
     func testWithDeviceInformation() throws {
-        guard let testResultsUrl = Bundle.testBundle.url(forResource: "RetryResults", withExtension: "xcresult") else {
+        guard let testResultsUrl = Bundle.testBundle.url(
+            forResource: "RetryResults",
+            withExtension: "xcresult"
+        ) else {
             throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
         }
 
-        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking, downsizeImagesEnabled: false)
-        let junit = summary.junit(includeRunDestinationInfo: true).xmlString.components(separatedBy: .newlines)
+        let summary = Summary(
+            resultPaths: [testResultsUrl.path],
+            renderingMode: .linking,
+            downsizeImagesEnabled: false
+        )
+        let junit = summary.junit(includeRunDestinationInfo: true).xmlString
+            .components(separatedBy: .newlines)
 
-        let suiteString = try XCTUnwrap(junit.first { $0.contains("<testsuite name='SampleAppUITests") })
-        let testCaseString = try XCTUnwrap(junit.first { $0.contains("<testcase classname='RetryTests") })
+        let suiteString = try XCTUnwrap(
+            junit
+                .first { $0.contains("<testsuite name='SampleAppUITests") }
+        )
+        let testCaseString = try XCTUnwrap(
+            junit
+                .first { $0.contains("<testcase classname='RetryTests") }
+        )
 
         let suiteRegex = #"name='SampleAppUITests - iPhone \d - \d+.\d"#
         let testCaseRegex = #"classname='RetryTests - iPhone \d - \d+.\d"#
@@ -119,15 +167,29 @@ final class CoreTests: XCTestCase {
     }
 
     func testWithoutDeviceInformation() throws {
-        guard let testResultsUrl = Bundle.testBundle.url(forResource: "RetryResults", withExtension: "xcresult") else {
+        guard let testResultsUrl = Bundle.testBundle.url(
+            forResource: "RetryResults",
+            withExtension: "xcresult"
+        ) else {
             throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
         }
 
-        let summary = Summary(resultPaths: [testResultsUrl.path], renderingMode: .linking, downsizeImagesEnabled: false)
-        let junit = summary.junit(includeRunDestinationInfo: false).xmlString.components(separatedBy: .newlines)
+        let summary = Summary(
+            resultPaths: [testResultsUrl.path],
+            renderingMode: .linking,
+            downsizeImagesEnabled: false
+        )
+        let junit = summary.junit(includeRunDestinationInfo: false).xmlString
+            .components(separatedBy: .newlines)
 
-        let suiteString = try XCTUnwrap(junit.first { $0.contains("<testsuite name='SampleAppUITests") })
-        let testCaseString = try XCTUnwrap(junit.first { $0.contains("<testcase classname='RetryTests") })
+        let suiteString = try XCTUnwrap(
+            junit
+                .first { $0.contains("<testsuite name='SampleAppUITests") }
+        )
+        let testCaseString = try XCTUnwrap(
+            junit
+                .first { $0.contains("<testcase classname='RetryTests") }
+        )
 
         try XCTAssertContains(suiteString, "name='SampleAppUITests'")
         try XCTAssertContains(testCaseString, "name='RetryTests'")
@@ -145,11 +207,11 @@ private extension CoreTests {
         skipped: Int
     ) {
         XCTAssertEqual(results.count, count)
-        XCTAssertEqual(results.filter({ $0.state == .failed }).count, failed)
-        XCTAssertEqual(results.filter({ $0.state == .systemErr }).count, systemErr)
-        XCTAssertEqual(results.filter({ $0.state == .systemOut }).count, systemOut)
-        XCTAssertEqual(results.filter({ $0.state == .unknown }).count, unknown)
-        XCTAssertEqual(results.filter({ $0.state == .skipped }).count, skipped)
+        XCTAssertEqual(results.filter { $0.state == .failed }.count, failed)
+        XCTAssertEqual(results.filter { $0.state == .systemErr }.count, systemErr)
+        XCTAssertEqual(results.filter { $0.state == .systemOut }.count, systemOut)
+        XCTAssertEqual(results.filter { $0.state == .unknown }.count, unknown)
+        XCTAssertEqual(results.filter { $0.state == .skipped }.count, skipped)
         XCTAssertEqual(count, failed + systemErr + systemOut + unknown + skipped)
     }
 }

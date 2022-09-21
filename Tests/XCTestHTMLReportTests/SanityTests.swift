@@ -7,7 +7,7 @@ final class SanityTests: XCTestCase {
         Bundle.testBundle
             .url(forResource: "SanityResults", withExtension: "xcresult")
     }
-    
+
     func testBasicFunctionality() throws {
         let testResultsUrl = try XCTUnwrap(sanityResultsUrl)
         let summary = Summary(
@@ -15,9 +15,9 @@ final class SanityTests: XCTestCase {
             renderingMode: .linking,
             downsizeImagesEnabled: false
         )
-        
+
         let document = try SwiftSoup.parse(summary.html)
-        
+
         try XCTContext.runActivity(named: "Test header contain the right number of results") { _ in
             let elements = try XCTUnwrap(
                 document
