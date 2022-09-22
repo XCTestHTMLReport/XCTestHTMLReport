@@ -3,6 +3,8 @@ set -ex
 
 cd XCTestHTMLReportSampleApp
 
+xcrun simctl create "iPhone 8" "iPhone 8"
+
 # Create TestResults.xcresult for functional tests
 FILENAME='TestResults.xcresult'
 rm -rf "$FILENAME"
