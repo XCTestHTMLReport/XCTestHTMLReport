@@ -92,14 +92,6 @@ jobs:
     needs: release
 
     steps:
-#     - name: Repository Dispatch
-#       uses: peter-evans/repository-dispatch@v1
-#       with:
-#         token: ${{ secrets.DISPATCH_ACCESS_TOKEN }}
-#         event-type: release
-#         client-payload: '{"tag": "${{ github.ref_name }}"}'
-#         repository: XCTestHTMLReport/homebrew-xchtmlreport
-
     - name: Update Homebrew tap
       uses: dawidd6/action-homebrew-bump-formula@v3
       with:
