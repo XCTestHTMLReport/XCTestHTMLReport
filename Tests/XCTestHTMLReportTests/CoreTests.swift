@@ -74,59 +74,6 @@ final class CoreTests: XCTestCase {
         }
     }
 
-    func testJunitReportContainsFailures() throws {
-        let testResultsUrl = try XCTUnwrap(testResultsUrl)
-
-        let summary = Summary(
-            resultPaths: [testResultsUrl.path],
-            renderingMode: .linking,
-            downsizeImagesEnabled: false
-        )
-
-
-        let junitXml = summary.generatedJunitReport(includeRunDestinationInfo: false)
-        let parser = try SwiftSoup.parse(junitXml, "", Parser.xmlParser())
-        let testcase = try XCTUnwrap(
-            parser
-                .select("testcase[classname=\"FirstSuite\"][name=\"testTwo()\"]").first()
-        )
-        let failure = try XCTUnwrap(testcase.getElementsByTag("failure").first())
-        try XCTAssertNoThrow(failure.attr("message"))
-    }
-
-    func testJunitReportStepsAreOrdered() throws {
-        let testResultsUrl = try XCTUnwrap(testResultsUrl)
-
-        let summary = Summary(
-            resultPaths: [testResultsUrl.path],
-            renderingMode: .linking,
-            downsizeImagesEnabled: false
-        )
-
-        let junitXml = summary.generatedJunitReport(includeRunDestinationInfo: false)
-        let parser = try SwiftSoup.parse(junitXml, "", Parser.xmlParser())
-        let testcase = try XCTUnwrap(
-            parser
-                .select("testcase[classname=\"FirstSuite\"][name=\"testTwo()\"]").first()
-        )
-
-        let setUpIndex = try XCTUnwrap(
-            testcase.children()
-                .firstIndex { $0.ownText().contains("Set Up") }
-        )
-        let failureIndex = try XCTUnwrap(
-            testcase.children()
-                .firstIndex { $0.tagName() == "failure" }
-        )
-        let tearDownIndex = try XCTUnwrap(
-            testcase.children()
-                .firstIndex { $0.ownText().contains("Tear Down") }
-        )
-
-        XCTAssertLessThan(setUpIndex, failureIndex)
-        XCTAssertLessThan(failureIndex, tearDownIndex)
-    }
-
     func testRetryFunctionalityJunit() throws {
         guard let testResultsUrl = Bundle.testBundle.url(
             forResource: "RetryResults",
