@@ -1,0 +1,23 @@
+name: Swift
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: text
+        required: true
+        description: "Test bump homebrew-xchtmlreport
+
+jobs:
+  update_brew_formula:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Update Homebrew tap
+      uses: dawidd6/action-homebrew-bump-formula@v3
+      with:
+        token: ${{ secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
+        org: XCTestHTMLReport
+        tap: XCTestHTMLReport/homebrew-xchtmlreport
+        formula: xchtmlreport
+        tag: ${{ github.event.inputs.version }}
