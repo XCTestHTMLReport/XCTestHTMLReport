@@ -1,4 +1,4 @@
-name: Swift
+name: Brew Bump
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
       version:
         type: text
         required: true
-        description: "Test bump homebrew-xchtmlreport
+        description: "Test bump homebrew-xchtmlreport"
 
 jobs:
   update_brew_formula:
