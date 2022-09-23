@@ -3,7 +3,10 @@ set -ex
 
 cd XCTestHTMLReportSampleApp
 
-xcrun simctl create "iPhone 8" "iPhone 8"
+xcrun simctl list devices --json | grep '"name" : "iPhone 8"' 2> /dev/null
+if [[ $? -ne 0 ]]; then
+    xcrun simctl create "iPhone 8" "iPhone 8"
+fi
 
 # Create TestResults.xcresult for functional tests
 FILENAME='TestResults.xcresult'

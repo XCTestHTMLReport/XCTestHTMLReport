@@ -13,8 +13,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/onevcat/Rainbow.git", .upToNextMajor(from: "3.0.0")),
-        .package(url: "https://github.com/davidahouse/XCResultKit.git", .upToNextMinor(from: "0.9.3")),
-        .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.4.3")
+        .package(url: "https://github.com/tylervick/XCResultKit.git", revision: "6a16ad01ed9c694becd3d361e1ca992674368b83"),
+        .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.4.3"),
     ],
     targets: [
         .executableTarget(

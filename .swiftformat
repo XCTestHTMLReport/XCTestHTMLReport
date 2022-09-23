@@ -1,10 +1,8 @@
+--swiftversion 5.7
 --acronyms ID,URL,UUID
 --allman false
 --assetliterals visual-width
---beforemarks 
 --binarygrouping none
---categorymark "MARK: %c"
---classthreshold 0
 --closingparen balanced
 --closurevoid remove
 --commas always
@@ -12,11 +10,9 @@
 --decimalgrouping none
 --elseposition same-line
 --emptybraces no-space
---enumthreshold 0
 --exponentcase lowercase
 --exponentgrouping disabled
 --extensionacl on-extension
---extensionlength 0
 --extensionmark "MARK: - %t + %c"
 --fractiongrouping disabled
 --fragment false
@@ -31,10 +27,8 @@
 --indent 4
 --indentcase false
 --indentstrings false
---lifecycle 
 --lineaftermarks true
 --linebreaks lf
---markcategories true
 --markextensions always
 --marktypes always
 --maxwidth 100
@@ -44,7 +38,6 @@
 --nowrapoperators 
 --octalgrouping none
 --operatorfunc spaced
---organizetypes actor,class,enum,struct
 --patternlet hoist
 --ranges spaced
 --redundanttype infer-locals-only
@@ -54,7 +47,6 @@
 --shortoptionals always
 --smarttabs enabled
 --stripunusedargs always
---structthreshold 0
 --tabwidth unspecified
 --trailingclosures 
 --trimwhitespace always
@@ -71,5 +63,4 @@
 --wraptypealiases preserve
 --xcodeindentation disabled
 --yodaswap always
---enable organizeDeclarations,wrapConditionalBodies
-
+--enable wrapConditionalBodies

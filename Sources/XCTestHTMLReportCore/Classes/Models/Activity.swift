@@ -55,7 +55,8 @@ struct Activity: HTML {
     var type: ActivityType?
     var hasGlobalAttachment: Bool {
         let hasDirectAttachment = !attachments.isEmpty
-        let subActivitesHaveAttachments = subActivities.reduce(false) { $0 || $1.hasGlobalAttachment }
+        let subActivitesHaveAttachments = subActivities
+            .reduce(false) { $0 || $1.hasGlobalAttachment }
         return hasDirectAttachment || subActivitesHaveAttachments
     }
 
@@ -84,17 +85,63 @@ struct Activity: HTML {
         return cls
     }
 
-    init(summary: ActionTestActivitySummary, file: ResultFile, padding: Int = 0, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
+    init(
+        failureSummary: ActionTestFailureSummary,
+        file: ResultFile,
+        padding: Int = 0,
+        renderingMode: Summary.RenderingMode,
+        downsizeImagesEnabled: Bool
+    ) {
+        uuid = failureSummary.uuid
+        startTime = failureSummary.timestamp?.timeIntervalSince1970 ?? 0
+        finishTime = failureSummary.timestamp?.timeIntervalSince1970 ?? 0
+        let issueType = failureSummary.issueType ?? "Assertion Failure"
+        let message = failureSummary.message ?? "[message not provided]"
+        title =
+            "\(issueType) at \(failureSummary.fileName.lastPathComponent()):\(failureSummary.lineNumber):\(message)"
+        type = .assertionFailure
+        subActivities = []
+        attachments = failureSummary.attachments.map {
+            Attachment(
+                attachment: $0,
+                file: file,
+                padding: padding + 16,
+                renderingMode: renderingMode,
+                downsizeImagesEnabled: downsizeImagesEnabled
+            )
+        }
+        self.padding = padding
+    }
+
+    init(
+        summary: ActionTestActivitySummary,
+        file: ResultFile,
+        padding: Int = 0,
+        renderingMode: Summary.RenderingMode,
+        downsizeImagesEnabled: Bool
+    ) {
         uuid = summary.uuid
         startTime = summary.start?.timeIntervalSince1970 ?? 0
         finishTime = summary.finish?.timeIntervalSince1970 ?? 0
         title = summary.title
         subActivities = summary.subactivities.map {
-            Activity(summary: $0, file: file, padding: padding + 10, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
+            Activity(
+                summary: $0,
+                file: file,
+                padding: padding + 10,
+                renderingMode: renderingMode,
+                downsizeImagesEnabled: downsizeImagesEnabled
+            )
         }
         type = ActivityType(rawValue: summary.activityType)
         attachments = summary.attachments.map {
-            Attachment(attachment: $0, file: file, padding: padding + 16, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
+            Attachment(
+                attachment: $0,
+                file: file,
+                padding: padding + 16,
+                renderingMode: renderingMode,
+                downsizeImagesEnabled: downsizeImagesEnabled
+            )
         }
         self.padding = padding
     }
@@ -108,10 +155,12 @@ struct Activity: HTML {
             "UUID": uuid,
             "TITLE": title.stringByEscapingXMLChars,
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
-            "PADDING": (subActivities.isEmpty && attachments.isEmpty) ? String(padding + 18) : String(padding),
+            "PADDING": (subActivities.isEmpty && attachments.isEmpty) ? String(padding + 18) :
+                String(padding),
             "TIME": totalTime.formattedSeconds,
             "ACTIVITY_TYPE_CLASS": cssClasses,
-            "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && attachments.isEmpty) ? "no-drop-down" : "",
+            "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && attachments.isEmpty) ?
+                "no-drop-down" : "",
             "SUB_ACTIVITY": subActivities.accumulateHTMLAsString,
             "ATTACHMENTS": attachments.accumulateHTMLAsString,
         ]

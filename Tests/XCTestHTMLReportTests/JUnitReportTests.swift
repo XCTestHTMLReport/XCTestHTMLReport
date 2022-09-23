@@ -90,5 +90,4 @@ final class JUnitReportTests: XCTestCase {
         """#
         XCTAssertEqual(string, expectedString)
     }
-
 }
