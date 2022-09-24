@@ -1,1 +1,1 @@
-let version = "2.2.4"
+let version = "${NEW_VERSION}"
