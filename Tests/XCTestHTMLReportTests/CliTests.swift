@@ -11,10 +11,10 @@ final class CliTests: XCTestCase {
     func testNoArgs() throws {
         let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(args: [])
 
-        XCTAssertEqual(status, 1)
-        XCTAssertEqual(maybeStdErr?.isEmpty, true)
-        let stdOut = try XCTUnwrap(maybeStdOut)
-        try XCTAssertContains(stdOut, "Error: Argument -r is required")
+        XCTAssertEqual(status, 64)
+        XCTAssertEqual(maybeStdOut?.isEmpty, true)
+        let stdErr = try XCTUnwrap(maybeStdErr)
+        try XCTAssertContains(stdErr, "Error: Bundles must be provided either by args or the -r option")
     }
 
     func testAttachmentsExist() throws {
