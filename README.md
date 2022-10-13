@@ -28,30 +28,25 @@ Xcode-like HTML report for Unit and UI Tests
 - Displays activity logs
 - Junit report
 
-## Fastlane Support
-
-https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport
-
 ## Installation
 
 ### Homebrew (recommended)
 
-Install via [Homebrew](https://brew.sh/) tap...
+Install via [Homebrew](https://brew.sh/)
 
 Install latest stable version
 ```bash
-brew install XCTestHtmlReport/xchtmlreport/xchtmlreport
+brew install xctesthtmlreport
 ```
 
 Install latest from `main` branch
 ```
-
-brew install XCTestHtmlReport/xchtmlreport/xchtmlreport --HEAD
+brew install xctesthtmlreport --HEAD
 ```
 
 ### Mint 
 
-[Mint](https://github.com/yonaskolb/Mint) is the easiest way...
+Install via [Mint](https://github.com/yonaskolb/Mint)
 
 Install latest stable version
 ```bash
@@ -103,7 +98,9 @@ Report successfully created at .index.html
 JUnit report successfully created at TestResults1.xcresult/report.junit
 ```
 
+## Fastlane Support
 
+https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport
 
 ## Contribution
 
