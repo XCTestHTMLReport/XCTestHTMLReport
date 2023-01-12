@@ -24,8 +24,7 @@ let package = Package(
             dependencies: [
                 "XCTestHTMLReportCore",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ],
-            resources: [.process("Resources")]
+            ]
         ),
         .target(
             name: "XCTestHTMLReportCore",

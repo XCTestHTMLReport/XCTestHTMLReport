@@ -5,10 +5,10 @@ import XCTestHTMLReportCore
 struct JUnitOptions: ParsableArguments {
     init() {}
 
-    @Flag(name: .shortAndLong, help: ArgumentHelp("junitEnabled_flag_help".localized))
+    @Flag(name: .shortAndLong, help: ArgumentHelp("Provide JUnit XML output"))
     var junitEnabled = false
 
-    @Flag(name: .shortAndLong, help: ArgumentHelp("excludeRunDestinationInfo_flag_help".localized))
+    @Flag(name: .shortAndLong, help: ArgumentHelp("Excludes the run destination information from the generated junit report"))
     var excludeRunDestinationInfo = false
 }
 
@@ -18,12 +18,12 @@ struct HtmlOptions: ParsableArguments {
     @Option(
         name: .shortAndLong,
         parsing: .next,
-        help: ArgumentHelp("output_opt_help".localized),
+        help: ArgumentHelp("Output directory, defaults to the first provided xcresult"),
         completion: .directory
     )
     var output: String?
 
-    @Flag(name: .shortAndLong, help: ArgumentHelp("deleteUnattachedFiles_flag_help".localized))
+    @Flag(name: .shortAndLong, help: ArgumentHelp("Delete unattached files from bundle, reducing bundle size"))
     var deleteUnattachedFiles = false
 }
 
@@ -31,7 +31,7 @@ struct SummaryOptions: ParsableArguments {
     init() {}
     
     @ArgumentParser.Argument(
-        help: ArgumentHelp(stringLiteral: "results_arg_help".localized),
+        help: ArgumentHelp(stringLiteral: "Path to one or more .xcresult bundles"),
         completion: .file(extensions: ["xcresult"])
     )
     var results: [String] = []
@@ -39,7 +39,7 @@ struct SummaryOptions: ParsableArguments {
     @available(*, deprecated, message: "Result bundle paths may be passed as arguments.")
     @Option(
         name: .shortAndLong,
-        help: ArgumentHelp("resultBundlePath_opt_help".localized)
+        help: ArgumentHelp("Path to a result bundle (allows multiple)\nDEPRECATED: Result bundle paths may be passed as arguments.")
     )
     var resultBundlePath: [String] = []
     
@@ -47,13 +47,13 @@ struct SummaryOptions: ParsableArguments {
         results + resultBundlePath
     }
     
-    @Flag(name: .customShort("z"), help: ArgumentHelp("downsizeImages_flag_help".localized))
+    @Flag(name: .customShort("z"), help: ArgumentHelp("Downsize image screenshots"))
     var downsizeImages = false
     
-    @Option(help: ArgumentHelp("renderingMode_opt_help".localized))
+    @Option(help: ArgumentHelp("Render attachments inline or as linked assets"))
     var renderingMode: Summary.RenderingMode = .linking
 
-    @Flag(name: .short, help: ArgumentHelp("renderingMode_opt_help".localized))
+    @Flag(name: .short, help: ArgumentHelp("Render attachments inline or as linked assets"))
     var inline = false
     
     var finalRenderingMode: Summary.RenderingMode {
@@ -72,7 +72,7 @@ struct XCTestHtmlReport: AsyncParsableCommand {
         shouldDisplay: true
     )
 
-    @Flag(name: .shortAndLong, help: ArgumentHelp("verbose_flag_help".localized))
+    @Flag(name: .shortAndLong, help: ArgumentHelp("Provide additional logs"))
     var verbose = false
     
     @OptionGroup
@@ -138,12 +138,12 @@ extension XCTestHtmlReport {
 
     func validate() throws {
         guard !summaryOptions.finalResults.isEmpty else {
-            throw ValidationError("result_bundle_not_provided".localized)
+            throw ValidationError("Bundles must be provided either by args or the -r option")
         }
 
         for result in summaryOptions.finalResults {
             guard FileManager.default.fileExists(atPath: result) else {
-                throw ValidationError(String(format: "result_bundle_missing".localized, result))
+                throw ValidationError("Bundle \(result) not found")
             }
         }
     }
@@ -157,11 +157,5 @@ extension Summary.RenderingMode: ExpressibleByArgument {
         default:
             self = .linking
         }
-    }
-}
-
-private extension String {
-    var localized: String {
-        NSLocalizedString(self, bundle: .module, comment: "")
     }
 }
