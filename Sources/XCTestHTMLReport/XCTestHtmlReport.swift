@@ -12,6 +12,13 @@ struct JUnitOptions: ParsableArguments {
     var excludeRunDestinationInfo = false
 }
 
+struct JsonOptions: ParsableArguments {
+
+    @Flag(name: .customLong("json"), help: ArgumentHelp("Output result.json"))
+    var jsonEnabled = false
+
+}
+
 struct HtmlOptions: ParsableArguments {
     init() {}
 
@@ -83,6 +90,9 @@ struct XCTestHtmlReport: AsyncParsableCommand {
     
     @OptionGroup
     var summaryOptions: SummaryOptions
+    
+    @OptionGroup
+    var jsonOptions: JsonOptions
 }
 
 extension XCTestHtmlReport {
@@ -133,6 +143,22 @@ extension XCTestHtmlReport {
                 Logger.error("An error has occured while creating the JUnit report.")
                 throw error
             }
+        }
+        
+        if jsonOptions.jsonEnabled {
+
+            let json = summary.generatedJsonReport()
+            let jsonPath = path.addPathComponent("report.json")
+            Logger.substep("Writing JSON report to \(jsonPath)")
+            
+            do {
+                try json.write(toFile: jsonPath, atomically: false, encoding: .utf8)
+                Logger.success("\nJSON report successfully created at \(jsonPath)")
+            } catch {
+                Logger.error("An error has occurred while creating the JSON report.")
+                throw error
+            }
+
         }
     }
 

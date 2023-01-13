@@ -19,7 +19,7 @@ extension ActivityLogUnitTestSection: EmittableOutput {
     func formatEmittedOutput() -> String {
         "-------- \(title) --------\n" +
         (emittedOutput ?? "") +
-        unitTestSubsections
+        subsections
             .compactMap {
                 "\t" + $0.formatEmittedOutput()
                     .split(separator: "\n")
@@ -33,7 +33,7 @@ extension ActivityLogUnitTestSection: EmittableOutput {
 extension ActivityLogSection: EmittableOutput {
 
     func formatEmittedOutput() -> String {
-        "\(title)\n\n" + unitTestSubsections
+        "\(title)\n\n" + subsections
             .compactMap { $0.formatEmittedOutput() }
             .joined(separator: "\n")
     }

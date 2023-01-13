@@ -95,6 +95,10 @@ class ResultFile {
         }
         return logSection.formatEmittedOutput().data(using: .utf8)
     }
+    
+    func exportJson() -> Data? {
+        file.exportRecursiveJson()
+    }
 }
 
 extension ResultFile {

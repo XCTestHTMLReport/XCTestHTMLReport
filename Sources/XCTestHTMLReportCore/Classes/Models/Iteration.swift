@@ -28,8 +28,8 @@ struct Iteration: Test {
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool
     ) {
-        title = metadata.name
-        identifier = metadata.identifier
+        title = metadata.name ?? ""
+        identifier = metadata.identifier ?? ""
         status = Status(rawValue: metadata.testStatus) ?? .unknown
         duration = metadata.duration ?? 0
 
