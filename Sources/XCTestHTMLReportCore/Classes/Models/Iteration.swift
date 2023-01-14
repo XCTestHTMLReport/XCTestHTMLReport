@@ -46,10 +46,14 @@ struct Iteration: Test {
                 )
             }
 
-            // As of xcresulttool 3.39, assertion failures are no longer listed within ActionTestActivitySummary.
-            // This means that we need to interpolate ActionTestFailureSummaries alongside existing acitivities.
-            // If ActionTestSummary already contains "failingSubActivities", it means that we're using xcresulttool < 3.39,
-            // and we shouldn't evaluate ActionTestFailureSummaries to avoid duplicate failure statements.
+            // As of xcresulttool 3.39, assertion failures are no longer listed within
+            // ActionTestActivitySummary.
+            // This means that we need to interpolate ActionTestFailureSummaries alongside existing
+            // acitivities.
+            // If ActionTestSummary already contains "failingSubActivities", it means that we're
+            // using xcresulttool < 3.39,
+            // and we shouldn't evaluate ActionTestFailureSummaries to avoid duplicate failure
+            // statements.
             if actionTestActivities.first(where: { $0.hasFailingSubActivities }) != nil {
                 activities = actionTestActivities
             } else {
@@ -62,7 +66,8 @@ struct Iteration: Test {
                     )
                 }
 
-                // Combine ActionTestActivity and ActionTestFailureActivity arrays together, sorted by the finishTime
+                // Combine ActionTestActivity and ActionTestFailureActivity arrays together, sorted
+                // by the finishTime
                 // TODO: We may want to insert the failure activity between subactivities
                 activities = (actionTestActivities + actionTestFailureActivities).sorted(by: {
                     if let finishTime0 = $0.finishTime,

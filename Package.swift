@@ -14,9 +14,13 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/onevcat/Rainbow.git", .upToNextMajor(from: "3.0.0")),
-        .package(url: "https://github.com/tylervick/XCResultKit.git", revision: "29f5badcbf7cfcbea8278de34cc7b8774f4b22e8"),
+        .package(
+            url: "https://github.com/tylervick/XCResultKit.git",
+            revision: "29f5badcbf7cfcbea8278de34cc7b8774f4b22e8"
+        ),
         .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.4.3"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.50.4"),
     ],
     targets: [
         .executableTarget(
@@ -29,15 +33,19 @@ let package = Package(
         .target(
             name: "XCTestHTMLReportCore",
             dependencies: ["Rainbow", "XCResultKit"],
-            exclude: ["HTML"]), // ignore HTML directory resources. They are already imported as static strings.
+            exclude: ["HTML"]
+        ), // ignore HTML directory resources. They are already imported as static strings.
         .testTarget(
             name: "XCTestHTMLReportTests",
-            dependencies: ["XCTestHTMLReport", "SwiftSoup"],
+            dependencies: [
+                "XCTestHTMLReport",
+                "SwiftSoup",
+            ],
             resources: [
                 .process("Resources/TestResults.xcresult"),
                 .process("Resources/RetryResults.xcresult"),
                 .process("Resources/SanityResults.xcresult"),
             ]
-        )
+        ),
     ]
 )
