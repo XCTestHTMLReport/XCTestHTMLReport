@@ -8,10 +8,6 @@ on:
 
 jobs:
   build:
-    strategy:
-      fail-fast: true
-      matrix:
-        arch: [ "arm64-apple-macosx", "x86_64-apple-macosx" ]
     runs-on: macos-12
 
     steps:
@@ -26,32 +22,42 @@ jobs:
     - name: Xcode Select
       uses: devbotsxyz/xcode-select@v1.1.0
       with:
-        version: "13.4.1"
+        version: 14.2
 
     - name: Generate Metadata
       id: metadata
       run: |
         [[ "$GITHUB_REF" =~ refs/tags ]] && VERSION=${GITHUB_REF/refs\/tags\//} || exit
         echo ::set-output name=version::${VERSION}
-        echo ::set-output name=archive_name::xchtmlreport-${VERSION}-${{ matrix.arch }}.zip
+        echo ::set-output name=bin_path::.build/universal/release/xchtmlreport
+        echo ::set-output name=archive_name::xchtmlreport-${VERSION}.zip
 
-    - name: Build
-      run: swift build -v -c release --triple ${{ matrix.arch }}
-      
+    - name: Build (arm64)
+      run: swift build -v -c release --triple arm64-apple-macosx
+
+    - name: Build (x86_64)
+      run: swift build -v -c release --triple x86_64-apple-macosx
+
+    - name: Lipo
+      run: |
+        lipo -create -output ${{ steps.metadata.outputs.bin_path }} \
+        .build/arm64-apple-macosx/release/xchtmlreport \
+        .build/x86_64-apple-macosx/release/xchtmlreport
+
     - name: Sign
       run: |
         codesign --verbose --verify --options=runtime -f \
         -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }})" \
-        .build/${{ matrix.arch }}/release/xchtmlreport
+        ${{ steps.metadata.outputs.bin_path }}
     
     - name: Verify
       run: |
-        codesign -vvv --deep --strict .build/${{ matrix.arch }}/release/xchtmlreport
+        codesign -vvv --deep --strict ${{ steps.metadata.outputs.bin_path }}
 
     - name: Package
       run: |
         ditto -c -k \
-        --keepParent ".build/${{ matrix.arch }}/release/xchtmlreport" \
+        --keepParent "${{ steps.metadata.outputs.bin_path }}" \
         ${{ steps.metadata.outputs.archive_name }}
 
     - name: Notarize
@@ -69,7 +75,7 @@ jobs:
         path: ${{ steps.metadata.outputs.archive_name }}
 
   release:
-    runs-on: macos-11
+    runs-on: ubuntu-latest
     
     needs: build
     
