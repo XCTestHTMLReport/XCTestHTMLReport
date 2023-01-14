@@ -1,15 +1,14 @@
 //
 //  FourthSuite.swift
-//  
+//
 //
 //  Created by Tyler Vick on 12/20/21.
 //
 
-import XCTest
 import Foundation
+import XCTest
 
 class RetryTests: XCTestCase {
-
     private var filePath: URL {
         let sharedDir = NSTemporaryDirectory()
         let persistentFileName = "will_succeed"
@@ -23,7 +22,7 @@ class RetryTests: XCTestCase {
     private func shouldSucceed() -> Bool {
         FileManager.default.fileExists(atPath: filePath.path)
     }
-    
+
     func testJustPass() {
         XCTAssertTrue(true)
     }
@@ -43,5 +42,4 @@ class RetryTests: XCTestCase {
             }
         }
     }
-    
 }

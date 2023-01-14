@@ -8,7 +8,7 @@
 
 extension String {
     var stringByEscapingXMLChars: String {
-        return replacingOccurrences(of: "&", with: "&amp;")
+        replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")

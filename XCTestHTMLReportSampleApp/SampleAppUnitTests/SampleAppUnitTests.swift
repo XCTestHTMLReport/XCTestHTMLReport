@@ -8,18 +8,15 @@
 
 import XCTest
 
-class SampleAppUnitTests: XCTestCase
-{
-    func testFailure()
-    {
+class SampleAppUnitTests: XCTestCase {
+    func testFailure() {
         XCTAssert(false, "Test failed")
     }
 
-    func testSuccess()
-    {
+    func testSuccess() {
         XCTAssert(true, "Test succeeded")
     }
-    
+
     func testSkipped() throws {
         // This requires Xcode 11.4 and later
         let letsSkipThis = true
@@ -28,7 +25,7 @@ class SampleAppUnitTests: XCTestCase
 
     func testWithLogAttachment() throws {
         let logData = "log1\nlog2\nlog3".data(using: .utf8)!
-        let attachment = XCTAttachment.init(data: logData, uniformTypeIdentifier: "com.apple.log")
+        let attachment = XCTAttachment(data: logData, uniformTypeIdentifier: "com.apple.log")
         attachment.name = "myLogFile"
         attachment.lifetime = .keepAlways
         add(attachment)
@@ -36,7 +33,7 @@ class SampleAppUnitTests: XCTestCase
 
     func testWithLogAttachmentWithoutName() throws {
         let logData = "log4\nlog5\nlog6".data(using: .utf8)!
-        let attachment = XCTAttachment.init(data: logData, uniformTypeIdentifier: "com.apple.log")
+        let attachment = XCTAttachment(data: logData, uniformTypeIdentifier: "com.apple.log")
         attachment.lifetime = .keepAlways
         add(attachment)
     }

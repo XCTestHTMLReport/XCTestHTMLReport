@@ -17,7 +17,12 @@ func XCTAssertContains(
 ) throws {
     let target = try targetCosure()
     let substring = substringClosure()
-    XCTAssertTrue(target.contains(substring), "String <\(target)> does not contain substring <\(substring)>", file: file, line: line)
+    XCTAssertTrue(
+        target.contains(substring),
+        "String <\(target)> does not contain substring <\(substring)>",
+        file: file,
+        line: line
+    )
 }
 
 func urlFromXCHtmlreportStdout(_ stdOut: String) -> URL? {
@@ -51,7 +56,8 @@ extension String {
         return (self as NSString).substring(with: match.range(at: 0))
     }
 
-    /// Return content of the first int group in the pattern. Pattern is supposed to have a group of ints like:
+    /// Return content of the first int group in the pattern. Pattern is supposed to have a group of
+    /// ints like:
     /// `"What ever here is ok(\\d+)Also here. anything is ok."`
     func intGroupMatch(_ pattern: String) -> Int? {
         let str = groupMatch(pattern) ?? ""

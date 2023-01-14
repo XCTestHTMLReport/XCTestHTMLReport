@@ -32,7 +32,12 @@ public struct Summary {
                 break
             }
             let resultRuns = invocationRecord.actions.compactMap {
-                Run(action: $0, file: resultFile, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
+                Run(
+                    action: $0,
+                    file: resultFile,
+                    renderingMode: renderingMode,
+                    downsizeImagesEnabled: downsizeImagesEnabled
+                )
             }
             runs.append(contentsOf: resultRuns)
         }

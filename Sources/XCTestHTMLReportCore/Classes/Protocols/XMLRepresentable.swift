@@ -8,7 +8,6 @@
 
 import Foundation
 
-protocol XMLRepresentable
-{
+protocol XMLRepresentable {
     var xmlString: String { get }
 }

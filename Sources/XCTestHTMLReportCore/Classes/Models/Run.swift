@@ -56,7 +56,12 @@ struct Run: HTML {
         allTests.filter { $0.status == .mixed }.count
     }
 
-    init?(action: ActionRecord, file: ResultFile, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
+    init?(
+        action: ActionRecord,
+        file: ResultFile,
+        renderingMode: Summary.RenderingMode,
+        downsizeImagesEnabled: Bool
+    ) {
         self.file = file
         runDestination = RunDestination(record: action.runDestination)
 
@@ -81,7 +86,12 @@ struct Run: HTML {
         }
         testSummaries = testPlanSummaries.summaries
             .flatMap(\.testableSummaries)
-            .map { TestSummary(summary: $0, file: file, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled) }
+            .map { TestSummary(
+                summary: $0,
+                file: file,
+                renderingMode: renderingMode,
+                downsizeImagesEnabled: downsizeImagesEnabled
+            ) }
     }
 
     private var logSource: String? {
