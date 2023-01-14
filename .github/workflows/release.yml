@@ -40,6 +40,7 @@ jobs:
 
     - name: Lipo
       run: |
+        mkdir -p .build/universal/release && \
         lipo -create -output ${{ steps.metadata.outputs.bin_path }} \
         .build/arm64-apple-macosx/release/xchtmlreport \
         .build/x86_64-apple-macosx/release/xchtmlreport
