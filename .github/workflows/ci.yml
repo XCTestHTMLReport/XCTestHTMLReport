@@ -11,7 +11,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        xcode_version: [ 13.4.1, latest ]
+        xcode_version: [ 14.2 ]
+        arch: [ "arm64-apple-macosx", "x86_64-apple-macosx" ]
     runs-on: macos-12
 
     steps:
@@ -23,7 +24,7 @@ jobs:
         version: ${{ matrix.xcode_version }}
 
     - name: Build
-      run: swift build -v -c release --arch arm64 --arch x86_64
+      run: swift build -v -c release --triple ${{ matrix.arch }}
 
     - uses: ruby/setup-ruby@v1
       with:
