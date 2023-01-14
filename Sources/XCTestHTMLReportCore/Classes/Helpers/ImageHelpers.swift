@@ -108,7 +108,7 @@ extension NSImage {
     }
 
     func jpegData(compression: Float) -> Data? {
-        guard let tiffRepresentation,
+        guard let tiffRepresentation = tiffRepresentation,
               let bitmapImage = NSBitmapImageRep(data: tiffRepresentation)
         else {
             return nil

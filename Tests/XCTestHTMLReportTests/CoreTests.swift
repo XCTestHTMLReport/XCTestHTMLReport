@@ -22,7 +22,7 @@ final class CoreTests: XCTestCase {
     }
 
     func testMixedStatusFromTestRetries() throws {
-        guard let retryResultsUrl else {
+        guard let retryResultsUrl = retryResultsUrl else {
             throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
         }
 

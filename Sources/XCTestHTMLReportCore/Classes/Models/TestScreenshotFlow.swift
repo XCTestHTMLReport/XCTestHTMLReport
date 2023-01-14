@@ -10,7 +10,7 @@ struct TestScreenshotFlow {
     var screenshotsTail: [ScreenshotFlowAttachment]
 
     init?(activities: [Activity]?, tailCount _: Int = 3) {
-        guard let activities else {
+        guard let activities = activities else {
             return nil
         }
 

@@ -36,7 +36,7 @@ class FirstSuite: XCTestCase {
         let url = URL(string: "https://apple.com")!
         let dataTask = URLSession.shared.dataTask(with: url) { data, _, _ in
 
-            if let data {
+            if let data = data {
                 let html = XCTAttachment(data: data, uniformTypeIdentifier: "public.html")
                 html.name = "HTML"
                 html.lifetime = .keepAlways

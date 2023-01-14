@@ -1,4 +1,4 @@
---swiftversion 5.7
+--swiftversion 5.5
 --acronyms ID,URL,UUID
 --allman false
 --assetliterals visual-width

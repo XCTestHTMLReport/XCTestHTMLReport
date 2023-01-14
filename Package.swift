@@ -37,10 +37,7 @@ let package = Package(
         ), // ignore HTML directory resources. They are already imported as static strings.
         .testTarget(
             name: "XCTestHTMLReportTests",
-            dependencies: [
-                "XCTestHTMLReport",
-                "SwiftSoup",
-            ],
+            dependencies: ["XCTestHTMLReport", "SwiftSoup"],
             resources: [
                 .process("Resources/TestResults.xcresult"),
                 .process("Resources/RetryResults.xcresult"),
