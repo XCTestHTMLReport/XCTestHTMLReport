@@ -108,20 +108,15 @@ jobs:
           increment: patch
 
       - name: Write version file
-        env:
-          NEW_VERSION: ${{ steps.version.outputs.version }}
-        run: echo 'let version = "$NEW_VERSION"' > Sources/XCTestHTMLReport/Version.swift
+        run: echo 'let version = "${{ steps.version.outputs.version }}"' > Sources/XCTestHTMLReport/Version.swift
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
-        env:
-          OLD_VERSION: ${{ steps.version.outputs.current-version }}
-          NEW_VERSION: ${{ steps.version.outputs.version }}
         with:
-          title: "$NEW_VERSION Version Bump"
-          body: "Bumping version from $OLD_VERSION to $NEW_VERSION"
-          commit-message: "$NEW_VERSION version bump"
-          branch: "version-bump/$NEW_VERSION"
+          title: "${{ steps.version.outputs.version }} Version Bump"
+          body: "Bumping version from ${{ steps.version.outputs.current-version }} to ${{ steps.version.outputs.version }}"
+          commit-message: "${{ steps.version.outputs.version }} version bump"
+          branch: "version-bump/${{ steps.version.outputs.version }}"
           add-paths: Sources/XCTestHTMLReport/Version.swift
           reviewers: tylervick
           base: main
