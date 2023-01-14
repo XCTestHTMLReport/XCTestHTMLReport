@@ -8,18 +8,15 @@ struct JUnitOptions: ParsableArguments {
     @Flag(name: .shortAndLong, help: ArgumentHelp("Provide JUnit XML output"))
     var junitEnabled = false
 
-    @Flag(
-        name: .shortAndLong,
-        help: ArgumentHelp(
-            "Excludes the run destination information from the generated junit report"
-        )
-    )
+    @Flag(name: .shortAndLong, help: ArgumentHelp("Excludes the run destination information from the generated junit report"))
     var excludeRunDestinationInfo = false
 }
 
 struct JsonOptions: ParsableArguments {
+
     @Flag(name: .customLong("json"), help: ArgumentHelp("Output result.json"))
     var jsonEnabled = false
+
 }
 
 struct HtmlOptions: ParsableArguments {
@@ -33,16 +30,13 @@ struct HtmlOptions: ParsableArguments {
     )
     var output: String?
 
-    @Flag(
-        name: .shortAndLong,
-        help: ArgumentHelp("Delete unattached files from bundle, reducing bundle size")
-    )
+    @Flag(name: .shortAndLong, help: ArgumentHelp("Delete unattached files from bundle, reducing bundle size"))
     var deleteUnattachedFiles = false
 }
 
 struct SummaryOptions: ParsableArguments {
     init() {}
-
+    
     @ArgumentParser.Argument(
         help: ArgumentHelp(stringLiteral: "Path to one or more .xcresult bundles"),
         completion: .file(extensions: ["xcresult"])
@@ -52,25 +46,23 @@ struct SummaryOptions: ParsableArguments {
     @available(*, deprecated, message: "Result bundle paths may be passed as arguments.")
     @Option(
         name: .shortAndLong,
-        help: ArgumentHelp(
-            "Path to a result bundle (allows multiple)\nDEPRECATED: Result bundle paths may be passed as arguments."
-        )
+        help: ArgumentHelp("Path to a result bundle (allows multiple)\nDEPRECATED: Result bundle paths may be passed as arguments.")
     )
     var resultBundlePath: [String] = []
-
+    
     var finalResults: [String] {
         results + resultBundlePath
     }
-
+    
     @Flag(name: .customShort("z"), help: ArgumentHelp("Downsize image screenshots"))
     var downsizeImages = false
-
+    
     @Option(help: ArgumentHelp("Render attachments inline or as linked assets"))
     var renderingMode: Summary.RenderingMode = .linking
 
     @Flag(name: .short, help: ArgumentHelp("Render attachments inline or as linked assets"))
     var inline = false
-
+    
     var finalRenderingMode: Summary.RenderingMode {
         if renderingMode == .inline || inline {
             return .inline
@@ -89,16 +81,16 @@ struct XCTestHtmlReport: AsyncParsableCommand {
 
     @Flag(name: .shortAndLong, help: ArgumentHelp("Provide additional logs"))
     var verbose = false
-
+    
     @OptionGroup
     var htmlOptions: HtmlOptions
 
     @OptionGroup
     var junitOptions: JUnitOptions
-
+    
     @OptionGroup
     var summaryOptions: SummaryOptions
-
+    
     @OptionGroup
     var jsonOptions: JsonOptions
 }
@@ -107,9 +99,7 @@ extension XCTestHtmlReport {
     func run() async throws {
         Logger.verbose = verbose
 
-        guard let path = htmlOptions.output ?? summaryOptions.finalResults.first?
-            .dropLastPathComponent()
-        else {
+        guard let path = htmlOptions.output ?? summaryOptions.finalResults.first?.dropLastPathComponent() else {
             throw ExitCode(EXIT_FAILURE)
         }
 
@@ -135,17 +125,14 @@ extension XCTestHtmlReport {
 
         Logger.success("\nReport successfully created at \(indexPath)")
 
-        if summaryOptions.finalRenderingMode == .linking, htmlOptions.deleteUnattachedFiles {
+        if summaryOptions.finalRenderingMode == .linking && htmlOptions.deleteUnattachedFiles {
             Logger.substep("Deleting unattached files from result bundle")
             summary.deleteUnattachedFiles()
         }
 
         if junitOptions.junitEnabled {
             let junitXml = summary
-                .generatedJunitReport(
-                    includeRunDestinationInfo: !junitOptions
-                        .excludeRunDestinationInfo
-                )
+                .generatedJunitReport(includeRunDestinationInfo: !junitOptions.excludeRunDestinationInfo)
             let junitPath = path.addPathComponent("report.junit")
             Logger.substep("Writing JUnit report to \(junitPath)")
 
@@ -157,12 +144,13 @@ extension XCTestHtmlReport {
                 throw error
             }
         }
-
+        
         if jsonOptions.jsonEnabled {
+
             let json = summary.generatedJsonReport()
             let jsonPath = path.addPathComponent("report.json")
             Logger.substep("Writing JSON report to \(jsonPath)")
-
+            
             do {
                 try json.write(toFile: jsonPath, atomically: false, encoding: .utf8)
                 Logger.success("\nJSON report successfully created at \(jsonPath)")
@@ -170,6 +158,7 @@ extension XCTestHtmlReport {
                 Logger.error("An error has occurred while creating the JSON report.")
                 throw error
             }
+
         }
     }
 

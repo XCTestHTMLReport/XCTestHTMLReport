@@ -5,12 +5,13 @@
 
 import Foundation
 
-struct TestScreenshotFlow {
+struct TestScreenshotFlow
+{
     var screenshots: [ScreenshotFlowAttachment]
     var screenshotsTail: [ScreenshotFlowAttachment]
 
-    init?(activities: [Activity]?, tailCount _: Int = 3) {
-        guard let activities else {
+    init?(activities: [Activity]?, tailCount: Int = 3) {
+        guard let activities = activities else {
             return nil
         }
 
@@ -18,25 +19,16 @@ struct TestScreenshotFlow {
         guard anyScreenshots else {
             return nil
         }
-        screenshots = activities
-            .flatMap {
-                $0.screenshotAttachments
-                    .map { ScreenshotFlowAttachment(attachment: $0, className: "screenshot-flow") }
-            }
-        screenshotsTail = activities
-            .flatMap {
-                $0.screenshotAttachments
-                    .map { ScreenshotFlowAttachment(attachment: $0, className: "screenshot-tail") }
-            }
-            .suffix(3)
+        screenshots = activities.flatMap { $0.screenshotAttachments.map { ScreenshotFlowAttachment(attachment: $0, className: "screenshot-flow") } }
+        screenshotsTail = activities.flatMap { $0.screenshotAttachments.map { ScreenshotFlowAttachment(attachment: $0, className: "screenshot-tail") } }.suffix(3)
     }
+
 }
 
-private extension Sequence {
-    // Determines whether any element in the Array matches the conditions defined by the specified
-    // predicate.
+fileprivate extension Sequence {
+    // Determines whether any element in the Array matches the conditions defined by the specified predicate.
     func trueForAny(_ predicate: (Element) -> Bool) -> Bool {
-        first(where: predicate) != nil
+        return first(where: predicate) != nil
     }
 }
 
@@ -45,13 +37,13 @@ struct ScreenshotFlowAttachment: HTML {
     let className: String
 
     var htmlTemplate: String {
-        "<img class=\"\(className)\" src=\"[[SRC]]\" id=\"screenshot-[[FILENAME]]\"/>"
+        return "<img class=\"\(className)\" src=\"[[SRC]]\" id=\"screenshot-[[FILENAME]]\"/>"
     }
 
     var htmlPlaceholderValues: [String: String] {
-        [
+        return [
             "SRC": attachment.source ?? "",
-            "FILENAME": attachment.filename,
+            "FILENAME": attachment.filename
         ]
     }
 }

@@ -16,8 +16,8 @@ class ResultFile {
 
     init(url: URL) {
         self.url = url
-        relativeUrl = URL(fileURLWithPath: url.lastPathComponent)
-        file = XCResultFile(url: url)
+        self.relativeUrl = URL(fileURLWithPath: url.lastPathComponent)
+        self.file = XCResultFile(url: url)
     }
 
     // MARK: - Public
@@ -36,10 +36,7 @@ class ResultFile {
             try fileManager.moveItem(at: savedURL, to: url)
             return relativeUrl.appendingPathComponent(resolvedName)
         } catch {
-            Logger
-                .warning(
-                    "Can't move item from \(savedURL) to \(url). \(error.localizedDescription)"
-                )
+            Logger.warning("Can't move item from \(savedURL) to \(url). \(error.localizedDescription)")
             return nil
         }
     }
@@ -58,19 +55,19 @@ class ResultFile {
     }
 
     func getInvocationRecord() -> ActionsInvocationRecord? {
-        file.getInvocationRecord()
+        return file.getInvocationRecord()
     }
 
     func getTestPlanRunSummaries(id: String) -> ActionTestPlanRunSummaries? {
-        file.getTestPlanRunSummaries(id: id)
+        return file.getTestPlanRunSummaries(id: id)
     }
 
     func getActionTestSummary(id: String) -> ActionTestSummary? {
-        file.getActionTestSummary(id: id)
+        return file.getActionTestSummary(id: id)
     }
 
     func getCodeCoverage() -> CodeCoverage? {
-        file.getCodeCoverage()
+        return file.getCodeCoverage()
     }
 
     func exportLogs(id: String) -> URL? {
@@ -79,7 +76,7 @@ class ResultFile {
             return nil
         }
         let fileName = "\(id).log"
-        let url = url.appendingPathComponent(fileName)
+        let url = self.url.appendingPathComponent(fileName)
         let fileManager = FileManager.default
         do {
             try? fileManager.removeItem(at: url)
@@ -98,17 +95,17 @@ class ResultFile {
         }
         return logSection.formatEmittedOutput().data(using: .utf8)
     }
-
+    
     func exportJson() -> Data? {
         file.exportRecursiveJson()
     }
 }
 
 extension ResultFile {
-    func exportPayloadContent(
-        id: String,
-        renderingMode: Summary.RenderingMode,
-        fileName: String?
+
+    func exportPayloadContent(id: String,
+                              renderingMode: Summary.RenderingMode,
+                              fileName: String?
     ) -> RenderingContent {
         switch renderingMode {
         case .inline:
@@ -118,10 +115,8 @@ extension ResultFile {
         }
     }
 
-    func exportLogsContent(
-        id: String,
-        renderingMode: Summary.RenderingMode
-    ) -> RenderingContent {
+    func exportLogsContent(id: String,
+                           renderingMode: Summary.RenderingMode) -> RenderingContent {
         switch renderingMode {
         case .inline:
             return exportLogsData(id: id).map(RenderingContent.data) ?? .none

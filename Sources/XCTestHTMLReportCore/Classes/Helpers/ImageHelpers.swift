@@ -3,8 +3,9 @@
 //  XCTestHTMLReport
 //
 
-import Cocoa
 import Foundation
+import Cocoa
+
 
 /// Performs an image resize for the image at the provided path
 /// image is resized to be 200px width - aspect ratio maintaned
@@ -13,6 +14,7 @@ import Foundation
 /// is not modified
 ///
 /// - Parameter path: path to an image
+
 
 enum ResizeError: Error {
     case largerThanOriginal
@@ -27,9 +29,9 @@ extension RenderingContent {
 
     static func downsizeFrom(_ content: RenderingContent) throws -> RenderingContent {
         switch content {
-        case let .data(data):
+        case .data(let data):
             return .data(try RenderingContent.resize(content: data))
-        case let .url(url):
+        case .url(let url):
             return .url(try RenderingContent.resize(content: url))
         case .none:
             throw ResizeError.contentNotImage
@@ -45,11 +47,13 @@ extension RenderingContent {
 }
 
 protocol NSImageResizable {
+    
     associatedtype Format = Self
 
     func asNSImage() throws -> NSImage
-
+    
     static func from(content: Self, image: NSImage) throws -> Self
+
 }
 
 extension Data: NSImageResizable {
@@ -73,13 +77,9 @@ extension URL: NSImageResizable {
         try FileManager.default.removeItem(at: url)
         // Rewrite the URL from .heic to .jpeg
         let jpegUrl = url.deletingPathExtension().appendingPathExtension("jpeg")
-        try image.jpegData(compression: RenderingContent.imageCompression)?
-            .write(to: jpegUrl, options: .atomic)
+        try image.jpegData(compression: RenderingContent.imageCompression)?.write(to: jpegUrl, options: .atomic)
         // Do our best to return url relative to xcresult for portability
-        if let newRelativeUrl = URL(
-            string: Array(jpegUrl.pathComponents.suffix(2))
-                .joined(separator: "/")
-        ) {
+        if let newRelativeUrl = URL(string: Array(jpegUrl.pathComponents.suffix(2)).joined(separator: "/")) {
             return newRelativeUrl
         }
         return url
@@ -94,38 +94,25 @@ extension URL: NSImageResizable {
 }
 
 extension NSImage {
+    
     static func from(image: NSImage, scaledTo newSize: CGSize) -> NSImage {
         let newImage = NSImage(size: newSize)
         newImage.lockFocus()
-        image.draw(
-            in: NSRect(origin: .zero, size: newSize),
-            from: NSRect(origin: .zero, size: image.size),
-            operation: .sourceOver,
-            fraction: 1
-        )
+        image.draw(in: NSRect(origin: .zero, size: newSize),
+                   from: NSRect(origin: .zero, size: image.size),
+                   operation: .sourceOver,
+                   fraction: 1)
         newImage.unlockFocus()
         return newImage
     }
 
     func jpegData(compression: Float) -> Data? {
-        guard let tiffRepresentation,
-              let bitmapImage = NSBitmapImageRep(data: tiffRepresentation)
-        else {
-            return nil
-        }
-        return bitmapImage.representation(
-            using: .jpeg,
-            properties: [NSBitmapImageRep.PropertyKey
-                .compressionFactor: NSNumber(value: compression)]
-        )
+        guard let tiffRepresentation = tiffRepresentation, let bitmapImage = NSBitmapImageRep(data: tiffRepresentation) else { return nil }
+        return bitmapImage.representation(using: .jpeg, properties: [ NSBitmapImageRep.PropertyKey.compressionFactor : NSNumber(value: compression)])
     }
 
     @discardableResult
-    func jpegWrite(
-        to url: URL,
-        options: Data.WritingOptions = .atomic,
-        compression: Float
-    ) -> Bool {
+    func jpegWrite(to url: URL, options: Data.WritingOptions = .atomic, compression: Float) -> Bool {
         do {
             try jpegData(compression: compression)?.write(to: url, options: options)
             return true
@@ -134,6 +121,7 @@ extension NSImage {
             return false
         }
     }
+
 }
 
 extension CGSize: Comparable {
@@ -141,9 +129,9 @@ extension CGSize: Comparable {
         let ratio = width / size.width
         return CGSize(width: size.width * ratio, height: size.height * ratio)
     }
-
+    
     // Compares by area
     public static func < (lhs: CGSize, rhs: CGSize) -> Bool {
-        (lhs.width * lhs.height) < (rhs.width * rhs.height)
+        return (lhs.width * lhs.height) < (rhs.width * rhs.height)
     }
 }

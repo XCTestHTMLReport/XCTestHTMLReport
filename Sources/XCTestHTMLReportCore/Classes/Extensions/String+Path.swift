@@ -8,16 +8,20 @@
 
 import Foundation
 
-public extension String {
-    func lastPathComponent() -> String {
-        URL(fileURLWithPath: self).lastPathComponent
+extension String
+{
+    public func lastPathComponent() -> String
+    {
+        return URL(fileURLWithPath: self).lastPathComponent
     }
 
-    func dropLastPathComponent() -> String {
-        URL(fileURLWithPath: self).deletingLastPathComponent().path
+    public func dropLastPathComponent() -> String
+    {
+        return URL(fileURLWithPath: self).deletingLastPathComponent().path
     }
 
-    func addPathComponent(_ component: String) -> String {
-        URL(fileURLWithPath: self).appendingPathComponent(component).path
+    public func addPathComponent(_ component: String) -> String
+    {
+        return URL(fileURLWithPath: self).appendingPathComponent(component).path
     }
 }

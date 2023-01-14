@@ -41,22 +41,12 @@ struct TestSummary: HTML {
         return status
     }
 
-    init(
-        summary: ActionTestableSummary,
-        file: ResultFile,
-        renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool
-    ) {
+    init(summary: ActionTestableSummary, file: ResultFile, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
         uuid = UUID().uuidString
         testName = summary.targetName ?? ""
         // TODO: Reduce this with iterations & accum with hashmap
         tests = summary.tests.map {
-            TestGroup(
-                group: $0,
-                resultFile: file,
-                renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled
-            )
+            TestGroup(group: $0, resultFile: file, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)
         }
     }
 
