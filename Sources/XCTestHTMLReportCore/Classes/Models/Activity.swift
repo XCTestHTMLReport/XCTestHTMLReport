@@ -74,7 +74,7 @@ struct Activity: HTML {
 
     var cssClasses: String {
         var cls = ""
-        if let type = type {
+        if let type {
             cls += type.cssClass
 
             if type == .userCreated, hasFailingSubActivities {

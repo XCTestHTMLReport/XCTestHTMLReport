@@ -15,11 +15,12 @@ protocol HTML {
 
 extension HTML {
     var html: String {
-        htmlPlaceholderValues.reduce(htmlTemplate) { (accumulator: String, rel: (String, String)) -> String in
-            autoreleasepool {
-                accumulator.replacingOccurrences(of: "[[\(rel.0)]]", with: rel.1)
+        htmlPlaceholderValues
+            .reduce(htmlTemplate) { (accumulator: String, rel: (String, String)) -> String in
+                autoreleasepool {
+                    accumulator.replacingOccurrences(of: "[[\(rel.0)]]", with: rel.1)
+                }
             }
-        }
     }
 }
 

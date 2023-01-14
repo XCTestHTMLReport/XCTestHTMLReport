@@ -11,8 +11,9 @@ func removeUnattachedFiles(runs: [Run]) -> Int {
 
     var attachmentPathsLastItem: [String?] = []
     for run in runs {
-        attachmentPathsLastItem = attachmentPathsLastItem + run.allAttachments.map { $0.source?.lastPathComponent() }
-        if case RenderingContent.url(let url) = run.logContent {
+        attachmentPathsLastItem = attachmentPathsLastItem + run.allAttachments
+            .map { $0.source?.lastPathComponent() }
+        if case let RenderingContent.url(url) = run.logContent {
             attachmentPathsLastItem.append(url.lastPathComponent)
         }
     }
@@ -40,8 +41,14 @@ func removeUnattachedFiles(runs: [Run]) -> Int {
     func searchFileURLs() throws -> [URL] {
         var urls: [URL] = []
         for run in runs {
-            let topContents = try fileManager.contentsOfDirectory(at: run.file.url, includingPropertiesForKeys: nil)
-            let dataContents = try fileManager.contentsOfDirectory(at: run.file.url.appendingPathComponent("Data"), includingPropertiesForKeys: nil)
+            let topContents = try fileManager.contentsOfDirectory(
+                at: run.file.url,
+                includingPropertiesForKeys: nil
+            )
+            let dataContents = try fileManager.contentsOfDirectory(
+                at: run.file.url.appendingPathComponent("Data"),
+                includingPropertiesForKeys: nil
+            )
             urls = urls + topContents + dataContents
         }
         return urls
@@ -59,4 +66,3 @@ func removeUnattachedFiles(runs: [Run]) -> Int {
     }
     return removedFiles
 }
-

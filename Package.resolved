@@ -20,6 +20,15 @@
         }
       },
       {
+        "package": "SwiftFormat",
+        "repositoryURL": "https://github.com/nicklockwood/SwiftFormat",
+        "state": {
+          "branch": null,
+          "revision": "34cd9dd87b78048ce0d623a9153f9bf260ad6590",
+          "version": "0.50.7"
+        }
+      },
+      {
         "package": "SwiftSoup",
         "repositoryURL": "https://github.com/scinfu/SwiftSoup.git",
         "state": {

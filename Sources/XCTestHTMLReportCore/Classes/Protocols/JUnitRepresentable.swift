@@ -8,7 +8,6 @@
 
 import Foundation
 
-protocol JUnitRepresentable
-{
+protocol JUnitRepresentable {
     func junit(includeRunDestinationInfo: Bool) -> JUnitReport
 }

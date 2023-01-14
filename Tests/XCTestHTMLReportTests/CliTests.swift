@@ -14,7 +14,10 @@ final class CliTests: XCTestCase {
         XCTAssertEqual(status, 64)
         XCTAssertEqual(maybeStdOut?.isEmpty, true)
         let stdErr = try XCTUnwrap(maybeStdErr)
-        try XCTAssertContains(stdErr, "Error: Bundles must be provided either by args or the -r option")
+        try XCTAssertContains(
+            stdErr,
+            "Error: Bundles must be provided either by args or the -r option"
+        )
     }
 
     func testAttachmentsExist() throws {
