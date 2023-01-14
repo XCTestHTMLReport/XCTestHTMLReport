@@ -11,6 +11,7 @@ import XCResultKit
 
 public struct Summary {
     let runs: [Run]
+    let resultFiles: [ResultFile]
 
     public enum RenderingMode {
         case inline
@@ -19,10 +20,13 @@ public struct Summary {
 
     public init(resultPaths: [String], renderingMode: RenderingMode, downsizeImagesEnabled: Bool) {
         var runs: [Run] = []
+        var resultFiles: [ResultFile] = []
+
         for resultPath in resultPaths {
             Logger.step("Parsing \(resultPath)")
             let url = URL(fileURLWithPath: resultPath)
             let resultFile = ResultFile(url: url)
+            resultFiles.append(resultFile)
             guard let invocationRecord = resultFile.getInvocationRecord() else {
                 Logger.warning("Can't find invocation record for : \(resultPath)")
                 break
@@ -33,6 +37,7 @@ public struct Summary {
             runs.append(contentsOf: resultRuns)
         }
         self.runs = runs
+        self.resultFiles = resultFiles
     }
 
     /// Generate HTML report
@@ -53,6 +58,18 @@ public struct Summary {
         var deletedFilesCount = 0
         deletedFilesCount = removeUnattachedFiles(runs: runs)
         Logger.substep("Deleted \(deletedFilesCount) unattached files")
+    }
+
+    public func generatedJsonReport() -> String {
+        let jsonStrings: [String] = resultFiles.compactMap { resultFile in
+            guard let jsonData = resultFile.exportJson() else {
+                return nil
+            }
+            return String(data: jsonData, encoding: .utf8)
+        }
+
+        // TODO: The result files may be encoded directly as an array instead of concatenating raw output
+        return "[\(jsonStrings.joined(separator: ","))]"
     }
 }
 

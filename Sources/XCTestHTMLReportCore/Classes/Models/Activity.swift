@@ -98,7 +98,7 @@ struct Activity: HTML {
         let issueType = failureSummary.issueType ?? "Assertion Failure"
         let message = failureSummary.message ?? "[message not provided]"
         title =
-            "\(issueType) at \(failureSummary.fileName.lastPathComponent()):\(failureSummary.lineNumber):\(message)"
+            "\(issueType) at \(failureSummary.fileName?.lastPathComponent() ?? ""):\(failureSummary.lineNumber):\(message)"
         type = .assertionFailure
         subActivities = []
         attachments = failureSummary.attachments.map {

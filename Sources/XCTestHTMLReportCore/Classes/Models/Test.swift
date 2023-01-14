@@ -174,8 +174,8 @@ struct TestCase: Test {
     var iterations: [Iteration]
 
     init(metadata: ActionTestMetadata, resultFile: ResultFile, renderingMode: Summary.RenderingMode, downsizeImagesEnabled: Bool) {
-        title = metadata.name
-        identifier = metadata.identifier
+        title = metadata.name ?? ""
+        identifier = metadata.identifier ?? ""
 
         iterations = [Iteration(metadata: metadata, resultFile: resultFile, renderingMode: renderingMode, downsizeImagesEnabled: downsizeImagesEnabled)]
     }
