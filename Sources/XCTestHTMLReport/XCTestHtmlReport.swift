@@ -101,9 +101,7 @@ struct XCTestHtmlReport: AsyncParsableCommand {
 
     @OptionGroup
     var jsonOptions: JsonOptions
-}
 
-extension XCTestHtmlReport {
     func run() async throws {
         Logger.verbose = verbose
 

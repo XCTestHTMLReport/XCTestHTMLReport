@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        xcode_version: [ 14.2 ]
+        xcode_version: [ 14.2, 13.0 ]
         arch: [ "arm64-apple-macosx", "x86_64-apple-macosx" ]
     runs-on: macos-12
 
