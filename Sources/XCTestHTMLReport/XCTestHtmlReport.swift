@@ -80,7 +80,7 @@ struct SummaryOptions: ParsableArguments {
 }
 
 @main
-struct XCTestHtmlReport: AsyncParsableCommand {
+struct XCTestHtmlReport: ParsableCommand {
     static var configuration = CommandConfiguration(
         commandName: "xchtmlreport",
         version: version,
@@ -102,7 +102,7 @@ struct XCTestHtmlReport: AsyncParsableCommand {
     @OptionGroup
     var jsonOptions: JsonOptions
 
-    func run() async throws {
+    func run() throws {
         Logger.verbose = verbose
 
         guard let path = htmlOptions.output ?? summaryOptions.finalResults.first?
