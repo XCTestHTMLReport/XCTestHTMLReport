@@ -430,6 +430,20 @@ struct HTMLTemplates
       display:none;
       z-index: 1000;
     }
+
+    .gif {
+      background-color: white;
+      padding: 4px;
+      height: 600px;
+      position: absolute;
+      top:0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+      display:none;
+      z-index: 1000;
+    }
   
     .file-attachment-link {
       display:none;
@@ -553,6 +567,10 @@ struct HTMLTemplates
       display: none;
     }
 
+    .displayed-gif {
+      width: 100%;
+    }
+
     .attachments {
       display: none;
     }
@@ -615,6 +633,7 @@ struct HTMLTemplates
           <div class=\"resizer\"></div>
           <h2>No Selected Attachment</h2>
           <img src=\"\" class=\"displayed-screenshot\" id=\"screenshot\"/>
+          <img src=\"\" class=\"displayed-gif\" id=\"gif\"/>
           <iframe id=\"text-attachment\" src=\"\"></iframe>
           <h2 id=\"file-attachment\"><a target=\"_blank\"/></h2>
           <video class=\"displayed-video\" controls src=\"\" id=\"video\"/>
@@ -630,6 +649,7 @@ struct HTMLTemplates
     sidebar, startX, startWidth, originalWidth,
     screenshot = document.getElementById('screenshot'),
     video = document.getElementById('video'),
+    gif = document.getElementById('gif'),
     iframe = document.getElementById('text-attachment'),
     fileAttachment = document.getElementById('file-attachment');
 
@@ -672,6 +692,7 @@ struct HTMLTemplates
         hideScreenshot();
         hideLog();
         hideVideo();
+        hideGif();
         hideLinkAttachment();
         showAttachmentPlaceholder();
         return;
@@ -687,6 +708,8 @@ struct HTMLTemplates
         showVideo(path);
       } else if (photoExtensions.indexOf(extension) > 0 || extension.startsWith(\"data:image\")) {
         showScreenshot(path);
+      } else if (extension == \"gif\") {
+        showGif(path);
       } else {
         showLinkAttachment(path);
       }
@@ -865,6 +888,7 @@ struct HTMLTemplates
       hideAttachmentPlaceholder();
       hideScreenshot();
       hideVideo();
+      hideGif();
       hideLinkAttachment();
       iframe.style.display = \"block\";
       iframe.src = path;
@@ -878,10 +902,15 @@ struct HTMLTemplates
       video.style.display = \"none\";
     }
 
+    function hideGif() {
+      gif.style.display = \"none\";
+    }
+
     function showScreenshot(filename) {
       hideAttachmentPlaceholder();
       hideLog();
       hideVideo();
+      hideGif();
       hideLinkAttachment();
       var image = document.getElementById('screenshot-'+filename);
       screenshot.style.display = \"block\";
@@ -892,11 +921,24 @@ struct HTMLTemplates
       hideAttachmentPlaceholder();
       hideLog();
       hideScreenshot();
+      hideGif();
       hideLinkAttachment();
       var vid = document.getElementById('video-'+filename);
       video.style.display = \"block\";
       video.src = vid.src;
       video.play();
+    }
+
+    function showGif(filename) {
+    hideAttachmentPlaceholder();
+    hideLog();
+    hideVideo();
+    hideScreenshot();
+    hideLinkAttachment();
+    var gf = document.getElementById('gif-'+filename);
+    gif.style.display = \"block\";
+    gif.src = gf.src;
+    gif.play();
     }
     
     function hideLinkAttachment() {
@@ -908,6 +950,7 @@ struct HTMLTemplates
       hideLog();
       hideScreenshot();
       hideVideo();
+      hideGif();
       const fileAttachmentPath = document.getElementById(`file-attachment-${filename}`)
       const link = document.querySelector(\"#file-attachment > a\")
       link.textContent = `Download ${filename}`
@@ -1141,6 +1184,15 @@ struct HTMLTemplates
     [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
     <img class=\"screenshot\" src=\"[[SOURCE]]\" id=\"screenshot-[[FILENAME]]\"/>
+  </p>
+  """
+
+  static let gif = """
+  <p class="attachment list-item">
+    <span class="icon left screenshot-icon" style="margin-left: [[PADDING]]px"></span>
+    [[NAME]]
+  <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showGif('[[FILENAME]]')\"></span>
+    <img class=\"gif\" src=\"[[SOURCE]]\" id=\"gif-[[FILENAME]]\"/>
   </p>
   """
 

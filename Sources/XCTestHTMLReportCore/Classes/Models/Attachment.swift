@@ -12,6 +12,7 @@ import XCResultKit
 
 enum AttachmentType: String {
     case unknown = ""
+    case gif = "com.compuserve.gif"
     case data = "public.data"
     case html = "public.html"
     case jpeg = "public.jpeg"
@@ -43,6 +44,8 @@ enum AttachmentType: String {
             return "video"
         case .text, .log:
             return "text"
+        case .gif:
+            return "gif"
         default:
             return ""
         }
@@ -60,6 +63,8 @@ enum AttachmentType: String {
         switch self {
         case .png:
             return "image/png"
+        case .gif:
+            return "image/gif"
         case .jpeg:
             return "image/jpeg"
         case .heic:
@@ -157,6 +162,8 @@ struct Attachment: HTML {
         switch type {
         case .png, .jpeg, .heic:
             return "Screenshot"
+        case .gif:
+            return "Gif"
         case .mp4:
             return "Video"
         case .text, .html, .data, .log, .zip:
@@ -205,6 +212,8 @@ struct Attachment: HTML {
             return HTMLTemplates.text
         case .zip, .unknown:
             return HTMLTemplates.link // If not known, link/download the resource
+        case .gif:
+            return HTMLTemplates.gif
         }
     }
 
