@@ -38,4 +38,4 @@ jobs:
       shell: bash
       run: |
         ./prepareTestResults.sh
-        swift test -c release --triple ${{ matrix.arch }}
+        swift test -c release
