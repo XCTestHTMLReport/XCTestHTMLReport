@@ -1,0 +1,38 @@
+name: Generate Test Artifacts
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create_test_data:
+    strategy:
+      fail-fast: true
+      matrix:
+        xcode_version: [14.2, 13.2.1, 13.1]
+        macos_version: [macos-12, macos-11]
+        exclude:
+          # macos-11 runners only go up to Xcode 13.2.1
+          - xcode_version: 14.2
+            macos_version: macos-11
+    runs-on: ${{ matrix.macos_version }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Xcode Select
+        uses: devbotsxyz/xcode-select@v1.1.0
+        with:
+          version: ${{ matrix.xcode_version }}
+
+      - name: Prepare Test Results
+        env:
+          XCODE_VERSION: ${{ matrix.xcode_version }}
+        shell: bash
+        run: |
+          ./prepareTestResults.sh
+
+      - name: Archive Test Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: sample-test-results-${{ matrix.macos_version }}-${{ matrix.xcode_version }}
+          path: Tests/XCTestHTMLReportTests/Resources
