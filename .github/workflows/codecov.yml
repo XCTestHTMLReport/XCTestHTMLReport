@@ -26,6 +26,6 @@ jobs:
 
     - uses: codecov/codecov-action@v3
       with:
-        files: .build/arm64-apple-macosx/debug/codecov/XCTestHTMLReport.json
+        files: .build/x86_64-apple-macosx/debug/codecov/XCTestHTMLReport.json
         fail_ci_if_error: true
         verbose: true
