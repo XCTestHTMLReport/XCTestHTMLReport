@@ -26,8 +26,8 @@ func XCTAssertContains(
 }
 
 func urlFromXCHtmlreportStdout(_ stdOut: String) -> URL? {
-    let regex = try! NSRegularExpression(pattern: ".*successfully created at (.+)$", options: [])
-    guard let match = regex.firstMatch(
+    let regex = try? NSRegularExpression(pattern: ".*successfully created at (.+)$", options: [])
+    guard let match = regex?.firstMatch(
         in: stdOut,
         options: [],
         range: NSRange(location: 0, length: stdOut.count)
@@ -42,8 +42,8 @@ extension String {
     /// Return content of the firs group in the pattern. Pattern is supposed to have a group like:
     /// `"What ever here is ok(.+)Also here. anything is ok."`
     func groupMatch(_ pattern: String) -> String? {
-        let regex = try! NSRegularExpression(pattern: pattern, options: [])
-        guard let match = regex.firstMatch(
+        let regex = try? NSRegularExpression(pattern: pattern, options: [])
+        guard let match = regex?.firstMatch(
             in: self,
             options: [],
             range: NSRange(location: 0, length: count)

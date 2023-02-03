@@ -16,15 +16,8 @@ final class CoreTests: XCTestCase {
             .url(forResource: "TestResults", withExtension: "xcresult")
     }
 
-    var retryResultsUrl: URL? {
-        Bundle.testBundle
-            .url(forResource: "RetryResults", withExtension: "xcresult")
-    }
-
     func testMixedStatusFromTestRetries() throws {
-        guard let retryResultsUrl = retryResultsUrl else {
-            throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
-        }
+        let retryResultsUrl = try getRetryResultsUrl()
 
         let summary = Summary(
             resultPaths: [retryResultsUrl.path],
@@ -75,15 +68,10 @@ final class CoreTests: XCTestCase {
     }
 
     func testRetryFunctionalityJunit() throws {
-        guard let testResultsUrl = Bundle.testBundle.url(
-            forResource: "RetryResults",
-            withExtension: "xcresult"
-        ) else {
-            throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
-        }
+        let retryResultsUrl = try getRetryResultsUrl()
 
         let summary = Summary(
-            resultPaths: [testResultsUrl.path],
+            resultPaths: [retryResultsUrl.path],
             renderingMode: .linking,
             downsizeImagesEnabled: false
         )
@@ -136,15 +124,10 @@ final class CoreTests: XCTestCase {
     }
 
     func testWithDeviceInformation() throws {
-        guard let testResultsUrl = Bundle.testBundle.url(
-            forResource: "RetryResults",
-            withExtension: "xcresult"
-        ) else {
-            throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
-        }
+        let retryResultsUrl = try getRetryResultsUrl()
 
         let summary = Summary(
-            resultPaths: [testResultsUrl.path],
+            resultPaths: [retryResultsUrl.path],
             renderingMode: .linking,
             downsizeImagesEnabled: false
         )
@@ -167,15 +150,10 @@ final class CoreTests: XCTestCase {
     }
 
     func testWithoutDeviceInformation() throws {
-        guard let testResultsUrl = Bundle.testBundle.url(
-            forResource: "RetryResults",
-            withExtension: "xcresult"
-        ) else {
-            throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
-        }
+        let retryResultsUrl = try getRetryResultsUrl()
 
         let summary = Summary(
-            resultPaths: [testResultsUrl.path],
+            resultPaths: [retryResultsUrl.path],
             renderingMode: .linking,
             downsizeImagesEnabled: false
         )
@@ -213,5 +191,16 @@ private extension CoreTests {
         XCTAssertEqual(results.filter { $0.state == .unknown }.count, unknown)
         XCTAssertEqual(results.filter { $0.state == .skipped }.count, skipped)
         XCTAssertEqual(count, failed + systemErr + systemOut + unknown + skipped)
+    }
+
+    func getRetryResultsUrl() throws -> URL {
+        if let retryResultsUrl = Bundle.testBundle.url(
+            forResource: "RetryResults",
+            withExtension: "xcresult"
+        ) {
+            return retryResultsUrl
+        }
+
+        throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
     }
 }
