@@ -18,15 +18,33 @@ jobs:
       with:
         version: 14.2
 
+    - name: Download test artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: sample-test-results-macos-12-14.2
+        path: Tests/XCTestHTMLReportTests/Resources
+
+    - name: Display structure of downloaded files
+      run: ls -R
+      working-directory: Tests/XCTestHTMLReportTests/Resources
+
     - name: Test
       env:
-        XCODE_VERSION: ${{ matrix.xcode_version }}
+        XCODE_VERSION: 14.2
       shell: bash
       run: |
-        ./prepareTestResults.sh
         swift test --enable-code-coverage
+
+    - name: Export Coverage
+      env:
+        XCODE_VERSION: 14.2
+      shell: bash
+      run: |
+        xcrun llvm-cov export -format="lcov" \
+        .build/debug/XCTestHTMLReportPackageTests.xctest/Contents/MacOS/XCTestHTMLReportPackageTests -instr-profile \
+        .build/debug/codecov/default.profdata > info.lcov
 
     - uses: codecov/codecov-action@v3
       with:
-        files: .build/x86_64-apple-macosx/debug/codecov/XCTestHTMLReport.json
+        files: info.lcov
         verbose: true
