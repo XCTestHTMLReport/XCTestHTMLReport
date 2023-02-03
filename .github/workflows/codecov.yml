@@ -19,8 +19,12 @@ jobs:
         version: 14.2
 
     - name: Download test artifacts
-      uses: actions/download-artifact@v3
+      # id: download-artifact
+      uses: dawidd6/action-download-artifact@v2
       with:
+        workflow: codecov.yml
+        workflow_conclusion: success
+        branch: main
         name: sample-test-results-macos-12-14.2
         path: Tests/XCTestHTMLReportTests/Resources
 
