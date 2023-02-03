@@ -1,5 +1,5 @@
 [![CD](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/workflows/ci.yml/badge.svg)](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/workflows/ci.yml)
-[![Codecov](https://img.shields.io/codecov/c/github/XCTestHTMLReport/XCTestHTMLReport)](https://codecov.io/github/XCTestHTMLReport/XCTestHTMLReport)
+[![codecov](https://codecov.io/github/XCTestHTMLReport/XCTestHTMLReport/branch/main/graph/badge.svg?token=Vk4r4ZPgXg)](https://codecov.io/github/XCTestHTMLReport/XCTestHTMLReport)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dswift-versions&color=blue)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dplatforms&color=blue)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
 
