@@ -19,7 +19,6 @@ jobs:
         version: 14.2
 
     - name: Download test artifacts
-      # id: download-artifact
       uses: dawidd6/action-download-artifact@v2
       with:
         workflow: test-artifacts.yml
@@ -27,10 +26,6 @@ jobs:
         branch: main
         name: sample-test-results-macos-12-14.2
         path: Tests/XCTestHTMLReportTests/Resources
-
-    - name: Display structure of downloaded files
-      run: ls -R
-      working-directory: Tests/XCTestHTMLReportTests/Resources
 
     - name: Test
       env:
