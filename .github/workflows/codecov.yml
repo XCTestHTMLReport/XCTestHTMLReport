@@ -1,0 +1,48 @@
+name: Codecov
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: macos-12
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Xcode Select
+      uses: devbotsxyz/xcode-select@v1.1.0
+      with:
+        version: 14.2
+
+    - name: Download test artifacts
+      uses: dawidd6/action-download-artifact@v2
+      with:
+        workflow: test-artifacts.yml
+        workflow_conclusion: success
+        branch: main
+        name: sample-test-results-macos-12-14.2
+        path: Tests/XCTestHTMLReportTests/Resources
+
+    - name: Test
+      env:
+        XCODE_VERSION: 14.2
+      shell: bash
+      run: |
+        swift test --enable-code-coverage
+
+    - name: Export Coverage
+      env:
+        XCODE_VERSION: 14.2
+      shell: bash
+      run: |
+        xcrun llvm-cov export -format="lcov" \
+        .build/debug/XCTestHTMLReportPackageTests.xctest/Contents/MacOS/XCTestHTMLReportPackageTests -instr-profile \
+        .build/debug/codecov/default.profdata > info.lcov
+
+    - uses: codecov/codecov-action@v3
+      with:
+        files: info.lcov
+        verbose: true

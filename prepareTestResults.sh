@@ -35,7 +35,7 @@ xcodebuild test \
     -resultBundlePath "$SANITY_FILENAME" || true
 
 echo "${SANITY_FILENAME} should contain sample data for sanity tests"
-rm -rf "../Tests/XCTestHTMLReportTests/${SANITY_FILENAME}"
+rm -rf "../Tests/XCTestHTMLReportTests/Resources/${SANITY_FILENAME}"
 mv "$SANITY_FILENAME" "../Tests/XCTestHTMLReportTests/Resources/"
 
 if [[ $XCODE_VERSION != 12.* && $XCODE_VERSION != 11.* ]]; then
