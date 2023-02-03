@@ -22,7 +22,7 @@ jobs:
       # id: download-artifact
       uses: dawidd6/action-download-artifact@v2
       with:
-        workflow: codecov.yml
+        workflow: test-artifacts.yml
         workflow_conclusion: success
         branch: main
         name: sample-test-results-macos-12-14.2
