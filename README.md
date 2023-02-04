@@ -1,9 +1,10 @@
-[![CD](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/workflows/ci.yml/badge.svg)](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/workflows/ci.yml)
-[![Codecov](https://img.shields.io/codecov/c/github/XCTestHTMLReport/XCTestHTMLReport)](https://codecov.io/github/XCTestHTMLReport/XCTestHTMLReport)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dswift-versions&color=blue)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dplatforms&color=blue)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/XCTestHTMLReport/XCTestHTMLReport/ci.yml?style=flat&logo=github)](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/workflows/ci.yml)
+[![Codecov](https://img.shields.io/codecov/c/github/XCTestHTMLReport/XCTestHTMLReport?style=flat&logo=codecov)](https://codecov.io/github/XCTestHTMLReport/XCTestHTMLReport)
+[![Sonar Violations (long format)](https://img.shields.io/sonar/violations/XCTestHTMLReport_XCTestHTMLReport/main?style=flat&logo=sonar&server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/summary/new_code?id=XCTestHTMLReport_XCTestHTMLReport)
 
-This Repository has been transfered from TitouanVanBelle/XCTestHTMLReport to this new organization. **🥳🎉 Contributions are very very welcome! 🥳🎉**
+
+[![](https://img.shields.io/endpoint?color=blue&style=flat&url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
+[![](https://img.shields.io/endpoint?color=blue&style=flat&url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)
 
 ![title](https://i.imgur.com/yTtjLP6.png)
 
@@ -23,11 +24,16 @@ Xcode-like HTML report for Unit and UI Tests
   - .txt
   - .log
   - .mp4
+  - .gif
 - Navigate through the report with the keyboard's arrow keys
-- Filter out successful or failed tests
+- Filter out successful, failed, skipped, or mixed-result tests
 - Displays information about the target device
 - Displays activity logs
 - Junit report
+- Json report
+- Shrink bundle size by removing unattached files
+- Automatically convert heic images to browser-friendly format
+- Render as a single html file with inline attachments or as a bundle
 
 ## Installation
 
@@ -64,23 +70,21 @@ mint install XCTestHTMLReport/XCTestHTMLReport@main
 Run your UI tests using `xcodebuild` without forgetting to specify the `resultBundlePath`
 
 ``` bash
-$ xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme SampleApp -destination 'platform=iOS Simulator,name=iPhone 7,OS=11.0' -resultBundlePath TestResults
+$ xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme SampleApp -destination 'platform=iOS Simulator,name=iPhone 14,OS=16.0' -resultBundlePath TestResults
 ```
 
 Then use the previously downloaded xchtmlreport tool to create the HTML report. Additionally, `-i` flag is also available to inline all resources, this is convenient for exporting the html file standalone. HTML file will be much heavier but much more portable.
 
 ``` bash
-$ xchtmlreport -r TestResults
+$ xchtmlreport TestResults.xcresult
 
 Report successfully created at ./index.html
 ```
 
 ### Multiple Result Bundle Path
 
-You can also pass multiple times the -r option.
-
 ``` bash
-$ xchtmlreport -r TestResults1 -r TestResults2
+$ xchtmlreport TestResults1 TestResults2
 
 Report successfully created at ./index.html
 ```
@@ -92,11 +96,11 @@ This will create only one HTML Report in the path you passed with the -r option
 You can generate junit reports with the `-j` flag
 
 ``` bash
-$ xchtmlreport -r TestResults1 -j
+$ xchtmlreport -j TestResults1
 
-Report successfully created at .index.html
+Report successfully created at ./index.html
 
-JUnit report successfully created at TestResults1.xcresult/report.junit
+JUnit report successfully created at report.junit
 ```
 
 ## Fastlane Support
@@ -105,7 +109,11 @@ https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport
 
 ## Contribution
 
-Please create an issue whenever you find an issue or think a feature could be a good addition to XCTestHTMLReport. Always make sure to follow the [Contributing Guidelines](https://github.com/XCTestHTMLReport/XCTestHTMLReport/blob/main/CONTRIBUTING.md). Feel free to take a shot at these issues.
+Please create an issue whenever you find an issue or think a feature could be a good addition to XCTestHTMLReport. Always make sure to follow the [Contributing Guidelines](CONTRIBUTING.md). Feel free to take a shot at these issues.
+
+## Special Thanks
+
+Thank you to the original author of this tool, [TitouanVanBelle](https://github.com/TitouanVanBelle)! 🥳🎉
 
 ## License
 
