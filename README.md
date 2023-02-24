@@ -29,8 +29,8 @@ Xcode-like HTML report for Unit and UI Tests
 - Filter out successful, failed, skipped, or mixed-result tests
 - Displays information about the target device
 - Displays activity logs
-- Junit report
-- Json report
+- Junit report(`-j` flag)
+- Json report(`--json` flag)
 - Shrink bundle size by removing unattached files
 - Automatically convert heic images to browser-friendly format
 - Render as a single html file with inline attachments or as a bundle
@@ -101,6 +101,18 @@ $ xchtmlreport -j TestResults1
 Report successfully created at ./index.html
 
 JUnit report successfully created at report.junit
+```
+
+### Generate JSON Reports
+
+You can generate json reports with the `--json` flag
+
+``` bash
+$ xchtmlreport -json TestResults1
+
+Report successfully created at ./index.html
+
+JSON report successfully created at ./report.json
 ```
 
 ## Fastlane Support
