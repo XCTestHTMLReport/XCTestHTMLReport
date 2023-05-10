@@ -6,14 +6,6 @@
 import Cocoa
 import Foundation
 
-/// Performs an image resize for the image at the provided path
-/// image is resized to be 200px width - aspect ratio maintaned
-/// and compressed using jpeg
-/// If the image is already smaller than compression size it
-/// is not modified
-///
-/// - Parameter path: path to an image
-
 enum ResizeError: Error {
     case largerThanOriginal
     case contentNotImage
@@ -22,8 +14,9 @@ enum ResizeError: Error {
 }
 
 extension RenderingContent {
-    static let downsizedWidth: CGFloat = 200
     static let imageCompression: Float = 0.8
+    
+    static let scaleFactor: CGFloat = 0.25
 
     static func downsizeFrom(_ content: RenderingContent) throws -> RenderingContent {
         switch content {
@@ -35,12 +28,24 @@ extension RenderingContent {
             throw ResizeError.contentNotImage
         }
     }
-
+    
+    /// Performs an  resize for the image data, scaling to 0.25 of the size while maintaining aspect ratio
+    /// - Parameter content: NSImageResizable-conforming object, typically Data
+    /// - Returns: A representation of the resized image
     private static func resize<C: NSImageResizable>(content: C) throws -> C {
         let image = try content.asNSImage()
-        let newSize = CGSize.scaleFrom(image.size, usingMaxWidth: downsizedWidth)
-        let resizedImage = NSImage.from(image: image, scaledTo: newSize)
-        return try C.from(content: content, image: resizedImage)
+        let originalSize = image.size
+        let newSize = CGSize(width: originalSize.width * scaleFactor, height: originalSize.height * scaleFactor)
+
+        let newImage = NSImage(size: newSize, flipped: false) { rect in
+            image.draw(in: rect,
+                       from: CGRect(origin: .zero, size: originalSize),
+                       operation: .copy,
+                       fraction: 1)
+            return true
+        }
+
+        return try C.from(content: content, image: newImage)
     }
 }
 
