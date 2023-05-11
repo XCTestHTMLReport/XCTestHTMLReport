@@ -13,7 +13,8 @@ final class SanityTests: XCTestCase {
         let summary = Summary(
             resultPaths: [testResultsUrl.path],
             renderingMode: .linking,
-            downsizeImagesEnabled: false
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5
         )
 
         let document = try SwiftSoup.parse(summary.html)
