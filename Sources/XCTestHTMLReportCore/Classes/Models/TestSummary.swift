@@ -45,7 +45,8 @@ struct TestSummary: HTML {
         summary: ActionTestableSummary,
         file: ResultFile,
         renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat
     ) {
         uuid = UUID().uuidString
         testName = summary.targetName ?? ""
@@ -55,7 +56,8 @@ struct TestSummary: HTML {
                 group: $0,
                 resultFile: file,
                 renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
             )
         }
     }

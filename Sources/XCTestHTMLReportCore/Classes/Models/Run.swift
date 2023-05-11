@@ -60,7 +60,8 @@ struct Run: HTML {
         action: ActionRecord,
         file: ResultFile,
         renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat
     ) {
         self.file = file
         runDestination = RunDestination(record: action.runDestination)
@@ -90,7 +91,8 @@ struct Run: HTML {
                 summary: $0,
                 file: file,
                 renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
             ) }
     }
 

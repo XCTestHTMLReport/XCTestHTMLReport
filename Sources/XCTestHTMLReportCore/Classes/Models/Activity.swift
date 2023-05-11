@@ -90,7 +90,8 @@ struct Activity: HTML {
         file: ResultFile,
         padding: Int = 0,
         renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat
     ) {
         uuid = failureSummary.uuid
         startTime = failureSummary.timestamp?.timeIntervalSince1970 ?? 0
@@ -107,7 +108,8 @@ struct Activity: HTML {
                 file: file,
                 padding: padding + 16,
                 renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
             )
         }
         self.padding = padding
@@ -118,7 +120,8 @@ struct Activity: HTML {
         file: ResultFile,
         padding: Int = 0,
         renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat
     ) {
         uuid = summary.uuid
         startTime = summary.start?.timeIntervalSince1970 ?? 0
@@ -130,7 +133,8 @@ struct Activity: HTML {
                 file: file,
                 padding: padding + 10,
                 renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
             )
         }
         type = ActivityType(rawValue: summary.activityType)
@@ -140,7 +144,8 @@ struct Activity: HTML {
                 file: file,
                 padding: padding + 16,
                 renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
             )
         }
         self.padding = padding

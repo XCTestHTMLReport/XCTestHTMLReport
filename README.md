@@ -16,24 +16,26 @@ Xcode-like HTML report for Unit and UI Tests
 
 ## Features
 
-- Supports parallel testing
-- Supports attachments:
-  - .png
-  - .jpeg
-  - .heic
-  - .txt
-  - .log
-  - .mp4
-  - .gif
-- Navigate through the report with the keyboard's arrow keys
-- Filter out successful, failed, skipped, or mixed-result tests
-- Displays information about the target device
-- Displays activity logs
-- Junit report(`-j` flag)
-- Json report(`--json` flag)
-- Shrink bundle size by removing unattached files
-- Automatically convert heic images to browser-friendly format
-- Render as a single html file with inline attachments or as a bundle
+-   Supports parallel testing
+-   Supports attachments:
+    -   .png
+    -   .jpeg
+    -   .heic
+    -   .txt
+    -   .log
+    -   .mp4
+    -   .gif
+-   Navigate through the report with the keyboard's arrow keys
+-   Filter out successful, failed, skipped, or mixed-result tests
+-   Displays information about the target device
+-   Displays activity logs
+-   Junit report(`-j` flag)
+-   Json report(`--json` flag)
+-   Shrink bundle size by removing unattached files
+-   Automatically convert heic images to browser-friendly format
+-   Render as a single html file with inline attachments or as a bundle
+-   Downsize image attachments
+
 
 ## Installation
 
@@ -42,25 +44,29 @@ Xcode-like HTML report for Unit and UI Tests
 Install via [Homebrew](https://brew.sh/)
 
 Install latest stable version
+
 ```bash
 brew install xctesthtmlreport
 ```
 
 Install latest from `main` branch
+
 ```
 brew install xctesthtmlreport --HEAD
 ```
 
-### Mint 
+### Mint
 
 Install via [Mint](https://github.com/yonaskolb/Mint)
 
 Install latest stable version
+
 ```bash
 mint install XCTestHTMLReport/XCTestHTMLReport
 ```
 
 Install latest from `main` branch
+
 ```
 mint install XCTestHTMLReport/XCTestHTMLReport@main
 ```

@@ -124,7 +124,8 @@ struct Attachment: HTML {
         file: ResultFile,
         padding: Int = 0,
         renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat
     ) {
         filename = attachment.filename ?? ""
         type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknown
@@ -146,9 +147,9 @@ struct Attachment: HTML {
                         content = try RenderingContent.downsizeFrom(.url(
                             file.url.deletingLastPathComponent()
                                 .appendingPathComponent(url.relativeString)
-                        ))
+                        ), downsizeScaleFactor: downsizeScaleFactor)
                     } else {
-                        content = try RenderingContent.downsizeFrom(content)
+                        content = try RenderingContent.downsizeFrom(content, downsizeScaleFactor: downsizeScaleFactor)
                     }
                 } catch {
                     Logger.error("Image resize failed with error: \(error.localizedDescription)")

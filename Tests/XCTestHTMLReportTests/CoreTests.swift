@@ -22,7 +22,8 @@ final class CoreTests: XCTestCase {
         let summary = Summary(
             resultPaths: [retryResultsUrl.path],
             renderingMode: .linking,
-            downsizeImagesEnabled: false
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5
         )
 
         let document = try SwiftSoup.parse(summary.html)
@@ -47,7 +48,8 @@ final class CoreTests: XCTestCase {
         let summary = Summary(
             resultPaths: [testResultsUrl.path],
             renderingMode: .linking,
-            downsizeImagesEnabled: false
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5
         )
 
         let document = try SwiftSoup.parse(summary.html)
@@ -73,7 +75,8 @@ final class CoreTests: XCTestCase {
         let summary = Summary(
             resultPaths: [retryResultsUrl.path],
             renderingMode: .linking,
-            downsizeImagesEnabled: false
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5
         )
         let junit = summary.junit(includeRunDestinationInfo: false)
 
@@ -129,7 +132,8 @@ final class CoreTests: XCTestCase {
         let summary = Summary(
             resultPaths: [retryResultsUrl.path],
             renderingMode: .linking,
-            downsizeImagesEnabled: false
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5
         )
         let junit = summary.junit(includeRunDestinationInfo: true).xmlString
             .components(separatedBy: .newlines)
@@ -155,7 +159,8 @@ final class CoreTests: XCTestCase {
         let summary = Summary(
             resultPaths: [retryResultsUrl.path],
             renderingMode: .linking,
-            downsizeImagesEnabled: false
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5
         )
         let junit = summary.junit(includeRunDestinationInfo: false).xmlString
             .components(separatedBy: .newlines)

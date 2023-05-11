@@ -26,7 +26,8 @@ struct Iteration: Test {
         metadata: ActionTestMetadata,
         resultFile: ResultFile,
         renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat
     ) {
         title = metadata.name ?? ""
         identifier = metadata.identifier ?? ""
@@ -42,7 +43,8 @@ struct Iteration: Test {
                     file: resultFile,
                     padding: 20,
                     renderingMode: renderingMode,
-                    downsizeImagesEnabled: downsizeImagesEnabled
+                    downsizeImagesEnabled: downsizeImagesEnabled,
+                    downsizeScaleFactor: downsizeScaleFactor
                 )
             }
 
@@ -62,7 +64,8 @@ struct Iteration: Test {
                         failureSummary: $0,
                         file: resultFile,
                         renderingMode: renderingMode,
-                        downsizeImagesEnabled: downsizeImagesEnabled
+                        downsizeImagesEnabled: downsizeImagesEnabled,
+                        downsizeScaleFactor: downsizeScaleFactor
                     )
                 }
 
