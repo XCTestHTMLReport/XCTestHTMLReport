@@ -91,7 +91,8 @@ public struct TestGroup: Test {
         group: ActionTestSummaryGroup,
         resultFile: ResultFile,
         renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat
     ) {
         title = group.name ?? "---group-name-not-found---"
         identifier = group.identifier ?? "---group-identifier-not-found---"
@@ -102,7 +103,8 @@ public struct TestGroup: Test {
                 group: $0,
                 resultFile: resultFile,
                 renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
             ) }
         } else {
             subTests = Array(group.subtests.reduce(into: Set<TestCase>()) { subTestSet, metadata in
@@ -110,7 +112,8 @@ public struct TestGroup: Test {
                     metadata: metadata,
                     resultFile: resultFile,
                     renderingMode: renderingMode,
-                    downsizeImagesEnabled: downsizeImagesEnabled
+                    downsizeImagesEnabled: downsizeImagesEnabled,
+                    downsizeScaleFactor: downsizeScaleFactor
                 )
                 if let index = subTestSet.firstIndex(of: newTest) {
                     var existingTest = subTestSet[index]
@@ -194,7 +197,8 @@ struct TestCase: Test {
         metadata: ActionTestMetadata,
         resultFile: ResultFile,
         renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat
     ) {
         title = metadata.name ?? ""
         identifier = metadata.identifier ?? ""
@@ -203,7 +207,8 @@ struct TestCase: Test {
             metadata: metadata,
             resultFile: resultFile,
             renderingMode: renderingMode,
-            downsizeImagesEnabled: downsizeImagesEnabled
+            downsizeImagesEnabled: downsizeImagesEnabled,
+            downsizeScaleFactor: downsizeScaleFactor
         )]
     }
 }

@@ -15,15 +15,13 @@ enum ResizeError: Error {
 
 extension RenderingContent {
     static let imageCompression: Float = 0.8
-    
-    static let scaleFactor: CGFloat = 0.25
 
-    static func downsizeFrom(_ content: RenderingContent) throws -> RenderingContent {
+    static func downsizeFrom(_ content: RenderingContent, downsizeScaleFactor: CGFloat) throws -> RenderingContent {
         switch content {
         case let .data(data):
-            return .data(try RenderingContent.resize(content: data))
+            return .data(try RenderingContent.resize(content: data, downsizeScaleFactor: downsizeScaleFactor))
         case let .url(url):
-            return .url(try RenderingContent.resize(content: url))
+            return .url(try RenderingContent.resize(content: url, downsizeScaleFactor: downsizeScaleFactor))
         case .none:
             throw ResizeError.contentNotImage
         }
@@ -32,10 +30,10 @@ extension RenderingContent {
     /// Performs an  resize for the image data, scaling to 0.25 of the size while maintaining aspect ratio
     /// - Parameter content: NSImageResizable-conforming object, typically Data
     /// - Returns: A representation of the resized image
-    private static func resize<C: NSImageResizable>(content: C) throws -> C {
+    private static func resize<C: NSImageResizable>(content: C, downsizeScaleFactor: CGFloat) throws -> C {
         let image = try content.asNSImage()
         let originalSize = image.size
-        let newSize = CGSize(width: originalSize.width * scaleFactor, height: originalSize.height * scaleFactor)
+        let newSize = CGSize(width: originalSize.width * downsizeScaleFactor, height: originalSize.height * downsizeScaleFactor)
 
         let newImage = NSImage(size: newSize, flipped: false) { rect in
             image.draw(in: rect,

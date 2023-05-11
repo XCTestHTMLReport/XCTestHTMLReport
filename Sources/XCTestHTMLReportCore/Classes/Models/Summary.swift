@@ -18,7 +18,7 @@ public struct Summary {
         case linking
     }
 
-    public init(resultPaths: [String], renderingMode: RenderingMode, downsizeImagesEnabled: Bool) {
+    public init(resultPaths: [String], renderingMode: RenderingMode, downsizeImagesEnabled: Bool, downsizeScaleFactor: CGFloat) {
         var runs: [Run] = []
         var resultFiles: [ResultFile] = []
 
@@ -36,7 +36,8 @@ public struct Summary {
                     action: $0,
                     file: resultFile,
                     renderingMode: renderingMode,
-                    downsizeImagesEnabled: downsizeImagesEnabled
+                    downsizeImagesEnabled: downsizeImagesEnabled,
+                    downsizeScaleFactor: downsizeScaleFactor
                 )
             }
             runs.append(contentsOf: resultRuns)

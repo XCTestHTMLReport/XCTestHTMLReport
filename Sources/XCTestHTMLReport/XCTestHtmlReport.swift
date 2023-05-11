@@ -64,6 +64,9 @@ struct SummaryOptions: ParsableArguments {
 
     @Flag(name: .customShort("z"), help: ArgumentHelp("Downsize image screenshots"))
     var downsizeImages = false
+    
+    @Option(name: .long, help: ArgumentHelp("Downsize scale factor. A float between 0 and 1. No effect unless downsizeImages is enabled (-z)."))
+    var downsizeScaleFactor = 0.25
 
     @Option(help: ArgumentHelp("Render attachments inline or as linked assets"))
     var renderingMode: Summary.RenderingMode = .linking
@@ -118,7 +121,8 @@ struct XCTestHtmlReport: ParsableCommand {
         let summary = Summary(
             resultPaths: summaryOptions.finalResults,
             renderingMode: summaryOptions.finalRenderingMode,
-            downsizeImagesEnabled: summaryOptions.downsizeImages
+            downsizeImagesEnabled: summaryOptions.downsizeImages,
+            downsizeScaleFactor: summaryOptions.downsizeScaleFactor
         )
 
         Logger.step("Building HTML..")
