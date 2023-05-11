@@ -14,19 +14,20 @@ Xcode-like HTML report for Unit and UI Tests
 
 ## Features
 
-- Supports parallel testing
-- Supports attachments:
-  - .png
-  - .jpeg
-  - .heic
-  - .txt
-  - .log
-  - .mp4
-- Navigate through the report with the keyboard's arrow keys
-- Filter out successful or failed tests
-- Displays information about the target device
-- Displays activity logs
-- Junit report
+-   Supports parallel testing
+-   Supports attachments:
+    -   .png
+    -   .jpeg
+    -   .heic
+    -   .txt
+    -   .log
+    -   .mp4
+-   Navigate through the report with the keyboard's arrow keys
+-   Filter out successful or failed tests
+-   Displays information about the target device
+-   Displays activity logs
+-   Junit report
+-   Downsize image attachments
 
 ## Installation
 
@@ -35,25 +36,29 @@ Xcode-like HTML report for Unit and UI Tests
 Install via [Homebrew](https://brew.sh/)
 
 Install latest stable version
+
 ```bash
 brew install xctesthtmlreport
 ```
 
 Install latest from `main` branch
+
 ```
 brew install xctesthtmlreport --HEAD
 ```
 
-### Mint 
+### Mint
 
 Install via [Mint](https://github.com/yonaskolb/Mint)
 
 Install latest stable version
+
 ```bash
 mint install XCTestHTMLReport/XCTestHTMLReport
 ```
 
 Install latest from `main` branch
+
 ```
 mint install XCTestHTMLReport/XCTestHTMLReport@main
 ```
@@ -62,13 +67,13 @@ mint install XCTestHTMLReport/XCTestHTMLReport@main
 
 Run your UI tests using `xcodebuild` without forgetting to specify the `resultBundlePath`
 
-``` bash
+```bash
 $ xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme SampleApp -destination 'platform=iOS Simulator,name=iPhone 7,OS=11.0' -resultBundlePath TestResults
 ```
 
 Then use the previously downloaded xchtmlreport tool to create the HTML report. Additionally, `-i` flag is also available to inline all resources, this is convenient for exporting the html file standalone. HTML file will be much heavier but much more portable.
 
-``` bash
+```bash
 $ xchtmlreport -r TestResults
 
 Report successfully created at ./index.html
@@ -78,7 +83,7 @@ Report successfully created at ./index.html
 
 You can also pass multiple times the -r option.
 
-``` bash
+```bash
 $ xchtmlreport -r TestResults1 -r TestResults2
 
 Report successfully created at ./index.html
@@ -90,7 +95,7 @@ This will create only one HTML Report in the path you passed with the -r option
 
 You can generate junit reports with the `-j` flag
 
-``` bash
+```bash
 $ xchtmlreport -r TestResults1 -j
 
 Report successfully created at .index.html
