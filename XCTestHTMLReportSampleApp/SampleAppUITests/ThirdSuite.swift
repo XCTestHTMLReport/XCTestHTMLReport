@@ -8,6 +8,11 @@
 
 import XCTest
 
+private extension String {
+    static let testSucceeded = "Test succeeded"
+    static let testFailed = "Test failed"
+}
+
 class ThirdSuite: XCTestCase {
     override func setUp() {
         super.setUp()
@@ -24,24 +29,24 @@ class ThirdSuite: XCTestCase {
 
     func testOne() {
         XCTContext.runActivity(named: "test Activity - Success") { _ in
-            XCTAssert(true, "Test succeeded")
+            XCTAssert(true, .testSucceeded)
         }
         XCTContext.runActivity(named: "test Activity - Failure") { _ in
-            XCTAssert(false, "Test failed")
+            XCTAssert(false, .testFailed)
         }
         XCTContext.runActivity(named: "test Activity with sub-activities") { _ in
             XCTContext.runActivity(named: "test sub Activity 0 - Failure") { _ in
-                XCTAssert(false, "Test failed")
+                XCTAssert(false, .testFailed)
             }
             XCTContext.runActivity(named: "test sub Activity 1 - Success") { _ in
-                XCTAssert(true, "Test succeeded")
+                XCTAssert(true, .testSucceeded)
             }
         }
-        XCTAssert(false, "Test failed")
-        XCTAssert(true, "Test succeeded")
+        XCTAssert(false, .testFailed)
+        XCTAssert(true, .testSucceeded)
     }
 
     func testTwo() {
-        XCTAssert(true, "Test succeeded")
+        XCTAssert(true, .testSucceeded)
     }
 }

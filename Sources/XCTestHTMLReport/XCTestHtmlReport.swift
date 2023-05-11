@@ -3,8 +3,6 @@ import Foundation
 import XCTestHTMLReportCore
 
 struct JUnitOptions: ParsableArguments {
-    init() {}
-
     @Flag(name: .shortAndLong, help: ArgumentHelp("Provide JUnit XML output"))
     var junitEnabled = false
 
@@ -23,8 +21,6 @@ struct JsonOptions: ParsableArguments {
 }
 
 struct HtmlOptions: ParsableArguments {
-    init() {}
-
     @Option(
         name: .shortAndLong,
         parsing: .next,
@@ -41,8 +37,6 @@ struct HtmlOptions: ParsableArguments {
 }
 
 struct SummaryOptions: ParsableArguments {
-    init() {}
-
     @ArgumentParser.Argument(
         help: ArgumentHelp(stringLiteral: "Path to one or more .xcresult bundles"),
         completion: .file(extensions: ["xcresult"])
