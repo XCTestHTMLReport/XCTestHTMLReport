@@ -8,12 +8,12 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        xcode_version: [14.2, 13.2.1, 13.1]
-        macos_version: [macos-12, macos-11]
+        xcode_version: [14.3, 14.2, 13.2.1]
+        macos_version: [macos-13, macos-12]
         exclude:
-          # macos-11 runners only go up to Xcode 13.2.1
-          - xcode_version: 14.2
-            macos_version: macos-11
+          # macos 12 "Monterey" is only supported up to Xcode 14.2
+          - xcode_version: 14.3
+            macos_version: macos-12
     runs-on: ${{ matrix.macos_version }}
 
     steps:
