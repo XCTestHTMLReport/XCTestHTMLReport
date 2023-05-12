@@ -14,6 +14,9 @@ jobs:
           # macos 12 "Monterey" is only supported up to Xcode 14.2
           - xcode_version: 14.3
             macos_version: macos-12
+          # macos 13 "Ventura" builders don't have Xcode 13
+          - xcode_version: 13.2.1
+            macos_version: macos-13
     runs-on: ${{ matrix.macos_version }}
 
     steps:
