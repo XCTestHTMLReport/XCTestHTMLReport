@@ -33,7 +33,7 @@ jobs:
         XCODE_VERSION: 14.2
       shell: bash
       run: |
-        swift run xchtmlreport -- -j Tests/XCTestHTMLReportTests/Resources/RetryResults.xcresult
+        swift run xchtmlreport -j Tests/XCTestHTMLReportTests/Resources/RetryResults.xcresult
     
     - name: Upload GitHub Pages artifact
       uses: actions/upload-pages-artifact@v1.0.8
