@@ -3,7 +3,9 @@ set -ex
 
 cd XCTestHTMLReportSampleApp
 
+set +ex
 xcrun simctl list devices --json | grep '"name" : "iPhone X"' 2> /dev/null
+set -ex
 if [[ $? -ne 0 ]]; then
     xcrun simctl create "iPhone X" "iPhone X"
 fi
