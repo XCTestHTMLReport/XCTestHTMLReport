@@ -19,7 +19,7 @@ jobs:
       with:
         workflow: test-artifacts.yml
         workflow_conclusion: success
-        branch: ${GITHUB_REF##*/}  # current branch
+        branch: "${{ GITHUB_REF##*/ }}"  # current branch
         name: sample-test-results-macos-12-14.2
         path: Tests/XCTestHTMLReportTests/Resources
 
