@@ -1,0 +1,50 @@
+name: Publish GitHub Pages
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:    
+    - uses: actions/checkout@v2
+
+    - name: Xcode Select
+      uses: devbotsxyz/xcode-select@v1.1.0
+      with:
+        version: 14.2
+
+    - name: Download XCResult
+      uses: dawidd6/action-download-artifact@v2
+      with:
+        workflow: test-artifacts.yml
+        workflow_conclusion: success
+        branch: ${GITHUB_REF##*/}  # current branch
+        name: sample-test-results-macos-12-14.2
+        path: Tests/XCTestHTMLReportTests/Resources
+
+    - name: Generate html report
+      env:
+        XCODE_VERSION: 14.2
+      shell: bash
+      run: |
+        swift run xchtmlreport -- -j Tests/XCTestHTMLReportTests/Resources/RetryResults.xcresult
+    
+    - name: Upload GitHub Pages artifact
+      uses: actions/upload-pages-artifact@v1.0.8
+      with:
+        path: Tests/XCTestHTMLReportTests/Resources/
+  
+  deploy:
+    needs: build
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
