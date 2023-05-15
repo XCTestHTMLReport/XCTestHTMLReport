@@ -14,12 +14,17 @@ jobs:
       with:
         version: 14.2
 
+    - name: set env
+      id: gen_branch
+      run: |
+        echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+
     - name: Download XCResult
       uses: dawidd6/action-download-artifact@v2
       with:
         workflow: test-artifacts.yml
         workflow_conclusion: success
-        branch: "${{ GITHUB_REF##*/ }}"  # current branch
+        branch: ${{ steps.gen_branch.outputs.BRANCH }}
         name: sample-test-results-macos-12-14.2
         path: Tests/XCTestHTMLReportTests/Resources
 
