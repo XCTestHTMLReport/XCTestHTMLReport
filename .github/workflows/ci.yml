@@ -11,17 +11,17 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        xcode_version: [ 14.2, 13.0 ]
+        xcode_version: [ latest-stable, 14, 13 ]
         arch: [ "arm64-apple-macosx", "x86_64-apple-macosx" ]
-    runs-on: macos-12
+    runs-on: macos-13
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: Xcode Select
-      uses: devbotsxyz/xcode-select@v1.1.0
+    - name: Setup Xcode version
+      uses: maxim-lobanov/setup-xcode@v1.6.0        
       with:
-        version: ${{ matrix.xcode_version }}
+        xcode-version: ${{ matrix.xcode_version }}
 
     - name: Build
       run: swift build -v -c release --triple ${{ matrix.arch }}
