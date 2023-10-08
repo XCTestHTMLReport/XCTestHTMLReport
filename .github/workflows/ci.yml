@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         xcode_version: [ latest-stable, 14 ]
         arch: [ "arm64-apple-macosx", "x86_64-apple-macosx" ]
