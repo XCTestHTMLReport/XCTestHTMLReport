@@ -37,5 +37,7 @@ jobs:
         XCODE_VERSION: ${{ matrix.xcode_version }}
       shell: bash
       run: |
+        xcrun simctl create "iPhone 12" "iPhone 12" || true
+        xcrun simctl boot "iPhone 12"
         ./prepareTestResults.sh
         swift test -c release
