@@ -1,6 +1,6 @@
 name: Publish GitHub Pages
 
-#on:
+on:
 #  workflow_dispatch:
 
 jobs:

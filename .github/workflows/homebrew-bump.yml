@@ -1,6 +1,6 @@
 name: Brew Bump
 
-#on:
+on:
 #  workflow_dispatch:
 #    inputs:
 #      version:

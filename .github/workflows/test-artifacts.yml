@@ -1,6 +1,6 @@
 name: Generate Test Artifacts
 
-#on:
+on:
 #  workflow_dispatch:
 
 jobs:
