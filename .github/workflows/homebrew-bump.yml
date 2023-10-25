@@ -1,12 +1,12 @@
 name: Brew Bump
 
-on:
-  workflow_dispatch:
-    inputs:
-      version:
-        type: text
-        required: true
-        description: "Release tag to use. e.g. refs/tags/2.2.4"
+#on:
+#  workflow_dispatch:
+#    inputs:
+#      version:
+#        type: text
+#        required: true
+#        description: "Release tag to use. e.g. refs/tags/2.2.4"
 
 jobs:
   update_brew_formula:

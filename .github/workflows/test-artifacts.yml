@@ -1,7 +1,7 @@
 name: Generate Test Artifacts
 
-on:
-  workflow_dispatch:
+#on:
+#  workflow_dispatch:
 
 jobs:
   create_test_data:
