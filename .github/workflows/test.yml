@@ -11,20 +11,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  test:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: keithweaver/aws-s3-github-action@v1.0.0
-      with:
-        command: cp
-        flags: --recursive
-        source: s3://xctesthtmlreport/
-        destination: ./Tests/XCTestHTMLReportTests/Resources/
-        aws_access_key_id: ${{ secrets.R2_ACCESS_KEY_ID }}
-        aws_secret_access_key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    - name: Download Test Resources
+      run: |
+        aws s3 cp --recursive s3://xctesthtmlreport/ ./Tests/XCTestHTMLReportTests/Resources/
       env:
-        AWS_ENDPOINT_URL: https://1e434922debe640b92b2465bdad05481.r2.cloudflarestorage.com
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
     - name: ls
       run: ls ./Tests/XCTestHTMLReportTests/Resources
     # - name: Build
