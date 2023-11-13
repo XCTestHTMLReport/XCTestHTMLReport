@@ -1,0 +1,33 @@
+# This workflow will build a Swift project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
+
+name: Swift
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: keithweaver/aws-s3-github-action@v1.0.0
+      with:
+        command: cp
+        flags: --recursive
+        source: s3://xctesthtmlreport/
+        destination: ./Tests/XCTestHTMLReportTests/Resources/
+        aws_access_key_id: ${{ secrets.R2_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      env:
+        AWS_ENDPOINT_URL: https://1e434922debe640b92b2465bdad05481.r2.cloudflarestorage.com
+    - name: ls
+      run: ls ./Tests/XCTestHTMLReportTests/Resources
+    # - name: Build
+    #   run: swift build -v
+    # - name: Run tests
+    #   run: swift test -v
