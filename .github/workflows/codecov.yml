@@ -7,35 +7,38 @@ on:
 
 jobs:
   coverage:
-    runs-on: macos-12
+    runs-on: macos-13
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: Xcode Select
-      uses: devbotsxyz/xcode-select@v1.1.0
+    - name: Setup Xcode version
+      uses: maxim-lobanov/setup-xcode@v1.6.0        
       with:
-        version: 14.2
+        xcode-version: ^15
 
-    - name: Download test artifacts
-      uses: dawidd6/action-download-artifact@v2
-      with:
-        workflow: test-artifacts.yml
-        workflow_conclusion: success
-        branch: main
-        name: sample-test-results-macos-12-14.2
-        path: Tests/XCTestHTMLReportTests/Resources
+    - name: Download Test Resources
+      run: |
+        aws s3 cp --recursive s3://xctesthtmlreport/ ./Tests/XCTestHTMLReportTests/Resources/
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
+
+    - name: Extract Test Resources
+      run: |
+        find Tests/XCTestHTMLReportTests/Resources -name '*.tar.gz' -execdir tar -xzvf '{}' \;
 
     - name: Test
       env:
-        XCODE_VERSION: 14.2
+        XCODE_VERSION: 15
       shell: bash
       run: |
         swift test --enable-code-coverage
 
     - name: Export Coverage
       env:
-        XCODE_VERSION: 14.2
+        XCODE_VERSION: 15
       shell: bash
       run: |
         xcrun llvm-cov export -format="lcov" \
