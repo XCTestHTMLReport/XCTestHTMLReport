@@ -25,9 +25,3 @@ jobs:
 
     - name: Build
       run: swift build -v -c release --triple ${{ matrix.arch }}
-
-    - uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 2.7
-        bundler-cache: true
-    - run: gem install xcpretty
