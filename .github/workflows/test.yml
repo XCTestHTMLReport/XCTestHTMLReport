@@ -21,7 +21,7 @@ jobs:
         aws s3 cp --recursive --debug s3://xctesthtmlreport/ ./Tests/XCTestHTMLReportTests/Resources/
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
     - name: ls
       run: ls ./Tests/XCTestHTMLReportTests/Resources
