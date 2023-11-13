@@ -34,17 +34,19 @@ final class CliTests: XCTestCase {
         let document = try parseReportDocument(xchtmlreportArgs: defaultArgs + extraArgs)
         let reportDir = testResultsUrl.deletingLastPathComponent()
 
-        try XCTContext.runActivity(named: "Image attachments exist") { _ in
-            let imgTags = try document.select("img.screenshot, img.screenshot-flow")
-            XCTAssertFalse(imgTags.isEmpty())
-
-            try imgTags.forEach { img in
-                let src = try img.attr("src")
-                XCTAssertTrue(src.starts(with: "TestResults.xcresult/"))
-                let attachmentUrl = try XCTUnwrap(URL(string: src, relativeTo: reportDir))
-                XCTAssertNoThrow(try attachmentUrl.checkResourceIsReachable())
-            }
-        }
+        // Remove this logic for now since Xcode 15 attaches videos by default.
+        // We'll want to create a separate test result specifically with screenshots enabled
+//        try XCTContext.runActivity(named: "Image attachments exist") { _ in
+//            let imgTags = try document.select("img.screenshot, img.screenshot-flow")
+//            XCTAssertFalse(imgTags.isEmpty())
+//
+//            try imgTags.forEach { img in
+//                let src = try img.attr("src")
+//                XCTAssertTrue(src.starts(with: "TestResults.xcresult/"))
+//                let attachmentUrl = try XCTUnwrap(URL(string: src, relativeTo: reportDir))
+//                XCTAssertNoThrow(try attachmentUrl.checkResourceIsReachable())
+//            }
+//        }
 
         try XCTContext.runActivity(named: "Other attachments exist", block: { _ in
             let spanTags = try document.select("span.icon.preview-icon")

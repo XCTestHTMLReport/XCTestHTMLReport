@@ -147,8 +147,8 @@ final class CoreTests: XCTestCase {
                 .first { $0.contains("<testcase classname='RetryTests") }
         )
 
-        let suiteRegex = #"name='SampleAppUITests - iPhone \d - \d+.\d"#
-        let testCaseRegex = #"classname='RetryTests - iPhone \d - \d+.\d"#
+        let suiteRegex = #"name='SampleAppUITests - iPhone \d+ - \d+.\d"#
+        let testCaseRegex = #"classname='RetryTests - iPhone \d+ - \d+.\d"#
         XCTAssertNotNil(suiteString.range(of: suiteRegex, options: .regularExpression))
         XCTAssertNotNil(testCaseString.range(of: testCaseRegex, options: .regularExpression))
     }
