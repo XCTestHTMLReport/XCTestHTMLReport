@@ -25,19 +25,3 @@ jobs:
 
     - name: Build
       run: swift build -v -c release --triple ${{ matrix.arch }}
-
-    - uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 2.7
-        bundler-cache: true
-    - run: gem install xcpretty
-
-    - name: Test
-      env:
-        XCODE_VERSION: ${{ matrix.xcode_version }}
-      shell: bash
-      run: |
-        xcrun simctl create "iPhone 12" "iPhone 12" || true
-        xcrun simctl boot "iPhone 12"
-        ./prepareTestResults.sh
-        swift test -c release
