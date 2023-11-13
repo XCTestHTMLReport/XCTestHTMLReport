@@ -25,9 +25,9 @@ jobs:
     - name: Extract Test Resources
       run: |
         find Tests/XCTestHTMLReportTests/Resources -name '*.tar.gz' -execdir tar -xzvf '{}' \;
-    - name: ls
-      run: ls ./Tests/XCTestHTMLReportTests/Resources
+    # - name: ls
+    #   run: ls ./Tests/XCTestHTMLReportTests/Resources
     # - name: Build
     #   run: swift build -v
-    # - name: Run tests
-    #   run: swift test -v
+    - name: Run tests
+      run: swift test -v
