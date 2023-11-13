@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
     - uses: actions/checkout@v3
     - name: Download Test Resources
@@ -28,6 +28,6 @@ jobs:
     - name: Setup Xcode version
       uses: maxim-lobanov/setup-xcode@v1.6.0        
       with:
-        xcode-version: latest-stable
+        xcode-version: ^15
     - name: Run tests
       run: xcrun swift test -v
