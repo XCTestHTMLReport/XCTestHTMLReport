@@ -17,12 +17,14 @@ jobs:
     - uses: actions/checkout@v3
     - name: Download Test Resources
       run: |
-        aws configure list --debug
-        aws s3 cp --recursive --debug s3://xctesthtmlreport/ ./Tests/XCTestHTMLReportTests/Resources/
+        aws s3 cp --recursive s3://xctesthtmlreport/ ./Tests/XCTestHTMLReportTests/Resources/
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
+    - name: Extract Test Resources
+      run: |
+        find Tests/XCTestHTMLReportTests/Resources -name '*.tar.gz' -execdir tar -xzvf '{}' \;
     - name: ls
       run: ls ./Tests/XCTestHTMLReportTests/Resources
     # - name: Build
