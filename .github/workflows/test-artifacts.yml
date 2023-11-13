@@ -6,32 +6,34 @@ on:
 jobs:
   create_test_data:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
-        xcode_version: [14.3, 14.2, 13.2.1]
-        macos_version: [macos-13, macos-12]
-        exclude:
-          # macos 12 "Monterey" is only supported up to Xcode 14.2
-          - xcode_version: 14.3
-            macos_version: macos-12
-          # macos 13 "Ventura" builders don't have Xcode 13
-          - xcode_version: 13.2.1
-            macos_version: macos-13
-    runs-on: ${{ matrix.macos_version }}
+        xcode_version: [latest-stable, 14]
+        # macos_version: [macos-13, macos-12]
+        # exclude:
+        #   # macos 12 "Monterey" is only supported up to Xcode 14.2
+        #   - xcode_version: 14.3
+        #     macos_version: macos-12
+        #   # macos 13 "Ventura" builders don't have Xcode 13
+        #   - xcode_version: 13.2.1
+        #     macos_version: macos-13
+    runs-on: macos-13
 
     steps:
       - uses: actions/checkout@v2
-
-      - name: Xcode Select
-        uses: devbotsxyz/xcode-select@v1.1.0
+  
+      - name: Setup Xcode version
+        uses: maxim-lobanov/setup-xcode@v1.6.0
         with:
-          version: ${{ matrix.xcode_version }}
+          xcode-version: ${{ matrix.xcode_version }}
 
       - name: Prepare Test Results
         env:
           XCODE_VERSION: ${{ matrix.xcode_version }}
         shell: bash
         run: |
+          xcrun simctl create "iPhone 12" "iPhone 12" || true
+          xcrun simctl boot "iPhone 12"
           ./prepareTestResults.sh
 
       - name: Archive Test Artifacts

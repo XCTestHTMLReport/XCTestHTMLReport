@@ -3,10 +3,14 @@ set -ex
 
 cd XCTestHTMLReportSampleApp
 
-xcrun simctl list devices --json | grep '"name" : "iPhone 8"' 2> /dev/null
+SIM_DESTINATION="platform=iOS Simulator,name=iPhone 12,OS=latest"
+
+set +e
+xcrun simctl list devices --json | grep '"name" : "iPhone 12"' 2> /dev/null
 if [[ $? -ne 0 ]]; then
-    xcrun simctl create "iPhone 8" "iPhone 8"
+    xcrun simctl create "iPhone 12" "iPhone 12"
 fi
+set -e
 
 # Create TestResults.xcresult for functional tests
 FILENAME='TestResults.xcresult'
@@ -14,7 +18,7 @@ rm -rf "$FILENAME"
 xcodebuild test \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
-    -destination 'platform=iOS Simulator,name=iPhone 8,OS=latest' \
+    -destination "$SIM_DESTINATION" \
     -skip-testing:SampleAppUITests/RetryTests \
     -resultBundlePath "$FILENAME" || true
 
@@ -30,7 +34,7 @@ rm -rf "$SANITY_FILENAME"
 xcodebuild test \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
-    -destination 'platform=iOS Simulator,name=iPhone 8,OS=latest' \
+    -destination "$SIM_DESTINATION" \
     -only-testing:SampleAppUITests/FirstSuite/testOne \
     -resultBundlePath "$SANITY_FILENAME" || true
 
@@ -45,7 +49,7 @@ if [[ $XCODE_VERSION != 12.* && $XCODE_VERSION != 11.* ]]; then
     xcodebuild test \
         -project SampleApp.xcodeproj \
         -scheme MainScheme \
-        -destination 'platform=iOS Simulator,name=iPhone 8,OS=latest' \
+        -destination "$SIM_DESTINATION" \
         -test-iterations 2 \
         -retry-tests-on-failure \
         -only-testing:SampleAppUITests/RetryTests \
