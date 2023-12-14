@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        type: text
+        type: string
         required: true
         description: "Release tag to use. e.g. refs/tags/2.2.4"
 
@@ -23,9 +23,9 @@ jobs:
 #        tag: ${{ github.event.inputs.version }}        
 
     - name: Update Official Homebrew formula
-      uses: dawidd6/action-homebrew-bump-formula@v3
+      uses: dawidd6/action-homebrew-bump-formula@v3.10.1
       with:
         token: ${{ secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
-        org: XCTestHTMLReport
+        # org: XCTestHTMLReport
         formula: xctesthtmlreport
         tag: ${{ github.event.inputs.version }}
