@@ -98,6 +98,8 @@ public struct TestGroup: Test {
         identifier = group.identifier ?? "---group-identifier-not-found---"
         duration = group.duration
 
+        Logger.substep("Initializing TestGroup \(identifier)")
+
         if !group.subtests.isEmpty {
           subTests += Array(group.subtests.reduce(into: Set<TestCase>()) { subTestSet, metadata in
             let newTest = TestCase(
@@ -204,6 +206,8 @@ struct TestCase: Test {
     ) {
         title = metadata.name ?? ""
         identifier = metadata.identifier ?? ""
+
+        Logger.substep("Initializing TestCase \(identifier)")
 
         iterations = [Iteration(
             metadata: metadata,
