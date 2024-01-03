@@ -1027,12 +1027,13 @@ struct HTMLTemplates
       for (var i = 0; i < testSummaryGroups.length; i++) {
           var testSummaryGroup = testSummaryGroups[i];
           var children = Array.prototype.slice.call(testSummaryGroup.children);
-          var testSummaries = children.filter(function(a) { return a.classList.contains('test-summary'); });
-          if (testSummaries.length == 0) {
+          var testSummaryChildren = children.filter(function(a) { return a.classList.contains('test-summary'); });
+          var testSummaryGroupChildren = children.filter(function(a) { return a.classList.contains('test-summary-group'); });
+          if (testSummaryChildren == 0 || testSummaryGroupChildren.length > 0) {
             continue;
           }
 
-          if (testSummaries.filter(function(a) { return a.style.display == 'block' }).length == 0) {
+          if (testSummaryChildren.filter(function(a) { return a.style.display == 'block' }).length == 0) {
             testSummaryGroup.style.display = 'none';
           } else {
             testSummaryGroup.style.display = 'block';
