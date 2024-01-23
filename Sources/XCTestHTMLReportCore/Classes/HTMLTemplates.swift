@@ -632,11 +632,11 @@ struct HTMLTemplates
         <div id=\"right-sidebar\" class=\"sidebar\">
           <div class=\"resizer\"></div>
           <h2>No Selected Attachment</h2>
-          <img src=\"\" class=\"displayed-screenshot\" id=\"screenshot\"/>
-          <img src=\"\" class=\"displayed-gif\" id=\"gif\"/>
-          <iframe id=\"text-attachment\" src=\"\"></iframe>
+          <img src=\"\" class=\"displayed-screenshot\" id=\"screenshot\" loading=\"lazy\"/>
+          <img src=\"\" class=\"displayed-gif\" id=\"gif\" loading=\"lazy\"/>
+          <iframe id=\"text-attachment\" src=\"\" loading=\"lazy\"></iframe>
           <h2 id=\"file-attachment\"><a target=\"_blank\"/></h2>
-          <video class=\"displayed-video\" controls src=\"\" id=\"video\"/>
+          <video class=\"displayed-video\" controls src=\"\" id=\"video\" preload=\"none\"/>
         </div>
         <div class=\"clear\"></div>
       </div>
@@ -1093,7 +1093,7 @@ struct HTMLTemplates
           <li class=\"selected\">All Messages</li>
         </ul>
       </div>
-      <iframe id=\"logs-iframe\" src=\"[[LOG_SOURCE]]\"></iframe>
+      <iframe id=\"logs-iframe\" src=\"[[LOG_SOURCE]]\" loading=\"lazy\"></iframe>
     </div>
   </div>
   """
@@ -1183,7 +1183,7 @@ struct HTMLTemplates
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
-    <img class=\"screenshot\" src=\"[[SOURCE]]\" id=\"screenshot-[[FILENAME]]\"/>
+    <img class=\"screenshot\" src=\"[[SOURCE]]\" id=\"screenshot-[[FILENAME]]\" loading=\"lazy\"/>
   </p>
   """
 
@@ -1192,7 +1192,7 @@ struct HTMLTemplates
     <span class="icon left screenshot-icon" style="margin-left: [[PADDING]]px"></span>
     [[NAME]]
   <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showGif('[[FILENAME]]')\"></span>
-    <img class=\"gif\" src=\"[[SOURCE]]\" id=\"gif-[[FILENAME]]\"/>
+    <img class=\"gif\" src=\"[[SOURCE]]\" id=\"gif-[[FILENAME]]\" loading=\"lazy\"/>
   </p>
   """
 
@@ -1201,7 +1201,7 @@ struct HTMLTemplates
     <span class=\"icon left video-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showVideo('[[FILENAME]]')\"></span>
-    <video class=\"video\" controls src=\"[[SOURCE]]\" id=\"video-[[FILENAME]]\"/>
+    <video class=\"video\" controls src=\"[[SOURCE]]\" id=\"video-[[FILENAME]]\" preload=\"none\"/>
   </p>
   """
 
