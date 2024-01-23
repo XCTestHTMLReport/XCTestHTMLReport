@@ -3,6 +3,7 @@ RetryResults*
 SanityResults*
 .DS_Store
 /.build
+/XCTestHTMLReportSampleApp/Build
 /Packages
 
 /*.xcodeproj

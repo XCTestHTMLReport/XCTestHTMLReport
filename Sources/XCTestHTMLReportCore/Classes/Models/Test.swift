@@ -74,7 +74,7 @@ public struct TestGroup: Test {
         return .unknown
     }
 
-    let subTests: [Test]
+    var subTests: [Test] = []
 
     var descendantSubTests: [Test] {
         subTests.flatMap { subTest -> [Test] in
@@ -98,31 +98,35 @@ public struct TestGroup: Test {
         identifier = group.identifier ?? "---group-identifier-not-found---"
         duration = group.duration
 
-        if group.subtests.isEmpty {
-            subTests = group.subtestGroups.map { TestGroup(
-                group: $0,
-                resultFile: resultFile,
-                renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled,
-                downsizeScaleFactor: downsizeScaleFactor
-            ) }
-        } else {
-            subTests = Array(group.subtests.reduce(into: Set<TestCase>()) { subTestSet, metadata in
-                let newTest = TestCase(
-                    metadata: metadata,
-                    resultFile: resultFile,
-                    renderingMode: renderingMode,
-                    downsizeImagesEnabled: downsizeImagesEnabled,
-                    downsizeScaleFactor: downsizeScaleFactor
-                )
-                if let index = subTestSet.firstIndex(of: newTest) {
-                    var existingTest = subTestSet[index]
-                    existingTest.iterations.append(contentsOf: newTest.iterations)
-                    subTestSet.update(with: existingTest)
-                } else {
-                    subTestSet.insert(newTest)
-                }
-            })
+        Logger.substep("Initializing TestGroup \(identifier)")
+
+        if !group.subtests.isEmpty {
+          subTests += Array(group.subtests.reduce(into: Set<TestCase>()) { subTestSet, metadata in
+            let newTest = TestCase(
+              metadata: metadata,
+              resultFile: resultFile,
+              renderingMode: renderingMode,
+              downsizeImagesEnabled: downsizeImagesEnabled,
+              downsizeScaleFactor: downsizeScaleFactor
+            )
+            if let index = subTestSet.firstIndex(of: newTest) {
+              var existingTest = subTestSet[index]
+              existingTest.iterations.append(contentsOf: newTest.iterations)
+              subTestSet.update(with: existingTest)
+            } else {
+              subTestSet.insert(newTest)
+            }
+          })
+        }
+
+        if !group.subtestGroups.isEmpty {
+          subTests += group.subtestGroups.map { TestGroup(
+            group: $0,
+            resultFile: resultFile,
+            renderingMode: renderingMode,
+            downsizeImagesEnabled: downsizeImagesEnabled,
+            downsizeScaleFactor: downsizeScaleFactor
+          ) }
         }
     }
 }
@@ -202,6 +206,8 @@ struct TestCase: Test {
     ) {
         title = metadata.name ?? ""
         identifier = metadata.identifier ?? ""
+
+        Logger.substep("Initializing TestCase \(identifier)")
 
         iterations = [Iteration(
             metadata: metadata,
