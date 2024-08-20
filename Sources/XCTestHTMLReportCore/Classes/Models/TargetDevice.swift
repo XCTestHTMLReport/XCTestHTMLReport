@@ -15,9 +15,9 @@ struct TargetDevice {
     let osVersion: String
     let model: String
 
-    init(record: ActionDeviceRecord) {
+    init(record: ActionDeviceRecord, eraseSimulatorIds: Bool) {
         Logger.substep("Parsing ActionDeviceRecord")
-        identifier = record.identifier
+        identifier = eraseSimulatorIds ? "" : record.identifier
         uniqueIdentifier = UUID().uuidString
         osVersion = record.operatingSystemVersion
         model = record.modelName

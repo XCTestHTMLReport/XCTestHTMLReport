@@ -68,6 +68,9 @@ struct SummaryOptions: ParsableArguments {
     @Flag(name: .short, help: ArgumentHelp("Render attachments inline or as linked assets"))
     var inline = false
 
+    @Flag(name: .customShort("x"), help: ArgumentHelp("Erase simulator ids"))
+    var eraseSimulatorIds = false
+
     var finalRenderingMode: Summary.RenderingMode {
         if renderingMode == .inline || inline {
             return .inline
@@ -117,6 +120,7 @@ struct XCTestHtmlReport: ParsableCommand {
             renderingMode: summaryOptions.finalRenderingMode,
             downsizeImagesEnabled: summaryOptions.downsizeImages,
             downsizeScaleFactor: summaryOptions.downsizeScaleFactor
+            eraseSimulatorIds: summaryOptions.eraseSimulatorIds
         )
 
         Logger.step("Building HTML..")

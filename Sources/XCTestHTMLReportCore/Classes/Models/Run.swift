@@ -61,10 +61,11 @@ struct Run: HTML {
         file: ResultFile,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
-        downsizeScaleFactor: CGFloat
+        downsizeScaleFactor: CGFloat,
+        eraseSimulatorIds: Bool
     ) {
         self.file = file
-        runDestination = RunDestination(record: action.runDestination)
+        runDestination = RunDestination(record: action.runDestination, eraseSimulatorIds: eraseSimulatorIds)
 
         guard
             let testReference = action.actionResult.testsRef,
