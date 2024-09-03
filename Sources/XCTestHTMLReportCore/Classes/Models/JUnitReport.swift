@@ -121,10 +121,6 @@ extension JUnitReport.TestCase: XMLRepresentable {
             xml += "/>\n"
         } else {
             xml += ">\n"
-            if self.state == State.skipped {
-                // Since even skipped tests apparently have some result logs, we need to add this check here to add the ``skipped`` tag.
-                xml += "   <skipped/>\n"
-            }
             xml += results.map(\.xmlString).joined(separator: "\n")
             xml += "\n  </testcase>\n"
         }

@@ -27,10 +27,6 @@ struct TestSummary: HTML {
                 return test.status
             }
             
-            if test.status == .skipped {
-                return .skipped
-            }
-
             if test.status == .failure {
                 return .failure
             }
