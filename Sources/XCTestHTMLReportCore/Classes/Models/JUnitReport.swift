@@ -111,8 +111,13 @@ extension JUnitReport.TestCase: XMLRepresentable {
         let timeString = String(format: "%.02f", time)
         var xml =
             "  <testcase classname='\(classname.stringByEscapingXMLChars)' name='\(name.stringByEscapingXMLChars)' time='\(timeString)'"
-
-        if results.isEmpty {
+        
+        /// Skipped tests can have no TestResults (logs) so we need to check the status to add the skipped tag to the xml file
+        if self.state == .skipped {
+            xml += ">\n"
+            xml += "    <skipped/>"
+            xml += "\n  </testcase>\n"
+        } else if results.isEmpty {
             xml += "/>\n"
         } else {
             xml += ">\n"
