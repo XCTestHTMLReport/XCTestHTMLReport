@@ -5,7 +5,6 @@ SanityResults*
 /.build
 /XCTestHTMLReportSampleApp/Build
 /Packages
-/testfolder
 
 /*.xcodeproj
 xcuserdata/
