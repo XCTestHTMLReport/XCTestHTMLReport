@@ -17,6 +17,10 @@ struct JUnitReport {
     var failures: Int {
         suites.map(\.failures).reduce(0) { $0 + $1 }
     }
+    
+    var skipped: Int {
+        suites.map(\.skipped).reduce(0) { $0 + $1 }
+    }
 
     var suites: [TestSuite]
 
@@ -25,6 +29,9 @@ struct JUnitReport {
         var tests: Int
         var failures: Int {
             cases.filter { $0.state == .failed }.count
+        }
+        var skipped: Int {
+            cases.filter { $0.state == .skipped }.count
         }
 
         var cases: [TestCase]
@@ -69,7 +76,7 @@ extension JUnitReport: XMLRepresentable {
     var xmlString: String {
         var xml = "<?xml version='1.0' encoding='UTF-8'?>\n"
         xml +=
-            "<testsuites name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)'>\n"
+            "<testsuites name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)' skipped='\(skipped)'>\n"
 
         suites.forEach { suite in
             xml += suite.xmlString
@@ -85,7 +92,7 @@ extension JUnitReport.TestSuite: XMLRepresentable {
     /// e.g. <testsuite name='AccessTests' tests='1' failures='0'>
     var xmlString: String {
         var xml =
-            "  <testsuite name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)'>\n"
+            "  <testsuite name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)' skipped='\(skipped)'>\n"
 
         cases.forEach { testcase in
             xml += testcase.xmlString
@@ -104,8 +111,13 @@ extension JUnitReport.TestCase: XMLRepresentable {
         let timeString = String(format: "%.02f", time)
         var xml =
             "  <testcase classname='\(classname.stringByEscapingXMLChars)' name='\(name.stringByEscapingXMLChars)' time='\(timeString)'"
-
-        if results.isEmpty {
+        
+        /// Skipped tests can have no TestResults (logs) so we need to check the status to add the skipped tag to the xml file
+        if self.state == .skipped {
+            xml += ">\n"
+            xml += "    <skipped/>"
+            xml += "\n  </testcase>\n"
+        } else if results.isEmpty {
             xml += "/>\n"
         } else {
             xml += ">\n"
