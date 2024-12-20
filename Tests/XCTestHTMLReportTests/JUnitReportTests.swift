@@ -76,8 +76,8 @@ final class JUnitReportTests: XCTestCase {
         let string = jUnitReport.xmlString
         let expectedString = #"""
         <?xml version='1.0' encoding='UTF-8'?>
-        <testsuites name='JUnitReportName&lt;&apos;&amp;\&gt;' tests='1' failures='1'>
-          <testsuite name='JUnitReportTestSuiteName&lt;&apos;&amp;\&gt;' tests='1' failures='1'>
+        <testsuites name='JUnitReportName&lt;&apos;&amp;\&gt;' tests='1' failures='1' skipped='0'>
+          <testsuite name='JUnitReportTestSuiteName&lt;&apos;&amp;\&gt;' tests='1' failures='1' skipped='0'>
           <testcase classname='MyClassName&lt;&apos;&amp;\&gt;' name='MyName&lt;&apos;&amp;\&gt;' time='0.00'>
             <system-out>TitleHere&lt;&apos;&amp;\&gt;</system-out>
             <system-err>SystemErrorHere&lt;&apos;&amp;\&gt;</system-err>

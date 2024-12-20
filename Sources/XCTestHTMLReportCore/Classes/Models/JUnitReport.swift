@@ -203,12 +203,34 @@ private extension JUnitReport.TestCase {
         results = []
         if let testCase = test as? TestCase {
             for (index, iteration) in testCase.iterations.enumerated() {
-                let isLastIteration = index == testCase.iterations.indices.last
+                let isFailureFatal = {
+                    let isLastIteration = index == testCase.iterations.indices.last
+                    // In some edge cases, there may be failed assertions during the test, but the test succeeds.
+                    // To consider an assertion fatal, the test state must be failure
+                    return isLastIteration && iteration.didFail
+                }()
                 results += iteration
                     .activities
-                    .map { flatSubActivities(of: $0, indent: 0, isFailureFatal: isLastIteration) }
+                    .map { flatSubActivities(of: $0, indent: 0, isFailureFatal: isFailureFatal) }
                     .flatMap { $0 }
+
+                // In the edge case the test state failed but there were zero failed assertions in the test steps,
+                // add a final step that indicates the failed test state
+                if isFailureFatal, !results.contains(where: { $0.state == .failed }) {
+                    results += [.init(title: "Test status: \(iteration.status)", state: .failed)]
+                }
             }
+        }
+    }
+}
+
+private extension Iteration {
+    var didFail: Bool {
+        switch status {
+        case .success, .skipped, .mixed, .unknown:
+            false
+        case .failure:
+            true
         }
     }
 }
@@ -216,17 +238,18 @@ private extension JUnitReport.TestCase {
 private extension JUnitReport.TestResult {
     init(activity: Activity, indent: Int, isFailureFatal: Bool) {
         title = String(repeating: " ", count: indent * 2) + activity.title
-        if activity.type == .assertionFailure {
+        switch activity.type {
+        case .assertionFailure:
             if isFailureFatal {
                 state = .failed
             } else {
                 state = .systemErr
             }
-        } else if activity.type == .userCreated {
+        case .userCreated:
             state = .systemOut
-        } else if activity.type == .skippedTest {
+        case .skippedTest:
             state = .skipped
-        } else {
+        case .none, .unknwown, .intern, .deleteAttachment, .attachementContainer:
             state = .unknown
         }
     }
