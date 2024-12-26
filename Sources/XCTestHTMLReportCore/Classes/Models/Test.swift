@@ -101,22 +101,37 @@ public struct TestGroup: Test {
         Logger.substep("Initializing TestGroup \(identifier)")
 
         if !group.subtests.isEmpty {
-          subTests += Array(group.subtests.reduce(into: Set<TestCase>()) { subTestSet, metadata in
-            let newTest = TestCase(
-              metadata: metadata,
-              resultFile: resultFile,
-              renderingMode: renderingMode,
-              downsizeImagesEnabled: downsizeImagesEnabled,
-              downsizeScaleFactor: downsizeScaleFactor
-            )
-            if let index = subTestSet.firstIndex(of: newTest) {
-              var existingTest = subTestSet[index]
-              existingTest.iterations.append(contentsOf: newTest.iterations)
-              subTestSet.update(with: existingTest)
-            } else {
-              subTestSet.insert(newTest)
+            let operationQueue = OperationQueue()
+            operationQueue.maxConcurrentOperationCount = ProcessInfo.processInfo.processorCount * 2
+            let queue = DispatchQueue(label: "com.xchtmlreport.subtest.lock")
+            var subTestSet: Set<TestCase> = []
+
+            for metadata in group.subtests {
+                let operation = BlockOperation {
+                    let newTest = TestCase(
+                        metadata: metadata,
+                        resultFile: resultFile,
+                        renderingMode: renderingMode,
+                        downsizeImagesEnabled: downsizeImagesEnabled,
+                        downsizeScaleFactor: downsizeScaleFactor
+                    )
+                    queue.sync {
+                        if let index = subTestSet.firstIndex(of: newTest) {
+                            var existingTest = subTestSet[index]
+                            existingTest.iterations.append(contentsOf: newTest.iterations)
+                            subTestSet.update(with: existingTest)
+                        } else {
+                            subTestSet.insert(newTest)
+                        }
+                    }
+                }
+                operationQueue.addOperation(operation)
             }
-          })
+
+            operationQueue.waitUntilAllOperationsAreFinished()
+            var subTestList = Array(subTestSet)
+            subTestList.sort(by: { $0.title < $1.title })
+            subTests.append(contentsOf: subTestList)
         }
 
         if !group.subtestGroups.isEmpty {
