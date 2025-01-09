@@ -119,6 +119,7 @@ public struct TestGroup: Test {
                         if let index = subTestSet.firstIndex(of: newTest) {
                             var existingTest = subTestSet[index]
                             existingTest.iterations.append(contentsOf: newTest.iterations)
+                            existingTest.iterations.sort(by: { $0.repetitionPolicy?.iteration ?? 0 < $1.repetitionPolicy?.iteration ?? 0 })
                             subTestSet.update(with: existingTest)
                         } else {
                             subTestSet.insert(newTest)
