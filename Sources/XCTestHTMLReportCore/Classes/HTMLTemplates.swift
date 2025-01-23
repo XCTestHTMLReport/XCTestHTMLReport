@@ -344,6 +344,7 @@ struct HTMLTemplates
 
     .activity.activity-assertion-failure > p {
       color: red;
+      white-space: pre-wrap;
     }
 
     .sub-activities {
