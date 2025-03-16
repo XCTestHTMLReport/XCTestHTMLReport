@@ -12,9 +12,9 @@ on:
 
 jobs:
   test:
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Download Test Resources
       run: |
         aws s3 cp --recursive s3://xctesthtmlreport/ ./Tests/XCTestHTMLReportTests/Resources/
@@ -28,6 +28,6 @@ jobs:
     - name: Setup Xcode version
       uses: maxim-lobanov/setup-xcode@v1.6.0        
       with:
-        xcode-version: ^15
+        xcode-version: ^16
     - name: Run tests
       run: xcrun swift test -v
