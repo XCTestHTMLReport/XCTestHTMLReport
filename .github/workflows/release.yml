@@ -70,7 +70,7 @@ jobs:
         --wait
 
     - name: Archive
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: application
         path: ${{ steps.metadata.outputs.archive_name }}
