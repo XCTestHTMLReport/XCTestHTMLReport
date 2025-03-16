@@ -37,7 +37,7 @@ jobs:
           ./prepareTestResults.sh
 
       - name: Archive Test Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sample-test-results-${{ matrix.macos_version }}-${{ matrix.xcode_version }}
           path: Tests/XCTestHTMLReportTests/Resources
