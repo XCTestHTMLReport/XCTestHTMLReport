@@ -145,6 +145,55 @@ public struct TestGroup: Test {
           ) }
         }
     }
+
+    init(
+        globalMetadata: [ActionTestMetadata],
+        resultFile: ResultFile,
+        renderingMode: Summary.RenderingMode,
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat
+    ) {
+        title = "Global Tests"
+        identifier = "---global-tests---"
+        duration = globalMetadata.reduce(0, { partialResult, metadatum in
+            metadatum.duration ?? 0 + partialResult
+        })
+
+        Logger.substep("Initializing TestGroup \(identifier)")
+
+        let operationQueue = OperationQueue()
+        operationQueue.maxConcurrentOperationCount = ProcessInfo.processInfo.processorCount * 2
+        let queue = DispatchQueue(label: "com.xchtmlreport.subtest.lock")
+        var subTestSet: Set<TestCase> = []
+
+        for metadata in globalMetadata {
+            let operation = BlockOperation {
+                let newTest = TestCase(
+                    metadata: metadata,
+                    resultFile: resultFile,
+                    renderingMode: renderingMode,
+                    downsizeImagesEnabled: downsizeImagesEnabled,
+                    downsizeScaleFactor: downsizeScaleFactor
+                )
+                queue.sync {
+                    if let index = subTestSet.firstIndex(of: newTest) {
+                        var existingTest = subTestSet[index]
+                        existingTest.iterations.append(contentsOf: newTest.iterations)
+                        existingTest.iterations.sort(by: { $0.repetitionPolicy?.iteration ?? 0 < $1.repetitionPolicy?.iteration ?? 0 })
+                        subTestSet.update(with: existingTest)
+                    } else {
+                        subTestSet.insert(newTest)
+                    }
+                }
+            }
+            operationQueue.addOperation(operation)
+        }
+
+        operationQueue.waitUntilAllOperationsAreFinished()
+        var subTestList = Array(subTestSet)
+        subTestList.sort(by: { $0.title < $1.title })
+        subTests.append(contentsOf: subTestList)
+    }
 }
 
 extension TestGroup {
