@@ -51,7 +51,7 @@ struct TestSummary: HTML {
         uuid = UUID().uuidString
         testName = summary.targetName ?? ""
         // TODO: Reduce this with iterations & accum with hashmap
-        tests = summary.tests.map {
+        let testGroups = summary.tests.map {
             TestGroup(
                 group: $0,
                 resultFile: file,
@@ -60,6 +60,15 @@ struct TestSummary: HTML {
                 downsizeScaleFactor: downsizeScaleFactor
             )
         }
+        let globalTestGroup = TestGroup(
+            globalMetadata: summary.globalTests,
+            resultFile: file,
+            renderingMode: renderingMode,
+            downsizeImagesEnabled: downsizeImagesEnabled,
+            downsizeScaleFactor: downsizeScaleFactor
+        )
+
+        tests = testGroups + [globalTestGroup]
     }
 
     // PRAGMA MARK: - HTML
