@@ -138,15 +138,17 @@ struct Activity: HTML {
             )
         }
         type = ActivityType(rawValue: summary.activityType)
-        attachments = summary.attachments.map {
-            Attachment(
-                attachment: $0,
-                file: file,
-                padding: padding + 16,
-                renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled,
-                downsizeScaleFactor: downsizeScaleFactor
-            )
+        attachments = summary.attachments.map { attachment in
+            autoreleasepool {
+                Attachment(
+                    attachment: attachment,
+                    file: file,
+                    padding: padding + 16,
+                    renderingMode: renderingMode,
+                    downsizeImagesEnabled: downsizeImagesEnabled,
+                    downsizeScaleFactor: downsizeScaleFactor
+                )
+            }
         }
         self.padding = padding
     }

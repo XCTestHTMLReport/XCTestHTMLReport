@@ -35,7 +35,7 @@ final class CoreTests: XCTestCase {
             )
             let texts = try elements.eachText()
             XCTAssertEqual(texts.count, 5)
-            XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 3)
+            XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 4)
             XCTAssertEqual(texts[1].intGroupMatch("Passed \\((\\d+)\\)"), 1)
             XCTAssertEqual(texts[2].intGroupMatch("Skipped \\((\\d+)\\)"), 0)
             XCTAssertEqual(texts[3].intGroupMatch("Failed \\((\\d+)\\)"), 1)
@@ -84,7 +84,7 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(junit.suites.count, 1)
 
         let suite = try XCTUnwrap(junit.suites.first)
-        XCTAssertEqual(suite.cases.count, 3)
+        XCTAssertEqual(suite.cases.count, 4)
 
         let testRetryOnFailure = try XCTUnwrap(
             suite.cases
@@ -117,6 +117,18 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(testJustPass.state, .passed)
         assertJunitResults(
             testJustPass.results,
+            count: 4,
+            failed: 0,
+            systemErr: 0,
+            systemOut: 0,
+            unknown: 4,
+            skipped: 0
+        )
+
+        let testInUnknownState = try XCTUnwrap(suite.cases.first { $0.name == "testInUnknownState()" })
+        XCTAssertEqual(testInUnknownState.state, .unknown)
+        assertJunitResults(
+            testInUnknownState.results,
             count: 4,
             failed: 0,
             systemErr: 0,

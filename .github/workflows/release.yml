@@ -8,10 +8,10 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Configure Signing
       uses: Apple-Actions/import-codesign-certs@v1
@@ -22,7 +22,7 @@ jobs:
     - name: Setup Xcode version
       uses: maxim-lobanov/setup-xcode@v1.6.0        
       with:
-        xcode-version: ^15
+        xcode-version: ^16
 
     - name: Generate Metadata
       id: metadata
@@ -70,7 +70,7 @@ jobs:
         --wait
 
     - name: Archive
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: application
         path: ${{ steps.metadata.outputs.archive_name }}
@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Get next version
         uses: reecetech/version-increment@2022.5.1

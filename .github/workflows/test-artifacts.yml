@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        xcode_version: [latest-stable, 14]
+        xcode_version: [latest-stable, 15]
         # macos_version: [macos-13, macos-12]
         # exclude:
         #   # macos 12 "Monterey" is only supported up to Xcode 14.2
@@ -17,10 +17,10 @@ jobs:
         #   # macos 13 "Ventura" builders don't have Xcode 13
         #   - xcode_version: 13.2.1
         #     macos_version: macos-13
-    runs-on: macos-13
+    runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
   
       - name: Setup Xcode version
         uses: maxim-lobanov/setup-xcode@v1.6.0
@@ -37,7 +37,7 @@ jobs:
           ./prepareTestResults.sh
 
       - name: Archive Test Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sample-test-results-${{ matrix.macos_version }}-${{ matrix.xcode_version }}
           path: Tests/XCTestHTMLReportTests/Resources
