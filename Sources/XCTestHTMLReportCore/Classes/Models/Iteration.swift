@@ -17,6 +17,7 @@ struct Iteration: Test {
     let status: Status
     let activities: [Activity]
     let repetitionPolicy: ActionTestRepetitionPolicySummary?
+    let skipNoticeMessage: String
 
     var testScreenshotFlow: TestScreenshotFlow? {
         TestScreenshotFlow(activities: activities)
@@ -83,9 +84,11 @@ struct Iteration: Test {
             }
 
             repetitionPolicy = actionTestSummary.repetitionPolicySummary
+            skipNoticeMessage = actionTestSummary.skipNoticeSummary?.message ?? ""
         } else {
             activities = []
             repetitionPolicy = nil
+            skipNoticeMessage = ""
         }
     }
 }
