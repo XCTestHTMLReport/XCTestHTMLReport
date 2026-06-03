@@ -51,6 +51,7 @@ struct JUnitReport {
         var name: String
         var time: TimeInterval
         var state: State
+        var skippedMessage: String
         var results: [TestResult]
     }
 
@@ -115,7 +116,11 @@ extension JUnitReport.TestCase: XMLRepresentable {
         /// Skipped tests can have no TestResults (logs) so we need to check the status to add the skipped tag to the xml file
         if self.state == .skipped {
             xml += ">\n"
-            xml += "    <skipped/>"
+            if !skippedMessage.isEmpty {
+                xml += "    <skipped message='\(skippedMessage.stringByEscapingXMLChars)'>\n    </skipped>"
+            } else {
+                xml += "    <skipped/>"
+            }
             xml += "\n  </testcase>\n"
         } else if results.isEmpty {
             xml += "/>\n"
@@ -165,6 +170,7 @@ private extension JUnitReport.TestCase {
         let components = test.identifier.components(separatedBy: "/")
         time = test.duration
         name = components.last ?? ""
+        skippedMessage = ""
 
         var classname = components.first ?? ""
         if includeRunDestinationInfo {
@@ -219,6 +225,12 @@ private extension JUnitReport.TestCase {
                 if isFailureFatal, !results.contains(where: { $0.state == .failed }) {
                     results += [.init(title: "Test status: \(iteration.status)", state: .failed)]
                 }
+            }
+
+            if testCase.status == .skipped {
+                skippedMessage = testCase.iterations
+                    .map(\.skipNoticeMessage)
+                    .first(where: { !$0.isEmpty }) ?? ""
             }
         }
     }
