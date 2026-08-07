@@ -188,5 +188,9 @@ jobs:
     uses: ./.github/workflows/homebrew-bump.yml
     with:
       version: ${{ needs.build.outputs.version }}
-    secrets:
-      token: ${{ secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
+    # inherit rather than passing a named secret: the called workflow also runs
+    # standalone via workflow_dispatch, which cannot be passed secrets at all,
+    # so it must read HOMEBREW_BUMP_ACCESS_TOKEN from the repository either way.
+    # Inheriting keeps one code path instead of a fallback whose branches
+    # resolve differently depending on how the workflow was triggered.
+    secrets: inherit

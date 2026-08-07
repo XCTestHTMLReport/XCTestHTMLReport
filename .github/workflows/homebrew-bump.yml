@@ -10,9 +10,6 @@ on:
       version:
         type: string
         required: true
-    secrets:
-      token:
-        required: true
   workflow_dispatch:
     inputs:
       version:
@@ -27,16 +24,26 @@ jobs:
     steps:
     - name: Resolve tag
       id: tag
+      # The input reaches the shell through the environment, never through
+      # ${{ }} interpolation into the script body — a dispatch input is
+      # attacker-controllable by anyone with write access, and this job holds
+      # the Homebrew token. Validated against the tag shapes the release
+      # workflow accepts, so a malformed value fails here rather than being
+      # passed to Homebrew.
+      env:
+        RAW_VERSION: ${{ inputs.version }}
       run: |
-        TAG="${{ inputs.version }}"
-        # Tolerate a full ref being pasted into the manual input.
-        TAG="${TAG#refs/tags/}"
+        TAG="${RAW_VERSION#refs/tags/}"
+        if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$ ]]; then
+          echo "::error::'${TAG}' is not a release tag (expected X.Y.Z or X.Y.ZrcN)"
+          exit 1
+        fi
         echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
         echo "bumping to ${TAG}"
 
     - name: Update Official Homebrew formula
       uses: dawidd6/action-homebrew-bump-formula@v8
       with:
-        token: ${{ secrets.token || secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
+        token: ${{ secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
         formula: xctesthtmlreport
         tag: ${{ steps.tag.outputs.tag }}
