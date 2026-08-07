@@ -85,15 +85,15 @@ struct Run: HTML {
             Logger.warning("Can't find test reference for action \(action.title ?? "")")
             logContent = .none
         }
-                
+
         let cpuCount = ProcessInfo.processInfo.processorCount
         let operationQueue = OperationQueue()
         operationQueue.maxConcurrentOperationCount = cpuCount * 2
-        
+
         let queue = DispatchQueue(label: "com.xchtmlreport.lock")
-        
+
         var summaries = [TestSummary]()
-        
+
         testPlanSummaries.summaries
             .flatMap(\.testableSummaries)
             .forEach { testableSummary in
@@ -111,10 +111,10 @@ struct Run: HTML {
                 }
                 operationQueue.addOperation(operation)
             }
-        
+
         operationQueue.waitUntilAllOperationsAreFinished()
-        
-        testSummaries = summaries.sorted { $0.testName < $1.testName }        
+
+        testSummaries = summaries.sorted { $0.testName < $1.testName }
     }
 
     private var logSource: String? {

@@ -16,30 +16,48 @@ enum ResizeError: Error {
 extension RenderingContent {
     static let imageCompression: Float = 0.8
 
-    static func downsizeFrom(_ content: RenderingContent, downsizeScaleFactor: CGFloat) throws -> RenderingContent {
+    static func downsizeFrom(
+        _ content: RenderingContent,
+        downsizeScaleFactor: CGFloat
+    ) throws -> RenderingContent {
         switch content {
         case let .data(data):
-            return .data(try RenderingContent.resize(content: data, downsizeScaleFactor: downsizeScaleFactor))
+            return try .data(RenderingContent.resize(
+                content: data,
+                downsizeScaleFactor: downsizeScaleFactor
+            ))
         case let .url(url):
-            return .url(try RenderingContent.resize(content: url, downsizeScaleFactor: downsizeScaleFactor))
+            return try .url(RenderingContent.resize(
+                content: url,
+                downsizeScaleFactor: downsizeScaleFactor
+            ))
         case .none:
             throw ResizeError.contentNotImage
         }
     }
-    
-    /// Performs an  resize for the image data, scaling to 0.25 of the size while maintaining aspect ratio
+
+    /// Performs an  resize for the image data, scaling to 0.25 of the size while maintaining aspect
+    /// ratio
     /// - Parameter content: NSImageResizable-conforming object, typically Data
     /// - Returns: A representation of the resized image
-    private static func resize<C: NSImageResizable>(content: C, downsizeScaleFactor: CGFloat) throws -> C {
+    private static func resize<C: NSImageResizable>(
+        content: C,
+        downsizeScaleFactor: CGFloat
+    ) throws -> C {
         let image = try content.asNSImage()
         let originalSize = image.size
-        let newSize = CGSize(width: originalSize.width * downsizeScaleFactor, height: originalSize.height * downsizeScaleFactor)
+        let newSize = CGSize(
+            width: originalSize.width * downsizeScaleFactor,
+            height: originalSize.height * downsizeScaleFactor
+        )
 
         let newImage = NSImage(size: newSize, flipped: false) { rect in
-            image.draw(in: rect,
-                       from: CGRect(origin: .zero, size: originalSize),
-                       operation: .copy,
-                       fraction: 1)
+            image.draw(
+                in: rect,
+                from: CGRect(origin: .zero, size: originalSize),
+                operation: .copy,
+                fraction: 1
+            )
             return true
         }
 
@@ -145,7 +163,7 @@ extension CGSize: Comparable {
         return CGSize(width: size.width * ratio, height: size.height * ratio)
     }
 
-    // Compares by area
+    /// Compares by area
     public static func < (lhs: CGSize, rhs: CGSize) -> Bool {
         (lhs.width * lhs.height) < (rhs.width * rhs.height)
     }

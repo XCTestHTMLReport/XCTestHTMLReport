@@ -1,0 +1,43 @@
+# Starting configuration. The intent is a gate that is green today and can be
+# tightened deliberately, rather than one that is switched on already failing
+# and therefore ignored.
+
+included:
+  - Sources
+  - Tests
+  - XCTestHTMLReportSampleApp
+
+excluded:
+  - .build
+  # Generated (carries a DO NOT EDIT header) and almost entirely multiline
+  # string literals holding the emitted HTML. Also excluded from SwiftFormat.
+  - Sources/XCTestHTMLReportCore/Classes/HTMLTemplates.swift
+
+disabled_rules:
+  # SwiftFormat owns layout; running both would mean two tools disagreeing
+  # about the same lines.
+  - trailing_comma
+  - trailing_whitespace
+  - opening_brace
+  - statement_position
+  # TODOs are tracked as GitHub issues in this repo, not as lint failures.
+  - todo
+
+line_length:
+  # SwiftFormat wraps at 100, but it cannot wrap string literals or long
+  # identifiers, so the error threshold sits above that rather than failing
+  # on lines no formatter can fix.
+  warning: 120
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+identifier_name:
+  # Short names are idiomatic in this codebase's closures and generics.
+  min_length:
+    warning: 2
+    error: 1
+  excluded:
+    - id
+    - to
+    - i

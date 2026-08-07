@@ -1,3 +1,10 @@
+# HTMLTemplates.swift is generated (it carries a DO NOT EDIT header) and is
+# almost entirely multiline string literals whose contents are the emitted HTML.
+# Reformatting it moves the closing """ delimiters, which changes how much
+# leading whitespace Swift strips from every line — i.e. it changes the bytes of
+# every generated report. Left alone deliberately.
+--exclude Sources/XCTestHTMLReportCore/Classes/HTMLTemplates.swift
+
 --swiftversion 5.5
 --acronyms ID,URL,UUID
 --allman false

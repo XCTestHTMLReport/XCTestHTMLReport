@@ -32,7 +32,7 @@ enum Status: String {
     }
 }
 
-// Will be deprecated as each case is now a unique object
+/// Will be deprecated as each case is now a unique object
 enum ObjectClass: String {
     case unknwown = ""
     case testableSummary = "IDESchemeActionTestableSummary"
@@ -119,7 +119,11 @@ public struct TestGroup: Test {
                         if let index = subTestSet.firstIndex(of: newTest) {
                             var existingTest = subTestSet[index]
                             existingTest.iterations.append(contentsOf: newTest.iterations)
-                            existingTest.iterations.sort(by: { $0.repetitionPolicy?.iteration ?? 0 < $1.repetitionPolicy?.iteration ?? 0 })
+                            existingTest.iterations
+                                .sort(by: {
+                                    $0.repetitionPolicy?.iteration ?? 0 < $1.repetitionPolicy?
+                                        .iteration ?? 0
+                                })
                             subTestSet.update(with: existingTest)
                         } else {
                             subTestSet.insert(newTest)
@@ -136,28 +140,32 @@ public struct TestGroup: Test {
         }
 
         if !group.subtestGroups.isEmpty {
-          subTests += group.subtestGroups.map { TestGroup(
-            group: $0,
-            resultFile: resultFile,
-            renderingMode: renderingMode,
-            downsizeImagesEnabled: downsizeImagesEnabled,
-            downsizeScaleFactor: downsizeScaleFactor
-          ) }
+            subTests += group.subtestGroups.map { TestGroup(
+                group: $0,
+                resultFile: resultFile,
+                renderingMode: renderingMode,
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
+            ) }
         }
     }
 }
 
 extension TestGroup {
-    var htmlPlaceholderValues: [String: String] { [
-        "UUID": uuid,
-        "TITLE": title,
-        "DURATION": duration.formattedSeconds,
-        "ICON_CLASS": status.cssClass,
-        "ITEM_CLASS": objectClass.cssClass,
-        "SUB_TESTS": subTests.reduce("") { $0 + $1.html },
-    ] }
+    var htmlPlaceholderValues: [String: String] {
+        [
+            "UUID": uuid,
+            "TITLE": title,
+            "DURATION": duration.formattedSeconds,
+            "ICON_CLASS": status.cssClass,
+            "ITEM_CLASS": objectClass.cssClass,
+            "SUB_TESTS": subTests.reduce("") { $0 + $1.html },
+        ]
+    }
 
-    var htmlTemplate: String { HTMLTemplates.testGroup }
+    var htmlTemplate: String {
+        HTMLTemplates.testGroup
+    }
 }
 
 extension TestGroup: ContainingAttachment {
@@ -181,9 +189,9 @@ struct TestCase: Test {
         iterations.reduce(0) { $0 + $1.duration }
     }
 
-    // Test case status is computed from the combined statuses of iterations.
-    // If all iterations have the same status, the test case will have that status,
-    // otherwise the status will report as "mixed".
+    /// Test case status is computed from the combined statuses of iterations.
+    /// If all iterations have the same status, the test case will have that status,
+    /// otherwise the status will report as "mixed".
     var status: Status {
         let statusCountMap = iterationStatusCount()
 
@@ -210,7 +218,7 @@ struct TestCase: Test {
         }
     }
 
-    // This should be the only mutable property
+    /// This should be the only mutable property
     var iterations: [Iteration]
 
     init(
@@ -235,7 +243,7 @@ struct TestCase: Test {
     }
 }
 
-// HTML conforming
+/// HTML conforming
 extension TestCase {
     var htmlPlaceholderValues: [String: String] {
         if iterations.count == 1 {
@@ -272,7 +280,7 @@ extension TestCase {
     }
 }
 
-// Needed to dedupe iterations
+/// Needed to dedupe iterations
 extension TestCase: Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(identifier)

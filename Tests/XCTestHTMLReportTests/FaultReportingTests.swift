@@ -2,7 +2,7 @@ import XCTest
 @testable import XCTestHTMLReportCore
 
 final class FaultReportingTests: XCTestCase {
-    func testMissingInvocationRecordIsRecordedAsFault() throws {
+    func testMissingInvocationRecordIsRecordedAsFault() {
         let bogusPath = NSTemporaryDirectory() + "/DoesNotExist.xcresult"
         let collector = FaultCollector()
 

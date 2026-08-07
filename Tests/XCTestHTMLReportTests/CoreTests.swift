@@ -1,5 +1,5 @@
 //
-//  SummaryTests.swift
+//  CoreTests.swift
 //
 //
 //  Created by Guillermo Ignacio Enriquez Gutierrez on 2020/10/11.
@@ -75,9 +75,17 @@ final class CoreTests: XCTestCase {
             // measures simulator reliability rather than this project's
             // behaviour. Assert only what the source actually determines.
             XCTAssertEqual(all, 13, "One row per test method; fixed by the sample sources")
-            XCTAssertEqual(skipped, 1, "SampleAppUnitTests.testSkipped is an unconditional XCTSkipIf")
+            XCTAssertEqual(
+                skipped,
+                1,
+                "SampleAppUnitTests.testSkipped is an unconditional XCTSkipIf"
+            )
             XCTAssertEqual(mixed, 0, "TestResults excludes RetryTests, so nothing can be mixed")
-            XCTAssertEqual(passed + failed, all - skipped, "Every remaining test lands in exactly one bucket")
+            XCTAssertEqual(
+                passed + failed,
+                all - skipped,
+                "Every remaining test lands in exactly one bucket"
+            )
             XCTAssertGreaterThanOrEqual(
                 failed, 5,
                 "Five sample tests fail deliberately; a lower count means failures are being lost"
@@ -151,7 +159,8 @@ final class CoreTests: XCTestCase {
             skipped: 0
         )
 
-        let testInUnknownState = try XCTUnwrap(suite.cases.first { $0.name == "testInUnknownState()" })
+        let testInUnknownState = try XCTUnwrap(suite.cases
+            .first { $0.name == "testInUnknownState()" })
         XCTAssertEqual(testInUnknownState.state, .unknown)
         assertJunitResults(
             testInUnknownState.results,

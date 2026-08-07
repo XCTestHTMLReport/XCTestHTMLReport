@@ -33,8 +33,8 @@ struct TestScreenshotFlow {
 }
 
 private extension Sequence {
-    // Determines whether any element in the Array matches the conditions defined by the specified
-    // predicate.
+    /// Determines whether any element in the Array matches the conditions defined by the specified
+    /// predicate.
     func trueForAny(_ predicate: (Element) -> Bool) -> Bool {
         first(where: predicate) != nil
     }

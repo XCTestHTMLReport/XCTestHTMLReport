@@ -13,9 +13,9 @@ protocol EmittableOutput {
 }
 
 extension ActivityLogUnitTestSection: EmittableOutput {
-    // Recursively collect emitted output from each subsection, adding an additional indent to each
-    // nested log
-    // This is how test steps are formatted in Xcode, including the repeated log lines
+    /// Recursively collect emitted output from each subsection, adding an additional indent to each
+    /// nested log
+    /// This is how test steps are formatted in Xcode, including the repeated log lines
     func formatEmittedOutput() -> String {
         "-------- \(title) --------\n" +
             (emittedOutput ?? "") +

@@ -1,5 +1,5 @@
 //
-//  RunDestination.swift
+//  TargetDevice.swift
 //  XCTestHTMLReport
 //
 //  Created by Titouan van Belle on 21.07.17.

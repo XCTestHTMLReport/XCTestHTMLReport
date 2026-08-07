@@ -58,8 +58,13 @@ struct SummaryOptions: ParsableArguments {
 
     @Flag(name: .customShort("z"), help: ArgumentHelp("Downsize image screenshots"))
     var downsizeImages = false
-    
-    @Option(name: .long, help: ArgumentHelp("Downsize scale factor. A float between 0 and 1. No effect unless downsizeImages is enabled (-z)."))
+
+    @Option(
+        name: .long,
+        help: ArgumentHelp(
+            "Downsize scale factor. A float between 0 and 1. No effect unless downsizeImages is enabled (-z)."
+        )
+    )
     var downsizeScaleFactor = 0.25
 
     @Option(help: ArgumentHelp("Render attachments inline or as linked assets"))
@@ -180,7 +185,9 @@ struct XCTestHtmlReport: ParsableCommand {
 
         summary.validate()
         let faults = summary.faults
-        guard !faults.isEmpty else { return }
+        guard !faults.isEmpty else {
+            return
+        }
 
         Logger.warning("Report is degraded: \(faults.count) fault(s)")
         for fault in faults {
