@@ -131,13 +131,23 @@ extension XCTestCase {
                 maybeStdOut,
                 maybeStdErr
             ) = try xchtmlreportCmd(args: xchtmlreportArgs)
-            XCTAssertEqual(status, 0)
-            #if !DEBUG // XCResultKit outputs non-fatals to stderr in debug mode
-                XCTAssertEqual((maybeStdErr ?? "").isEmpty, true)
-            #endif
-            let stdOut = try XCTUnwrap(maybeStdOut)
-            let htmlUrl = try XCTUnwrap(urlFromXCHtmlreportStdout(stdOut))
 
+            // Exit 3 means the tool collected faults. Previously this harness
+            // only checked stderr, and only in release builds — so `swift test`
+            // (always debug) could never see degradation at all.
+            let stdErr = maybeStdErr ?? ""
+            XCTAssertEqual(
+                status, 0,
+                "xchtmlreport exited \(status). stderr:\n\(stdErr)"
+            )
+
+            let stdOut = try XCTUnwrap(maybeStdOut)
+            XCTAssertFalse(
+                stdOut.contains("Report is degraded"),
+                "Report was degraded:\n\(stdOut)"
+            )
+
+            let htmlUrl = try XCTUnwrap(urlFromXCHtmlreportStdout(stdOut))
             let htmlString = try String(contentsOf: htmlUrl, encoding: .utf8)
             return try SwiftSoup.parse(htmlString)
         }
