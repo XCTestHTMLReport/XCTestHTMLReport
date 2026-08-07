@@ -121,6 +121,21 @@ Report successfully created at ./index.html
 JSON report successfully created at ./report.json
 ```
 
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Report generated successfully |
+| 3 | Report was generated but is **degraded** — some of the result bundle could not be parsed |
+| 64 | Invalid arguments |
+
+Starting in 3.0, `xchtmlreport` exits non-zero when it cannot fully parse a result
+bundle. Earlier versions exited 0 and printed a success message even when parts of
+the report were missing, so pipelines had no way to detect an incomplete report.
+
+The report is still written when faults occur. To restore the pre-3.0 behaviour and
+always exit 0, pass `--lenient`.
+
 ## Fastlane Support
 
 https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport
