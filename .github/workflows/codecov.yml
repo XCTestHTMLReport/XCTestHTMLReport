@@ -33,3 +33,4 @@ jobs:
       with:
         files: info.lcov
         verbose: true
+        token: ${{ secrets.CODECOV_TOKEN }}
