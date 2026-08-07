@@ -1,10 +1,15 @@
 name: Brew Bump
 
 on:
-  # Fires only for non-prerelease publications, so `rc` tags never reach
-  # homebrew-core. Manual dispatch remains available for re-runs.
-  release:
-    types: [released]
+  # Called by the Release workflow. A `release:` event trigger cannot work
+  # here: the release is published by softprops/action-gh-release using
+  # GITHUB_TOKEN, and GitHub deliberately does not start new workflow runs
+  # from events created by GITHUB_TOKEN.
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       version:
@@ -19,14 +24,20 @@ jobs:
     steps:
     - name: Resolve tag
       id: tag
+      # The input reaches the shell through the environment, never through
+      # ${{ }} interpolation into the script body — a dispatch input is
+      # attacker-controllable by anyone with write access, and this job holds
+      # the Homebrew token. Validated against the tag shapes the release
+      # workflow accepts, so a malformed value fails here rather than being
+      # passed to Homebrew.
+      env:
+        RAW_VERSION: ${{ inputs.version }}
       run: |
-        if [[ -n "${{ github.event.inputs.version }}" ]]; then
-          TAG="${{ github.event.inputs.version }}"
-        else
-          TAG="${{ github.event.release.tag_name }}"
+        TAG="${RAW_VERSION#refs/tags/}"
+        if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$ ]]; then
+          echo "::error::'${TAG}' is not a release tag (expected X.Y.Z or X.Y.ZrcN)"
+          exit 1
         fi
-        # Tolerate a full ref being pasted into the manual input.
-        TAG="${TAG#refs/tags/}"
         echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
         echo "bumping to ${TAG}"
 

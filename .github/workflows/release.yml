@@ -19,6 +19,7 @@ jobs:
     runs-on: macos-latest
     outputs:
       prerelease: ${{ steps.metadata.outputs.prerelease }}
+      version: ${{ steps.metadata.outputs.version }}
 
     steps:
     - uses: actions/checkout@v4
@@ -177,3 +178,19 @@ jobs:
           add-paths: Sources/XCTestHTMLReport/Version.swift
           reviewers: tylervick
           base: main
+
+  homebrew:
+    # Called directly rather than triggered by a `release:` event, because the
+    # release is published with GITHUB_TOKEN and GitHub does not start new
+    # workflow runs from events that token creates.
+    needs: [build, release]
+    if: github.event_name == 'push' && needs.build.outputs.prerelease != 'true'
+    uses: ./.github/workflows/homebrew-bump.yml
+    with:
+      version: ${{ needs.build.outputs.version }}
+    # inherit rather than passing a named secret: the called workflow also runs
+    # standalone via workflow_dispatch, which cannot be passed secrets at all,
+    # so it must read HOMEBREW_BUMP_ACCESS_TOKEN from the repository either way.
+    # Inheriting keeps one code path instead of a fallback whose branches
+    # resolve differently depending on how the workflow was triggered.
+    secrets: inherit
