@@ -5,32 +5,61 @@ on:
    tags:
    - '[0-9]+.[0-9]+.[0-9]+'
    - '[0-9]+.[0-9]+.[0-9]+rc[0-9]+'
+  # Lets the whole build/sign/package path be exercised without publishing
+  # anything. Before this existed the only way to test a release was to cut one.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        type: boolean
+        default: true
+        description: "Build, sign and package, but do not notarize or publish"
 
 jobs:
   build:
     runs-on: macos-latest
+    outputs:
+      prerelease: ${{ steps.metadata.outputs.prerelease }}
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Configure Signing
-      uses: Apple-Actions/import-codesign-certs@v1
+      uses: Apple-Actions/import-codesign-certs@v7
       with:
         p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
         p12-password: ${{ secrets.P12_PASSWORD }}
 
     - name: Setup Xcode version
-      uses: maxim-lobanov/setup-xcode@v1.6.0        
+      uses: maxim-lobanov/setup-xcode@v1.6.0
       with:
-        xcode-version: ^16
+        xcode-version: latest-stable
 
     - name: Generate Metadata
       id: metadata
       run: |
-        [[ "$GITHUB_REF" =~ refs/tags ]] && VERSION=${GITHUB_REF/refs\/tags\//} || exit
-        echo ::set-output name=version::${VERSION}
-        echo ::set-output name=bin_path::.build/universal/release/xchtmlreport
-        echo ::set-output name=archive_name::xchtmlreport-${VERSION}.zip
+        if [[ "$GITHUB_REF" =~ ^refs/tags/ ]]; then
+          VERSION="${GITHUB_REF#refs/tags/}"
+        else
+          VERSION="0.0.0-dryrun"
+        fi
+        # `rc` tags carry no hyphen, so a `contains(github.ref, '-')` test
+        # never fired for them and release candidates shipped as full releases.
+        if [[ "$VERSION" == *rc* ]]; then PRERELEASE=true; else PRERELEASE=false; fi
+        {
+          echo "version=${VERSION}"
+          echo "prerelease=${PRERELEASE}"
+          echo "bin_path=.build/universal/release/xchtmlreport"
+          echo "archive_name=xchtmlreport-${VERSION}.zip"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Stamp version into the binary
+      # Version.swift was only ever written by the post-release bump job, so the
+      # released binary reported whatever happened to be on main rather than the
+      # tag it was built from. Stamping here makes `--version` match the tag.
+      run: |
+        echo "let version = \"${{ steps.metadata.outputs.version }}\"" \
+          > Sources/XCTestHTMLReport/Version.swift
+        cat Sources/XCTestHTMLReport/Version.swift
 
     - name: Build (arm64)
       run: swift build -v -c release --triple arm64-apple-macosx
@@ -44,16 +73,28 @@ jobs:
         lipo -create -output ${{ steps.metadata.outputs.bin_path }} \
         .build/arm64-apple-macosx/release/xchtmlreport \
         .build/x86_64-apple-macosx/release/xchtmlreport
+        lipo -info ${{ steps.metadata.outputs.bin_path }}
+
+    - name: Verify the built binary reports the tagged version
+      run: |
+        REPORTED=$(${{ steps.metadata.outputs.bin_path }} --version)
+        echo "reported: ${REPORTED}"
+        if [[ "${REPORTED}" != "${{ steps.metadata.outputs.version }}" ]]; then
+          echo "::error::binary reports '${REPORTED}' but this is release '${{ steps.metadata.outputs.version }}'"
+          exit 1
+        fi
 
     - name: Sign
       run: |
         codesign --verbose --verify --options=runtime -f \
         -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }})" \
         ${{ steps.metadata.outputs.bin_path }}
-    
+
     - name: Verify
+      # --deep is deprecated by Apple and is not the right check for a lone
+      # executable; --strict on the binary itself is.
       run: |
-        codesign -vvv --deep --strict ${{ steps.metadata.outputs.bin_path }}
+        codesign -vvv --strict ${{ steps.metadata.outputs.bin_path }}
 
     - name: Package
       run: |
@@ -62,6 +103,7 @@ jobs:
         ${{ steps.metadata.outputs.archive_name }}
 
     - name: Notarize
+      if: github.event_name == 'push'
       run: |
         xcrun notarytool submit ${{ steps.metadata.outputs.archive_name }} \
         --apple-id ${{ secrets.AC_USERNAME }} \
@@ -75,19 +117,26 @@ jobs:
         name: application
         path: ${{ steps.metadata.outputs.archive_name }}
 
+    - name: Dry run summary
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "### Dry run complete" >> "$GITHUB_STEP_SUMMARY"
+        echo "Built, signed and packaged \`${{ steps.metadata.outputs.archive_name }}\`." >> "$GITHUB_STEP_SUMMARY"
+        echo "Notarization and publishing were skipped." >> "$GITHUB_STEP_SUMMARY"
+
   release:
     runs-on: ubuntu-latest
-    
     needs: build
-    
+    if: github.event_name == 'push'
+
     steps:
     - name: Download
-      uses: actions/download-artifact@v4.1.7
-    
+      uses: actions/download-artifact@v4
+
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       with:
-        prerelease: ${{ contains(github.ref, '-') }}
+        prerelease: ${{ needs.build.outputs.prerelease == 'true' }}
         generate_release_notes: true
         files: |
           application/xchtmlreport-*
@@ -97,11 +146,14 @@ jobs:
   bump_version:
     runs-on: ubuntu-latest
     needs: release
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
 
+      # Bumps the patch component only. Major and minor bumps are deliberate
+      # decisions and are made by hand before tagging.
       - name: Get next version
-        uses: reecetech/version-increment@2022.5.1
+        uses: reecetech/version-increment@2024.10.1
         id: version
         with:
           scheme: semver
@@ -111,7 +163,7 @@ jobs:
         run: echo 'let version = "${{ steps.version.outputs.version }}"' > Sources/XCTestHTMLReport/Version.swift
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v3
+        uses: peter-evans/create-pull-request@v8
         with:
           title: "${{ steps.version.outputs.version }} Version Bump"
           body: "Bumping version from ${{ steps.version.outputs.current-version }} to ${{ steps.version.outputs.version }}"
