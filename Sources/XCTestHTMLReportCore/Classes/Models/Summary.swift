@@ -93,6 +93,29 @@ public struct Summary {
         // TODO: The result files may be encoded directly as an array instead of concatenating raw output
         return "[\(jsonStrings.joined(separator: ","))]"
     }
+
+    /// Check post-conditions on the assembled model and record any degradation.
+    ///
+    /// Call-site checks catch failures XCResultKit surfaces as `nil`. They do
+    /// not catch failures in *nested* decoding, where a parent object still
+    /// decodes but a child field comes back empty. The observable symptom is an
+    /// attachment that resolved to no content, so check for that directly.
+    ///
+    /// Idempotent: repeated calls do not duplicate faults.
+    public func validate() {
+        let alreadyFlagged = Set(
+            faultCollector.faults
+                .filter { $0.kind == .unresolvedAttachment }
+                .map(\.detail)
+        )
+
+        for attachment in allAttachments {
+            guard case .none = attachment.content else { continue }
+            let detail = attachment.filename
+            guard !alreadyFlagged.contains(detail) else { continue }
+            faultCollector.record(.unresolvedAttachment, detail)
+        }
+    }
 }
 
 extension Summary: HTML {
