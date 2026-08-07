@@ -19,6 +19,7 @@ jobs:
     runs-on: macos-latest
     outputs:
       prerelease: ${{ steps.metadata.outputs.prerelease }}
+      version: ${{ steps.metadata.outputs.version }}
 
     steps:
     - uses: actions/checkout@v4
@@ -177,3 +178,15 @@ jobs:
           add-paths: Sources/XCTestHTMLReport/Version.swift
           reviewers: tylervick
           base: main
+
+  homebrew:
+    # Called directly rather than triggered by a `release:` event, because the
+    # release is published with GITHUB_TOKEN and GitHub does not start new
+    # workflow runs from events that token creates.
+    needs: [build, release]
+    if: github.event_name == 'push' && needs.build.outputs.prerelease != 'true'
+    uses: ./.github/workflows/homebrew-bump.yml
+    with:
+      version: ${{ needs.build.outputs.version }}
+    secrets:
+      token: ${{ secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}

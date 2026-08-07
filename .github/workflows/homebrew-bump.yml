@@ -1,10 +1,18 @@
 name: Brew Bump
 
 on:
-  # Fires only for non-prerelease publications, so `rc` tags never reach
-  # homebrew-core. Manual dispatch remains available for re-runs.
-  release:
-    types: [released]
+  # Called by the Release workflow. A `release:` event trigger cannot work
+  # here: the release is published by softprops/action-gh-release using
+  # GITHUB_TOKEN, and GitHub deliberately does not start new workflow runs
+  # from events created by GITHUB_TOKEN.
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+    secrets:
+      token:
+        required: true
   workflow_dispatch:
     inputs:
       version:
@@ -20,11 +28,7 @@ jobs:
     - name: Resolve tag
       id: tag
       run: |
-        if [[ -n "${{ github.event.inputs.version }}" ]]; then
-          TAG="${{ github.event.inputs.version }}"
-        else
-          TAG="${{ github.event.release.tag_name }}"
-        fi
+        TAG="${{ inputs.version }}"
         # Tolerate a full ref being pasted into the manual input.
         TAG="${TAG#refs/tags/}"
         echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
@@ -33,6 +37,6 @@ jobs:
     - name: Update Official Homebrew formula
       uses: dawidd6/action-homebrew-bump-formula@v8
       with:
-        token: ${{ secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
+        token: ${{ secrets.token || secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
         formula: xctesthtmlreport
         tag: ${{ steps.tag.outputs.tag }}
