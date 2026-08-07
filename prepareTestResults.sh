@@ -41,7 +41,9 @@ if best is not None:
     # Tab-separated: device names contain spaces.
     print(best[1] + "\t" + ".".join(str(part) for part in best[0]))
 '
-)
+) || true
+# `|| true` because `read` returns non-zero on empty input, which under
+# `set -e` would kill the script here and leave the guard below unreachable.
 
 if [[ -z "$DEVICE_NAME" ]]; then
     echo "No iPhone simulator available" >&2
