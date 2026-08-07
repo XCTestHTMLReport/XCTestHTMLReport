@@ -14,7 +14,11 @@
 - swift-tools-version stays `5.5`.
 - Public API changes ship in **3.0**. Faults are fatal by default; `--lenient` restores 2.x exit behavior.
 - No new third-party dependencies.
-- CI must run with **zero repository secrets**. Any step requiring a secret is a plan violation.
+- **The test path must run with zero repository secrets.** `test.yml` triggers on
+  `pull_request`, so it runs for forks, which never receive secrets — any secret it needs is a
+  plan violation. Workflows that cannot run from a fork PR (`codecov.yml` on push-to-main,
+  `release.yml` on tag, `homebrew-bump.yml` on dispatch) may use secrets; the constraint exists
+  so contributors can go green, not to purge secrets from the repo.
 - Structural assertions only in tests — no golden-file diffing of generated HTML.
 - Fault collection must be thread-safe: parsing runs concurrently behind `DispatchQueue` locks (`Run.swift:93`, `Test.swift:106`).
 
@@ -246,10 +250,17 @@ jobs:
       with:
         files: info.lcov
         verbose: true
+        token: ${{ secrets.CODECOV_TOKEN }}
 ```
 
 The stale `XCODE_VERSION: 15` env vars are dropped — nothing reads them. `codecov-action`
 moves v3 → v4.
+
+`CODECOV_TOKEN` is required: v4 dropped tokenless upload for pushes from the base repo, and
+without it the upload silently no-ops because `fail_ci_if_error` defaults to `false`. The
+secret already exists on the repo (added 2023-02-02). This does not weaken the zero-secrets
+constraint — `codecov.yml` triggers only on push-to-main and `workflow_dispatch`, so it can
+never run from a fork PR.
 
 - [ ] **Step 3: Delete the dead Travis config**
 
