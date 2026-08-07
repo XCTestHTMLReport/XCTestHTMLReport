@@ -8,6 +8,31 @@ final class CliTests: XCTestCase {
             .url(forResource: "TestResults", withExtension: "xcresult")
     }
 
+    var retryResultsUrl: URL? {
+        Bundle.testBundle
+            .url(forResource: "RetryResults", withExtension: "xcresult")
+    }
+
+    /// `RetryResults.xcresult` contains two attachments that share one payload
+    /// ref (the screen recording of a retried test). Exporting them
+    /// concurrently used to race, intermittently losing the file and reporting
+    /// a spurious `unresolvedAttachment` — so this bundle exited 3 on some runs
+    /// and 0 on others. Repeat the run so a reintroduced race is caught rather
+    /// than sampled away.
+    func testRetryBundleWithSharedPayloadRefsExitsZero() throws {
+        guard let retryResultsUrl else {
+            throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
+        }
+
+        for attempt in 1...5 {
+            let (status, _, maybeStdErr) = try xchtmlreportCmd(args: [retryResultsUrl.path])
+            XCTAssertEqual(
+                status, 0,
+                "attempt \(attempt) exited \(status). stderr:\n\(maybeStdErr ?? "")"
+            )
+        }
+    }
+
     func testNoArgs() throws {
         let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(args: [])
 
