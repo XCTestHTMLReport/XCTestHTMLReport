@@ -127,6 +127,7 @@ PRs can never go green. This is the direct cause of issue #219.
 
 **Files:**
 - Create: `.github/workflows/test.yml` (replacing the existing file wholesale)
+- Create: `.github/workflows/codecov.yml` (replacing the existing file wholesale)
 - Delete: `.travis.yml`
 
 **Interfaces:**
@@ -174,28 +175,80 @@ jobs:
 Note the `pull_request` trigger has no `branches` filter, so fork PRs targeting any branch run.
 There are no `secrets` references anywhere in this file — that is the point of the task.
 
-- [ ] **Step 2: Delete the dead Travis config**
+- [ ] **Step 2: Replace `.github/workflows/codecov.yml` entirely**
+
+It pulls fixtures from the same R2 bucket, which violates the zero-secrets global
+constraint. Apply the identical fixture-generation pattern:
+
+```yaml
+name: Codecov
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Xcode version
+      uses: maxim-lobanov/setup-xcode@v1.6.0
+      with:
+        xcode-version: latest-stable
+
+    - name: Generate test fixtures
+      run: ./prepareTestResults.sh
+
+    - name: Test with coverage
+      run: swift test --enable-code-coverage
+
+    - name: Export Coverage
+      run: |
+        xcrun llvm-cov export -format="lcov" \
+        .build/debug/XCTestHTMLReportPackageTests.xctest/Contents/MacOS/XCTestHTMLReportPackageTests \
+        -instr-profile .build/debug/codecov/default.profdata > info.lcov
+
+    - uses: codecov/codecov-action@v4
+      with:
+        files: info.lcov
+        verbose: true
+```
+
+The stale `XCODE_VERSION: 15` env vars are dropped — nothing reads them. `codecov-action`
+moves v3 → v4.
+
+- [ ] **Step 3: Delete the dead Travis config**
 
 ```bash
 git rm .travis.yml
 ```
 
-- [ ] **Step 3: Verify the workflow reproduces locally**
+- [ ] **Step 4: Verify the workflow reproduces locally**
 
 Run: `./prepareTestResults.sh && swift test -v`
 Expected: fixtures generate, then the existing test suite runs. Some tests may fail — that is
 acceptable at this step and is exactly what Tasks 3–7 address. What must be true: the suite
 runs at all, with no secrets and no R2 access.
 
-- [ ] **Step 4: Commit**
+Also confirm no workflow references a secret any more:
+
+Run: `grep -rn "secrets\." .github/workflows/test.yml .github/workflows/codecov.yml`
+Expected: no matches.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add .github/workflows/test.yml .travis.yml
+git add .github/workflows/test.yml .github/workflows/codecov.yml .travis.yml
 git commit -m "ci: generate fixtures in CI instead of fetching from private bucket
 
 Fork PRs could never go green because fixtures came from an R2 bucket
-behind repo secrets. CI now runs prepareTestResults.sh to build its own
-xcresult bundles. Closes the root cause of #219.
+behind repo secrets. Both test.yml and codecov.yml now run
+prepareTestResults.sh to build their own xcresult bundles. Closes the
+root cause of #219.
 
 Also removes the long-dead .travis.yml."
 ```
