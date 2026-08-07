@@ -101,7 +101,12 @@ public struct Summary {
     /// decodes but a child field comes back empty. The observable symptom is an
     /// attachment that resolved to no content, so check for that directly.
     ///
-    /// Idempotent: repeated calls do not duplicate faults.
+    /// Idempotent across sequential calls: repeated calls do not duplicate
+    /// faults. Dedup keys on the attachment filename, which assumes
+    /// `allAttachments` is stable for this value's lifetime — it is, since
+    /// `runs` is a `let`. Not safe to call concurrently with itself: the
+    /// read of `faults` and the subsequent `record` are separately
+    /// synchronized, not atomic as a unit.
     public func validate() {
         let alreadyFlagged = Set(
             faultCollector.faults

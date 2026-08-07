@@ -60,21 +60,37 @@ final class FaultReportingTests: XCTestCase {
         )
     }
 
-    func testValidateIsIdempotent() throws {
+    func testValidateDoesNotDuplicateOrDisturbExistingFaults() throws {
         let url = try XCTUnwrap(
             Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
         )
+        let collector = FaultCollector()
+        // Seed a non-empty fault set before validating. Without this the
+        // assertion below is 0 == 0 on a clean fixture, which passes even if
+        // validate()'s dedup is deleted outright.
+        collector.record(.payloadExportFailed, "seeded-payload-id")
+        collector.record(.unresolvedAttachment, "seeded-attachment.png")
+
         let summary = Summary(
             resultPaths: [url.path],
             renderingMode: .linking,
             downsizeImagesEnabled: false,
-            downsizeScaleFactor: 0.25
+            downsizeScaleFactor: 0.25,
+            faultCollector: collector
         )
 
         summary.validate()
-        let afterFirst = summary.faults.count
+        let afterFirst = summary.faults
+        XCTAssertEqual(
+            afterFirst.count, 2,
+            "validate() must neither drop seeded faults nor invent new ones on a clean fixture"
+        )
+
         summary.validate()
 
-        XCTAssertEqual(summary.faults.count, afterFirst, "validate() must not double-record")
+        XCTAssertEqual(
+            summary.faults, afterFirst,
+            "validate() must not re-record, duplicate, or drop faults on a second call"
+        )
     }
 }
