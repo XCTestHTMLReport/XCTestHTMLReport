@@ -11,9 +11,21 @@ import Foundation
 /// A single instance of report degradation.
 public struct Fault: Equatable {
     public enum Kind: String {
+        /// A result bundle yielded no invocation record, so none of its runs
+        /// are in the report. Usually an unreadable, truncated, or
+        /// non-`.xcresult` path.
         case missingInvocationRecord
+        /// An attachment survived parsing but resolved to no content, so the
+        /// report references it with nothing behind it. Found by
+        /// `Summary.validate()` after the model is assembled, which catches
+        /// nested decode failures that the call sites below cannot see.
         case unresolvedAttachment
+        /// XCResultKit could not produce an attachment's payload, or the
+        /// exported file could not be moved into the bundle. The attachment is
+        /// missing from the report.
         case payloadExportFailed
+        /// XCResultKit could not produce a log section, or it could not be
+        /// written next to the report. The log is missing from the report.
         case logExportFailed
     }
 

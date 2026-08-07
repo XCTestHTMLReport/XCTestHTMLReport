@@ -102,7 +102,7 @@ public struct Summary {
     /// attachment that resolved to no content, so check for that directly.
     ///
     /// Idempotent across sequential calls: repeated calls do not duplicate
-    /// faults. Dedup keys on the attachment filename, which assumes
+    /// faults. Dedup keys on `Attachment.faultDescription`, which assumes
     /// `allAttachments` is stable for this value's lifetime — it is, since
     /// `runs` is a `let`. Not safe to call concurrently with itself: the
     /// read of `faults` and the subsequent `record` are separately
@@ -116,7 +116,7 @@ public struct Summary {
 
         for attachment in allAttachments {
             guard case .none = attachment.content else { continue }
-            let detail = attachment.filename
+            let detail = attachment.faultDescription
             guard !alreadyFlagged.contains(detail) else { continue }
             faultCollector.record(.unresolvedAttachment, detail)
         }
