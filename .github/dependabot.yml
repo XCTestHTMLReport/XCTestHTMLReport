@@ -1,0 +1,40 @@
+version: 2
+
+updates:
+  # Third-party actions in this repo went years without a bump — at the 3.0
+  # release, five of them were between two and six major versions behind, and
+  # two workflows were broken by drift nobody was watching for.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+      - github_actions
+    # Minor and patch bumps arrive as one PR so a quiet week is one review, not
+    # nine. Majors stay separate: they are the ones that break workflows.
+    groups:
+      actions-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: swift
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+    groups:
+      swift-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 5
