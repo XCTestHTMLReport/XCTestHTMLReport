@@ -24,7 +24,7 @@ final class CliTests: XCTestCase {
             throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
         }
 
-        for attempt in 1...5 {
+        for attempt in 1 ... 5 {
             let (status, _, maybeStdErr) = try xchtmlreportCmd(args: [retryResultsUrl.path])
             XCTAssertEqual(
                 status, 0,
