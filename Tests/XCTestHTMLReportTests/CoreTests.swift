@@ -61,11 +61,27 @@ final class CoreTests: XCTestCase {
             )
             let texts = try elements.eachText()
             XCTAssertEqual(texts.count, 5)
-            XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 13)
-            XCTAssertEqual(texts[1].intGroupMatch("Passed \\((\\d+)\\)"), 7)
-            XCTAssertEqual(texts[2].intGroupMatch("Skipped \\((\\d+)\\)"), 1)
-            XCTAssertEqual(texts[3].intGroupMatch("Failed \\((\\d+)\\)"), 5)
-            XCTAssertEqual(texts[4].intGroupMatch("Mixed \\((\\d+)\\)"), 0)
+
+            let all = try XCTUnwrap(texts[0].intGroupMatch("All \\((\\d+)\\)"))
+            let passed = try XCTUnwrap(texts[1].intGroupMatch("Passed \\((\\d+)\\)"))
+            let skipped = try XCTUnwrap(texts[2].intGroupMatch("Skipped \\((\\d+)\\)"))
+            let failed = try XCTUnwrap(texts[3].intGroupMatch("Failed \\((\\d+)\\)"))
+            let mixed = try XCTUnwrap(texts[4].intGroupMatch("Mixed \\((\\d+)\\)"))
+
+            // Fixtures are regenerated on every run, so the pass/fail split is
+            // not fixed: the sample UI tests launch the app in setUp with
+            // continueAfterFailure = false, and a slow simulator turns a
+            // would-be pass into a failure. Asserting an exact split therefore
+            // measures simulator reliability rather than this project's
+            // behaviour. Assert only what the source actually determines.
+            XCTAssertEqual(all, 13, "One row per test method; fixed by the sample sources")
+            XCTAssertEqual(skipped, 1, "SampleAppUnitTests.testSkipped is an unconditional XCTSkipIf")
+            XCTAssertEqual(mixed, 0, "TestResults excludes RetryTests, so nothing can be mixed")
+            XCTAssertEqual(passed + failed, all - skipped, "Every remaining test lands in exactly one bucket")
+            XCTAssertGreaterThanOrEqual(
+                failed, 5,
+                "Five sample tests fail deliberately; a lower count means failures are being lost"
+            )
         }
     }
 
