@@ -12,24 +12,40 @@ import XCResultKit
 public struct Summary {
     let runs: [Run]
     let resultFiles: [ResultFile]
+    private let faultCollector: FaultCollector
 
     public enum RenderingMode {
         case inline
         case linking
     }
 
-    public init(resultPaths: [String], renderingMode: RenderingMode, downsizeImagesEnabled: Bool, downsizeScaleFactor: CGFloat) {
+    /// All degradation encountered while building this report.
+    public var faults: [Fault] {
+        faultCollector.faults
+    }
+
+    public init(
+        resultPaths: [String],
+        renderingMode: RenderingMode,
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat,
+        faultCollector: FaultCollector = FaultCollector()
+    ) {
         var runs: [Run] = []
         var resultFiles: [ResultFile] = []
+        self.faultCollector = faultCollector
 
         for resultPath in resultPaths {
             Logger.step("Parsing \(resultPath)")
             let url = URL(fileURLWithPath: resultPath)
-            let resultFile = ResultFile(url: url)
+            let resultFile = ResultFile(url: url, faultCollector: faultCollector)
             resultFiles.append(resultFile)
             guard let invocationRecord = resultFile.getInvocationRecord() else {
                 Logger.warning("Can't find invocation record for : \(resultPath)")
-                break
+                faultCollector.record(.missingInvocationRecord, resultPath)
+                // Previously `break`, which silently abandoned every remaining
+                // bundle when multiple were passed.
+                continue
             }
             let resultRuns = invocationRecord.actions.compactMap {
                 Run(

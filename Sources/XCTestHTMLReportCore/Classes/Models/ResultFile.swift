@@ -13,9 +13,11 @@ class ResultFile {
     let url: URL
     private let relativeUrl: URL
     private let file: XCResultFile
+    let faultCollector: FaultCollector
 
-    init(url: URL) {
+    init(url: URL, faultCollector: FaultCollector) {
         self.url = url
+        self.faultCollector = faultCollector
         relativeUrl = URL(fileURLWithPath: url.lastPathComponent)
         file = XCResultFile(url: url)
     }
@@ -25,6 +27,7 @@ class ResultFile {
     func exportPayload(id: String, fileName: String?) -> URL? {
         guard let savedURL = file.exportPayload(id: id) else {
             Logger.warning("Can't export payload with id \(id)")
+            faultCollector.record(.payloadExportFailed, "payload id \(id)")
             return nil
         }
 
@@ -47,6 +50,7 @@ class ResultFile {
     func exportPayloadData(id: String) -> Data? {
         guard let savedURL = file.exportPayload(id: id) else {
             Logger.warning("Can't export payload with id \(id)")
+            faultCollector.record(.payloadExportFailed, "payload id \(id)")
             return nil
         }
         do {
@@ -75,7 +79,8 @@ class ResultFile {
 
     func exportLogs(id: String) -> URL? {
         guard let logSection = file.getLogs(id: id) else {
-            Logger.warning("Can't get logss with id \(id)")
+            Logger.warning("Can't get logs with id \(id)")
+            faultCollector.record(.logExportFailed, "log id \(id)")
             return nil
         }
         let fileName = "\(id).log"
@@ -93,7 +98,8 @@ class ResultFile {
 
     func exportLogsData(id: String) -> Data? {
         guard let logSection = file.getLogs(id: id) else {
-            Logger.warning("Can't get logss with id \(id)")
+            Logger.warning("Can't get logs with id \(id)")
+            faultCollector.record(.logExportFailed, "log id \(id)")
             return nil
         }
         return logSection.formatEmittedOutput().data(using: .utf8)
