@@ -1,0 +1,276 @@
+# XCTestHTMLReport Revival — Design
+
+**Date:** 2026-08-06
+**Author:** Tyler Vick (with Claude)
+**Status:** Approved for planning
+
+## Context
+
+XCTestHTMLReport has 770 stars, 132 forks, and one remaining owner. The last commit and
+release were 2025-03-16, roughly 17 months ago. There are 62 open issues (oldest from 2018)
+and 7 open PRs (oldest from 2018).
+
+The goal is a repo that is sustainable for a single maintainer working a few hours a month,
+with as much of the routine work automated as possible. A secondary goal is modernization:
+the tool's foundation is drifting toward a hard break.
+
+## Findings
+
+These were established empirically on 2026-08-06 against Xcode 26.2 / Swift 6.2.3.
+
+### The tool still works, but cannot report its own failure
+
+A fresh `.xcresult` was generated (iPhone 17 / iOS 26.2, `SampleAppUITests/FirstSuite`) and
+processed by a locally-built binary. It produced a valid 426KB HTML report, a JUnit file with
+correct `<failure>` messages and source line numbers, and a JSON report.
+
+It also emitted the following, and then **exited 0** with "Report successfully created":
+
+```
+Error: failed to parse bytes as tokens... Underlying error: unrecognizedToken(10)
+Unable to retrieve json from file: ... for expected type: GenericReferencedObject   (x6)
+Error parsing ActionTestIssueSummary: Element Not Found: fileName                    (x2)
+```
+
+This is the central problem. The tool cannot distinguish a complete report from a silently
+degraded one, and neither can anything downstream of it — CI pipelines, maintainers, or agents.
+
+### There is no verification oracle
+
+| Candidate oracle | State |
+| --- | --- |
+| `swift build` | Passes (7 minor warnings). Catches compile errors only. |
+| `swift test` | Unrunnable by anyone. Fixtures are pulled from a private R2 bucket via repo secrets, so fork PRs can never go green. |
+| `prepareTestResults.sh` | Regenerates fixtures against a hardcoded "iPhone 12" simulator that no longer exists in Xcode 26. |
+| GitHub Actions | Zero workflow runs on record. `ci.yml` exists on the remote but is not registered as a workflow. |
+| The binary itself | Exits 0 while emitting parse errors. |
+
+Issue #219, "How to contribute to this repo," has been open since 2021. It is a direct
+consequence of the fixture situation.
+
+### Most open issues are unreproducible by construction
+
+XCTestHTMLReport is effectively a pure function: `.xcresult -> HTML/JUnit/JSON`. Its input
+space cannot be mocked; a real `.xcresult` only comes from running real XCTest code under a
+real Xcode. **The sample app's test suite is therefore the entire coverage surface.**
+
+Audit of `XCTestHTMLReportSampleApp` against the README's claimed features:
+
+| Claimed feature | Fixture exists? |
+| --- | --- |
+| .txt / .log attachments | Yes — `XCTAttachment(string:)`, `com.apple.log` |
+| .mp4 screen recordings | Yes — automatic in UI tests |
+| Activities and sub-activities | Yes — `ThirdSuite` |
+| Special-character escaping | Yes — `testWithSpecialChars` |
+| Skipped tests | Yes — `XCTSkipIf` |
+| Retries / iterations | Yes — `RetryTests` |
+| Expected failures | Yes — `XCTExpectFailure` |
+| .png / .jpeg attachments | **No** — `iPhone.png` is bundled as an *app* resource, never attached by a test |
+| .heic conversion | **No** |
+| .gif | **No** |
+| `-z` image downsizing | **No** — no image fixture exists to downsize, so #337's OOM is unreproducible |
+| Parallel / multi-destination | **No** — single destination only (#179, #162 unreproducible) |
+| Multiple result bundles | **No** — (#132, #139, #354 unreproducible) |
+| Swift Testing (`@Test`) | **No** — zero occurrences of `import Testing` in the repo |
+| Code coverage data | **No** — (#129, #298, #313) |
+| Crash logs / `diagnosticsRef` | **No** — (#67, #287) |
+
+A large fraction of the open backlog exercises code paths no fixture reaches. No maintainer,
+human or agent, can act on those issues today.
+
+Additionally, `testDownloadAndAttachWebData` fetches `https://apple.com` at test time, giving
+the fixture generator a live network dependency.
+
+### Backlog shape
+
+48 of 62 open issues (77%) predate 2023. At least 8 explicitly name Xcode versions that no
+longer exist: #187 (Xcode 12), #197 (12.3), #208 (12.5), #265 (13.4.1), #323 (14), #332,
+#355 and #357 (15). The most-engaged issue, #145 (15 reactions), was last touched in 2021.
+
+### Standing dependency risk
+
+XCResultKit drives `xcrun xcresulttool --legacy`. Apple has deprecated those commands.
+Upstream issue davidahouse/XCResultKit#58, "Stop using --legacy," is open and unaddressed;
+upstream last shipped v1.2.2 in February 2025 (this repo pins 1.2.1). When Apple removes the
+legacy commands, the tool stops working entirely. This is two hops out of the maintainer's
+control.
+
+### Accumulated infrastructure rot
+
+- `.travis.yml` is still present and long dead.
+- `HTMLTemplates.swift` (1,225 lines) carries the header "DO NOT EDIT! This file is
+  autogenerated by createTemplates.sh". That script was deleted in October 2022 (a9e69f8).
+  It is now hand-edited generated code, duplicated against 12 `.html` files that are
+  `exclude`d from the build.
+- `pages.yml` pins Xcode 14.2 and `actions/checkout@v2`.
+- `release.yml` uses the deprecated `::set-output` syntax.
+- `homebrew-bump.yml` is half commented out.
+- SwiftFormat is declared as a package-level dependency that **no target uses**, so every
+  consumer of the `xchtmlreportcore` library resolves and fetches it for nothing.
+- No issue templates, no SECURITY.md. CONTRIBUTING.md never explains how to run the tests.
+
+## Goals
+
+1. A verification gate that cannot lie, so any change — by hand or by agent — is checkable.
+2. Contributors can clone the repo and get a green CI check on a fork PR.
+3. The routine maintenance burden (dependencies, releases, triage) runs without the
+   maintainer initiating it.
+4. All planned improvements are tracked publicly so the work survives context loss and is
+   legible to a prospective co-maintainer.
+
+## Non-goals
+
+- Autonomous agent-driven code changes (see "Deferred" below).
+- Rewriting the HTML report UI.
+- New user-facing features beyond what closing the fixture gaps requires.
+
+## Design
+
+### Track A — the verification oracle
+
+**A1. Fault collection and honest exit codes.**
+Route parse failures through a fault collector rather than bare `Logger.error` calls. When the
+resulting report is degraded, exit non-zero. This is the highest-leverage change in the repo:
+it converts every downstream claim ("this is fixed", "this reproduces") from an assertion into
+something a machine can check.
+
+Decision: faults are fatal by default, shipped in a **3.0 major version**. This is a breaking
+change for anyone currently consuming silently-degraded reports, which is precisely the
+population that needs to know. A `--lenient` escape hatch preserves the old behavior for
+pipelines that need to unblock immediately.
+
+**A2. Self-contained fixtures.**
+Remove the R2 dependency entirely. CI generates its own fixtures: run the sample app tests,
+produce `.xcresult` bundles, run the tool against them, assert on the output. Fork PRs get a
+green check for the first time, which closes #219 by construction.
+
+Requires fixing `prepareTestResults.sh` to resolve an available simulator dynamically instead
+of hardcoding "iPhone 12", and removing the `apple.com` network dependency from
+`testDownloadAndAttachWebData` (attach a bundled fixture instead).
+
+**A3. Close the fixture gaps.**
+One PR per missing row in the coverage table, each landing a new sample test alongside new
+assertions. Priority order:
+
+1. Swift Testing (`@Test`) — the most urgent correctness gap for Xcode 16+ users
+2. .png / .jpeg attachments — unblocks `-z` downsizing and #337
+3. Multiple result bundles — unblocks #132, #139, #354
+4. Parallel / multi-destination — unblocks #179, #162
+5. .heic, .gif
+6. Code coverage, crash logs / `diagnosticsRef`
+
+Extend the existing SwiftSoup-based structural assertions. Do **not** adopt golden-file
+diffing; xcresult contents vary across Xcode versions and golden files would be brittle.
+
+**A4. Xcode version matrix in CI**, so toolchain drift surfaces as a failing build rather than
+as a user report 18 months later.
+
+### Track B — issue triage lane
+
+Scheduled agent run, read-only `gh` scope. Policy is **propose, never act**: the agent never
+closes, labels, or comments publicly.
+
+Output is a pull request adding `docs/triage/YYYY-MM-DD.md` containing, per issue: proposed
+disposition, confidence level, reasoning, and duplicate-cluster membership. The maintainer
+reviews and executes approved dispositions.
+
+Start with the 48 pre-2023 issues. Once A1 lands, the agent can cite evidence rather than
+guess — "reproduced on Xcode 26.2, exit 3, 6 faults" versus "not reproducible" — so Track A
+directly upgrades Track B's output quality.
+
+### Track D — unattended automations
+
+**D1. Dependency updates.** Dependabot or Renovate covering both SwiftPM dependencies and
+GitHub Actions versions. Pure configuration, no agent involved. The actions are visibly stale
+(`checkout@v2`, Xcode 14.2 pins), and XCResultKit is one patch version behind.
+
+**D2. Release pipeline repair.** Make `git tag` -> notarized universal binary -> GitHub
+release -> Homebrew bump work as a single button. Currently `homebrew-bump.yml` is half
+commented out and `release.yml` uses deprecated `::set-output` syntax. Without this, shipping
+any fix is a manual slog that will be avoided, which is how the repo stalled.
+
+**D3. Xcode/Swift drift detector.** Scheduled job (weekly, plus manual dispatch): install the
+latest stable Xcode, build, generate a fresh `.xcresult` from the sample app, run the tool
+against it, and assert a clean exit. On build failure or any collected fault, file a GitHub
+issue labeled `drift` containing the toolchain version, the fault list, and the failing step.
+De-duplicate against any already-open `drift` issue so a persistent break produces one issue,
+not a weekly stream.
+
+This is the primary mechanism by which hands-off maintenance works. Without it, nothing
+surfaces a new-Xcode break until a user reports it — the exact failure mode that produced the
+current state.
+
+Hard dependency on A1 and A2: the detector's entire signal is the tool's exit code, which is
+meaningless until A1 lands, and it needs A2's self-contained fixture generation to have
+anything to run against. Build it immediately after those two, not before.
+
+### Work tracking
+
+GitHub Issues is the single source of truth. Every item in this design becomes a real issue,
+labeled, grouped under a **3.0 milestone**. Agents read and write via `gh`. Triage output and
+new work converge in one place, and the roadmap stays public — which is the only realistic
+path to attracting a co-maintainer.
+
+Labels to establish: `fixture-gap`, `oracle`, `infra`, `good-first-issue`, `needs-repro`,
+`drift` (reserved for D3's automated filings).
+
+### Repo hygiene
+
+Unblocked by anything else, cheap, and can land immediately:
+
+- Delete `.travis.yml`
+- Restore `createTemplates.sh`, or delete the `HTML/` directory and make `HTMLTemplates.swift`
+  the honest single source. Do not leave two copies with a lying header.
+- Remove the unused SwiftFormat package dependency (move to a separate tooling manifest)
+- Unpin Xcode 14.2 and bump `checkout@v2` in `pages.yml`
+- Add issue templates that require Xcode version and an attached `.xcresult`
+- Rewrite CONTRIBUTING.md to explain how to run the tests (accurate only after A2)
+
+## Sequencing
+
+This design is larger than one implementation plan. It decomposes into roughly four, each
+getting its own plan and implementation cycle:
+
+- **Plan 1: the oracle** — A1 + A2. The critical path; everything else waits on it.
+- **Plan 2: automation** — D1 + D2 + B. Independent of Plan 1, can run alongside.
+- **Plan 3: drift detection** — D3. Starts once Plan 1 is green.
+- **Plan 4: fixture coverage** — A3 + A4. Ongoing, one PR per gap.
+
+Hygiene items are not a plan; they ride along opportunistically.
+
+Execution order:
+
+1. **A1** — fault collector and non-zero exit. Unblocks everything; roughly one session.
+2. **A2** — self-contained CI. Kills the fork-PR problem and #219.
+3. **D1 + D2** — dependency automation and release repair. Independent of A; can run in
+   parallel.
+4. **B** — triage lane, scheduled. Runs in the background from here on.
+5. **D3** — drift detector. Gated on A1 + A2 being green.
+6. **A3** — fixture gaps, highest-priority rows first.
+7. **A4** — Xcode matrix.
+8. Hygiene items, opportunistically throughout.
+
+## Deferred
+
+**Autonomous code-change loop (originally Track C).** A Ralph-style loop — one task per
+iteration, fresh context, gated on `swift build && swift test && tool runs clean` — is a
+reasonable fit once the oracle exists. Deferred by decision. At ~4,800 lines of Swift, working
+conversationally session-by-session against a good gate may simply be faster than building and
+maintaining loop scaffolding.
+
+**New-issue auto-responder.** Declined — it posts publicly, unlike the triage lane.
+
+**XCResultKit `--legacy` migration.** A decision is needed (vendor, fork, or contribute
+upstream) but it should not block the work above. Track as its own issue under the 3.0
+milestone.
+
+## Risks
+
+| Risk | Mitigation |
+| --- | --- |
+| A1 breaks existing consumers' pipelines | Ship as 3.0 with a `--lenient` escape hatch and clear release notes |
+| CI-generated fixtures are slow or flaky (simulator boot, UI tests) | Keep the CI fixture suite minimal; regenerate only what assertions need |
+| Fixture content shifts across Xcode versions | Structural assertions, not golden-file diffs |
+| Apple removes `xcresulttool --legacy` before migration | Track explicitly; the fixture suite makes the migration verifiable when it happens |
+| Triage agent proposes wrong dispositions | Propose-only policy; maintainer is the sole public voice |
+| Drift detector files noisy or duplicate issues | De-duplicate against open `drift` issues; weekly cadence, not per-push |
