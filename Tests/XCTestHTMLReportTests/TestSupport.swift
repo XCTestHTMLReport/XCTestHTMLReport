@@ -113,12 +113,25 @@ extension XCTestCase {
         process.standardError = pipeErr
 
         try process.run()
+
+        // Drain both pipes concurrently, and before waiting on the process.
+        // Waiting first deadlocks as soon as either stream outgrows its pipe
+        // buffer: the child blocks in write() and this thread never gets to the
+        // read. xchtmlreport passes its own stdout to the `xcresulttool`
+        // processes it spawns, so the amount at stake is not under its control.
+        var dataErr = Data()
+        let errorDrained = DispatchGroup()
+        errorDrained.enter()
+        DispatchQueue.global().async {
+            dataErr = pipeErr.fileHandleForReading.readDataToEndOfFile()
+            errorDrained.leave()
+        }
+        let dataOut = pipeOut.fileHandleForReading.readDataToEndOfFile()
+        errorDrained.wait()
+
         process.waitUntilExit()
 
-        let dataOut = pipeOut.fileHandleForReading.readDataToEndOfFile()
         let outputOut = String(data: dataOut, encoding: .utf8)
-
-        let dataErr = pipeErr.fileHandleForReading.readDataToEndOfFile()
         let outputErr = String(data: dataErr, encoding: .utf8)
 
         return (process.terminationStatus, outputOut, outputErr)
@@ -131,13 +144,27 @@ extension XCTestCase {
                 maybeStdOut,
                 maybeStdErr
             ) = try xchtmlreportCmd(args: xchtmlreportArgs)
-            XCTAssertEqual(status, 0)
-            #if !DEBUG // XCResultKit outputs non-fatals to stderr in debug mode
-                XCTAssertEqual((maybeStdErr ?? "").isEmpty, true)
-            #endif
-            let stdOut = try XCTUnwrap(maybeStdOut)
-            let htmlUrl = try XCTUnwrap(urlFromXCHtmlreportStdout(stdOut))
 
+            // Exit 3 means the tool collected faults. Previously this harness
+            // only checked stderr, and only in release builds — so `swift test`
+            // (always debug) could never see degradation at all.
+            let stdOut = try XCTUnwrap(maybeStdOut)
+            let stdErr = maybeStdErr ?? ""
+            XCTAssertEqual(
+                status, 0,
+                "xchtmlreport exited \(status).\nstdout:\n\(stdOut)\nstderr:\n\(stdErr)"
+            )
+
+            // Degradation is reported through `Logger.warning`, which writes to
+            // stderr. Check both streams so this keeps working whichever stream
+            // the diagnostics end up on.
+            let combinedOutput = stdOut + stdErr
+            XCTAssertFalse(
+                combinedOutput.contains("Report is degraded"),
+                "Report was degraded:\n\(combinedOutput)"
+            )
+
+            let htmlUrl = try XCTUnwrap(urlFromXCHtmlreportStdout(stdOut))
             let htmlString = try String(contentsOf: htmlUrl, encoding: .utf8)
             return try SwiftSoup.parse(htmlString)
         }

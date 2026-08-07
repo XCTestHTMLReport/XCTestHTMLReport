@@ -3,14 +3,55 @@ set -ex
 
 cd XCTestHTMLReportSampleApp
 
-SIM_DESTINATION="platform=iOS Simulator,name=iPhone 12,OS=latest"
+# Pick the newest available iOS runtime, then the newest iPhone model within it.
+# Device names cannot be compared as strings: "iPhone 8" sorts above
+# "iPhone 17 Pro Max" because '8' > '1', and "iPhone SE" outranks both. Compare
+# the numeric model instead, and pin the destination to the resolved runtime so
+# the name and OS always agree. Exits 1 when no iPhone simulator is available.
+IFS=$'\t' read -r DEVICE_NAME OS_VERSION < <(
+    xcrun simctl list devices available --json | python3 -c '
+import json, re, sys
 
-set +e
-xcrun simctl list devices --json | grep '"name" : "iPhone 12"' 2> /dev/null
-if [[ $? -ne 0 ]]; then
-    xcrun simctl create "iPhone 12" "iPhone 12"
+devices = json.load(sys.stdin)["devices"]
+
+def runtime_version(identifier):
+    match = re.search(r"iOS-([0-9-]+)$", identifier)
+    if not match:
+        return None
+    return tuple(int(part) for part in match.group(1).split("-"))
+
+def model_rank(name):
+    match = re.search(r"iPhone (\d+)", name)
+    # Unnumbered models (iPhone SE, iPhone X) rank below numbered ones.
+    return (1, int(match.group(1)), name) if match else (0, 0, name)
+
+best = None
+for identifier, entries in devices.items():
+    version = runtime_version(identifier)
+    if version is None:
+        continue
+    iphones = [e["name"] for e in entries if e["name"].startswith("iPhone")]
+    if not iphones:
+        continue
+    candidate = (version, max(iphones, key=model_rank))
+    if best is None or candidate[0] > best[0]:
+        best = candidate
+
+if best is not None:
+    # Tab-separated: device names contain spaces.
+    print(best[1] + "\t" + ".".join(str(part) for part in best[0]))
+'
+) || true
+# `|| true` because `read` returns non-zero on empty input, which under
+# `set -e` would kill the script here and leave the guard below unreachable.
+
+if [[ -z "$DEVICE_NAME" ]]; then
+    echo "No iPhone simulator available" >&2
+    exit 1
 fi
-set -e
+
+echo "Using simulator: $DEVICE_NAME (iOS $OS_VERSION)"
+SIM_DESTINATION="platform=iOS Simulator,name=${DEVICE_NAME},OS=${OS_VERSION}"
 
 # Create TestResults.xcresult for functional tests
 FILENAME='TestResults.xcresult'

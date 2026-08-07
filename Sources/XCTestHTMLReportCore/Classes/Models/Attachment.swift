@@ -118,6 +118,9 @@ struct Attachment: HTML {
     let content: RenderingContent
     let type: AttachmentType
     let name: AttachmentName?
+    /// The payload this attachment was resolved from, kept so that a failure to
+    /// resolve it can be reported against something identifiable.
+    let payloadId: String?
 
     init(
         attachment: ActionTestAttachment,
@@ -130,6 +133,7 @@ struct Attachment: HTML {
         filename = attachment.filename ?? ""
         type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknown
         name = attachment.name.map(AttachmentName.init(rawValue:))
+        payloadId = attachment.payloadRef?.id
         self.padding = padding
         var content: RenderingContent = .none
         if let id = attachment.payloadRef?.id {
@@ -157,6 +161,21 @@ struct Attachment: HTML {
             }
         }
         self.content = content
+    }
+
+    /// How this attachment is named in a `Fault` detail.
+    ///
+    /// `filename` is empty for nameless attachments, which would otherwise
+    /// produce a fault whose detail is the empty string.
+    var faultDescription: String {
+        if !filename.isEmpty {
+            return filename
+        }
+        let label = name?.rawValue ?? fallbackDisplayName
+        guard let payloadId else {
+            return label
+        }
+        return "\(label) (payload id \(payloadId))"
     }
 
     var fallbackDisplayName: String {

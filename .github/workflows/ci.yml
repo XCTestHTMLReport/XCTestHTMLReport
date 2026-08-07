@@ -11,9 +11,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        xcode_version: [ latest-stable, 15 ]
-        arch: [ "arm64-apple-macosx" ]
-    runs-on: macos-latest
+        # Newest toolchain, plus one major version back — the pattern this
+        # matrix has followed since 2023. The older leg needs its own image:
+        # macos-latest is now macos-26, which ships only Xcode 26.x.
+        include:
+          - os: macos-latest
+            xcode_version: latest-stable
+          - os: macos-15
+            xcode_version: "16"
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
@@ -24,4 +30,4 @@ jobs:
         xcode-version: ${{ matrix.xcode_version }}
 
     - name: Build
-      run: swift build -v -c release --triple ${{ matrix.arch }}
+      run: swift build -v -c release --triple arm64-apple-macosx

@@ -87,6 +87,14 @@ struct XCTestHtmlReport: ParsableCommand {
     @Flag(name: .shortAndLong, help: ArgumentHelp("Provide additional logs"))
     var verbose = false
 
+    @Flag(
+        name: .long,
+        help: ArgumentHelp(
+            "Exit successfully even when the report is degraded (pre-3.0 behaviour)"
+        )
+    )
+    var lenient = false
+
     @OptionGroup
     var htmlOptions: HtmlOptions
 
@@ -112,11 +120,13 @@ struct XCTestHtmlReport: ParsableCommand {
 
         Logger.substep("Writing report to \(path)")
 
+        let faultCollector = FaultCollector()
         let summary = Summary(
             resultPaths: summaryOptions.finalResults,
             renderingMode: summaryOptions.finalRenderingMode,
             downsizeImagesEnabled: summaryOptions.downsizeImages,
-            downsizeScaleFactor: summaryOptions.downsizeScaleFactor
+            downsizeScaleFactor: summaryOptions.downsizeScaleFactor,
+            faultCollector: faultCollector
         )
 
         Logger.step("Building HTML..")
@@ -167,6 +177,23 @@ struct XCTestHtmlReport: ParsableCommand {
                 throw error
             }
         }
+
+        summary.validate()
+        let faults = summary.faults
+        guard !faults.isEmpty else { return }
+
+        Logger.warning("Report is degraded: \(faults.count) fault(s)")
+        for fault in faults {
+            Logger.warning("  \(fault.kind.rawValue): \(fault.detail)")
+        }
+
+        if lenient {
+            Logger.warning("Continuing anyway because --lenient was passed")
+            return
+        }
+
+        Logger.error("Exiting non-zero. Pass --lenient to ignore faults.")
+        throw ExitCode(3)
     }
 
     func validate() throws {

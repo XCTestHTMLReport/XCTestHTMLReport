@@ -12,24 +12,40 @@ import XCResultKit
 public struct Summary {
     let runs: [Run]
     let resultFiles: [ResultFile]
+    private let faultCollector: FaultCollector
 
     public enum RenderingMode {
         case inline
         case linking
     }
 
-    public init(resultPaths: [String], renderingMode: RenderingMode, downsizeImagesEnabled: Bool, downsizeScaleFactor: CGFloat) {
+    /// All degradation encountered while building this report.
+    public var faults: [Fault] {
+        faultCollector.faults
+    }
+
+    public init(
+        resultPaths: [String],
+        renderingMode: RenderingMode,
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat,
+        faultCollector: FaultCollector = FaultCollector()
+    ) {
         var runs: [Run] = []
         var resultFiles: [ResultFile] = []
+        self.faultCollector = faultCollector
 
         for resultPath in resultPaths {
             Logger.step("Parsing \(resultPath)")
             let url = URL(fileURLWithPath: resultPath)
-            let resultFile = ResultFile(url: url)
+            let resultFile = ResultFile(url: url, faultCollector: faultCollector)
             resultFiles.append(resultFile)
             guard let invocationRecord = resultFile.getInvocationRecord() else {
                 Logger.warning("Can't find invocation record for : \(resultPath)")
-                break
+                faultCollector.record(.missingInvocationRecord, resultPath)
+                // Previously `break`, which silently abandoned every remaining
+                // bundle when multiple were passed.
+                continue
             }
             let resultRuns = invocationRecord.actions.compactMap {
                 Run(
@@ -76,6 +92,34 @@ public struct Summary {
 
         // TODO: The result files may be encoded directly as an array instead of concatenating raw output
         return "[\(jsonStrings.joined(separator: ","))]"
+    }
+
+    /// Check post-conditions on the assembled model and record any degradation.
+    ///
+    /// Call-site checks catch failures XCResultKit surfaces as `nil`. They do
+    /// not catch failures in *nested* decoding, where a parent object still
+    /// decodes but a child field comes back empty. The observable symptom is an
+    /// attachment that resolved to no content, so check for that directly.
+    ///
+    /// Idempotent across sequential calls: repeated calls do not duplicate
+    /// faults. Dedup keys on `Attachment.faultDescription`, which assumes
+    /// `allAttachments` is stable for this value's lifetime — it is, since
+    /// `runs` is a `let`. Not safe to call concurrently with itself: the
+    /// read of `faults` and the subsequent `record` are separately
+    /// synchronized, not atomic as a unit.
+    public func validate() {
+        let alreadyFlagged = Set(
+            faultCollector.faults
+                .filter { $0.kind == .unresolvedAttachment }
+                .map(\.detail)
+        )
+
+        for attachment in allAttachments {
+            guard case .none = attachment.content else { continue }
+            let detail = attachment.faultDescription
+            guard !alreadyFlagged.contains(detail) else { continue }
+            faultCollector.record(.unresolvedAttachment, detail)
+        }
     }
 }
 

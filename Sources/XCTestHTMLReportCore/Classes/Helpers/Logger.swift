@@ -12,8 +12,12 @@ import Rainbow
 public enum Logger {
     public static var verbose = false
 
+    /// Diagnostics go to stderr so that a pipeline consuming this tool's stdout
+    /// — which carries the path of the generated report — is not fed warnings
+    /// about the report being degraded. `success`, `step` and `substep` stay on
+    /// stdout: they are the tool's output, not its complaints.
     public static func error(_ message: String) {
-        print("Error: ".red.bold + message)
+        printToStandardError("Error: ".red.bold + message)
     }
 
     public static func success(_ message: String) {
@@ -21,7 +25,7 @@ public enum Logger {
     }
 
     public static func warning(_ message: String) {
-        print("Warning: ".yellow.bold + message)
+        printToStandardError("Warning: ".yellow.bold + message)
     }
 
     public static func step(_ message: String) {
@@ -34,5 +38,9 @@ public enum Logger {
         if verbose {
             print("  ▸ " + message)
         }
+    }
+
+    private static func printToStandardError(_ message: String) {
+        FileHandle.standardError.write(Data((message + "\n").utf8))
     }
 }

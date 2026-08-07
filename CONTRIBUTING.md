@@ -37,6 +37,22 @@ Pull requests are welcome, and greatly encouraged. When submitting a pull reques
 
 * As usual, anyone can clone the repository. Then do the fixes/improvements as needed in own repository. When it is finished you can start the request to pull code from your own repo to XCTestHTMLReport repo. 
 
+### Building and testing
+
+The test suite runs against real `.xcresult` bundles. Generate them once, then
+run the tests:
+
+```bash
+./prepareTestResults.sh   # builds the sample app and produces fixtures
+swift test
+```
+
+`prepareTestResults.sh` picks the newest available iPhone simulator automatically.
+No credentials or secrets are required — CI runs exactly these two commands, so a
+green run locally means a green run on your pull request.
+
+Regenerate fixtures after upgrading Xcode; `.xcresult` contents change between
+Xcode versions.
 
 
 *Some of the ideas and wording for the statements above were based on [AFNetworking](https://github.com/AFNetworking/AFNetworking).

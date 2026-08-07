@@ -121,6 +121,32 @@ Report successfully created at ./index.html
 JSON report successfully created at ./report.json
 ```
 
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | No faults detected |
+| 1 | The report could not be written |
+| 3 | Report was generated but is **degraded** — some of the result bundle could not be fully processed |
+| 64 | Invalid arguments |
+
+Starting in 3.0, `xchtmlreport` exits non-zero when part of a result bundle cannot
+be turned into a report. Earlier versions exited 0 and printed a success message
+even when parts of the report were missing, so pipelines had no way to detect an
+incomplete report.
+
+Exit 0 means no faults were *detected*, which is not yet the same as a guaranteed
+complete report: some XCResultKit decode failures are not surfaced as faults today
+and are still only visible as messages on stderr. See
+[#378](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/378) and the
+follow-on work it tracks.
+
+Exit 1 covers failures to write the output — for example `-o` pointing at a
+directory that does not exist.
+
+The report is still written when faults occur. To restore the pre-3.0 behaviour and
+always exit 0 on faults, pass `--lenient`. `--lenient` does not affect exit 1 or 64.
+
 ## Fastlane Support
 
 https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport
