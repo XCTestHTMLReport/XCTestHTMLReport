@@ -145,8 +145,13 @@ jobs:
 
   bump_version:
     runs-on: ubuntu-latest
-    needs: release
-    if: github.event_name == 'push'
+    needs: [build, release]
+    # Never bump after a release candidate. Beyond making no sense on its own
+    # terms, rc tags use the form X.Y.ZrcN, which is not valid semver (that
+    # would be X.Y.Z-rcN). version-increment cannot parse it, silently falls
+    # back to the last parseable tag, and proposes a version that goes
+    # backwards — after 3.0.0rc1 it proposed 2.5.2.
+    if: github.event_name == 'push' && needs.build.outputs.prerelease != 'true'
     steps:
       - uses: actions/checkout@v4
 
