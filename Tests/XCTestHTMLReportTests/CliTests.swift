@@ -65,4 +65,41 @@ final class CliTests: XCTestCase {
             }
         })
     }
+
+    func testLenientFlagIsAccepted() throws {
+        let testResultsUrl = try XCTUnwrap(testResultsUrl)
+        let (status, maybeStdOut, _) = try xchtmlreportCmd(
+            args: ["--lenient", testResultsUrl.path]
+        )
+
+        // --lenient never fails on faults, so a readable bundle always exits 0.
+        XCTAssertEqual(status, 0)
+        try XCTAssertContains(try XCTUnwrap(maybeStdOut), "successfully created")
+    }
+
+    func testUnreadableBundleExitsNonZeroWithFaultSummary() throws {
+        let bogus = NSTemporaryDirectory() + "/DoesNotExist.xcresult"
+        try? FileManager.default.createDirectory(
+            atPath: bogus, withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(atPath: bogus) }
+
+        let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(args: [bogus])
+
+        XCTAssertEqual(status, 3, "Faults must produce exit code 3")
+        let combined = (maybeStdOut ?? "") + (maybeStdErr ?? "")
+        try XCTAssertContains(combined, "missingInvocationRecord")
+    }
+
+    func testUnreadableBundleExitsZeroUnderLenient() throws {
+        let bogus = NSTemporaryDirectory() + "/DoesNotExistLenient.xcresult"
+        try? FileManager.default.createDirectory(
+            atPath: bogus, withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(atPath: bogus) }
+
+        let (status, _, _) = try xchtmlreportCmd(args: ["--lenient", bogus])
+
+        XCTAssertEqual(status, 0, "--lenient restores 2.x exit behaviour")
+    }
 }
