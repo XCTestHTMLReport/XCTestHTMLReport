@@ -679,22 +679,38 @@ Append to `Tests/XCTestHTMLReportTests/FaultReportingTests.swift`, inside the ex
         )
     }
 
-    func testValidateIsIdempotent() throws {
+    func testValidateDoesNotDuplicateOrDisturbExistingFaults() throws {
         let url = try XCTUnwrap(
             Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
         )
+        let collector = FaultCollector()
+        // Seed a non-empty fault set before validating. Without this the
+        // assertion below is 0 == 0 on a clean fixture, which passes even if
+        // validate()'s dedup is deleted outright.
+        collector.record(.payloadExportFailed, "seeded-payload-id")
+        collector.record(.unresolvedAttachment, "seeded-attachment.png")
+
         let summary = Summary(
             resultPaths: [url.path],
             renderingMode: .linking,
             downsizeImagesEnabled: false,
-            downsizeScaleFactor: 0.25
+            downsizeScaleFactor: 0.25,
+            faultCollector: collector
         )
 
         summary.validate()
-        let afterFirst = summary.faults.count
+        let afterFirst = summary.faults
+        XCTAssertEqual(
+            afterFirst.count, 2,
+            "validate() must neither drop seeded faults nor invent new ones on a clean fixture"
+        )
+
         summary.validate()
 
-        XCTAssertEqual(summary.faults.count, afterFirst, "validate() must not double-record")
+        XCTAssertEqual(
+            summary.faults, afterFirst,
+            "validate() must not re-record, duplicate, or drop faults on a second call"
+        )
     }
 ```
 
@@ -715,7 +731,12 @@ Add to `Summary.swift`, inside the `public struct Summary` body:
     /// decodes but a child field comes back empty. The observable symptom is an
     /// attachment that resolved to no content, so check for that directly.
     ///
-    /// Idempotent: repeated calls do not duplicate faults.
+    /// Idempotent across sequential calls: repeated calls do not duplicate
+    /// faults. Dedup keys on the attachment filename, which assumes
+    /// `allAttachments` is stable for this value's lifetime — it is, since
+    /// `runs` is a `let`. Not safe to call concurrently with itself: the
+    /// read of `faults` and the subsequent `record` are separately
+    /// synchronized, not atomic as a unit.
     public func validate() {
         let alreadyFlagged = Set(
             faultCollector.faults
