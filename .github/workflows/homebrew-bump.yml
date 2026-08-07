@@ -1,15 +1,16 @@
 name: Brew Bump
 
+# Manual escape hatch only.
+#
+# xctesthtmlreport is on Homebrew's autobump list: BrewTestBot opens a
+# version-bump PR against homebrew-core on its own roughly every 3 hours after
+# a release, and `brew bump-formula-pr` refuses a manual bump for autobumped
+# formulae. Every formula PR since 2.5.1 has been opened by BrewTestBot.
+#
+# This is kept only for the case where the formula leaves the autobump list
+# (gains a `no_autobump!` or a skipped livecheck). It is deliberately not wired
+# into the release workflow, because it would fail every release.
 on:
-  # Called by the Release workflow. A `release:` event trigger cannot work
-  # here: the release is published by softprops/action-gh-release using
-  # GITHUB_TOKEN, and GitHub deliberately does not start new workflow runs
-  # from events created by GITHUB_TOKEN.
-  workflow_call:
-    inputs:
-      version:
-        type: string
-        required: true
   workflow_dispatch:
     inputs:
       version:
@@ -27,9 +28,7 @@ jobs:
       # The input reaches the shell through the environment, never through
       # ${{ }} interpolation into the script body — a dispatch input is
       # attacker-controllable by anyone with write access, and this job holds
-      # the Homebrew token. Validated against the tag shapes the release
-      # workflow accepts, so a malformed value fails here rather than being
-      # passed to Homebrew.
+      # the Homebrew token.
       env:
         RAW_VERSION: ${{ inputs.version }}
       run: |
