@@ -159,8 +159,11 @@ final class CoreTests: XCTestCase {
                 .first { $0.contains("<testcase classname='RetryTests") }
         )
 
-        let suiteRegex = #"name='SampleAppUITests - iPhone \d+ - \d+.\d"#
-        let testCaseRegex = #"classname='RetryTests - iPhone \d+ - \d+.\d"#
+        // The device name is whatever simulator `prepareTestResults.sh` picked,
+        // so it cannot be assumed to be a bare "iPhone <number>" — on current
+        // Xcode it is "iPhone 17 Pro Max". Match any model name.
+        let suiteRegex = #"name='SampleAppUITests - iPhone [\w ]+ - \d+\.\d"#
+        let testCaseRegex = #"classname='RetryTests - iPhone [\w ]+ - \d+\.\d"#
         XCTAssertNotNil(suiteString.range(of: suiteRegex, options: .regularExpression))
         XCTAssertNotNil(testCaseString.range(of: testCaseRegex, options: .regularExpression))
     }
