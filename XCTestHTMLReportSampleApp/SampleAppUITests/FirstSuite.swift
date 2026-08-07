@@ -31,23 +31,21 @@ class FirstSuite: XCTestCase {
         super.tearDown()
     }
 
-    func testDownloadAndAttachWebData() {
-        let expectation = XCTestExpectation(description: "Download apple.com home page")
-        let url = URL(string: "https://apple.com")!
-        let dataTask = URLSession.shared.dataTask(with: url) { data, _, _ in
-
-            if let data = data {
-                let html = XCTAttachment(data: data, uniformTypeIdentifier: "public.html")
-                html.name = "HTML"
-                html.lifetime = .keepAlways
-                self.add(html)
-            }
-
-            expectation.fulfill()
-        }
-
-        dataTask.resume()
-        wait(for: [expectation], timeout: 10.0)
+    func testAttachHtmlData() {
+        // Previously fetched https://apple.com, which made fixture generation
+        // network-dependent. The attachment only needs to be public.html data.
+        let markup = """
+        <!doctype html>
+        <html><head><title>Sample</title></head>
+        <body><p>Sample attachment body</p></body></html>
+        """
+        let html = XCTAttachment(
+            data: Data(markup.utf8),
+            uniformTypeIdentifier: "public.html"
+        )
+        html.name = "HTML"
+        html.lifetime = .keepAlways
+        add(html)
     }
 
     func testOne() {

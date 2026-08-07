@@ -3,14 +3,23 @@ set -ex
 
 cd XCTestHTMLReportSampleApp
 
-SIM_DESTINATION="platform=iOS Simulator,name=iPhone 12,OS=latest"
+# Pick the newest available iPhone simulator rather than hardcoding a model that
+# Apple eventually removes. Falls back to the generic destination if none is found.
+DEVICE_NAME=$(xcrun simctl list devices available --json \
+    | python3 -c "
+import json, sys
+devices = json.load(sys.stdin)['devices']
+names = [d['name'] for runtime in devices for d in devices[runtime] if d['name'].startswith('iPhone')]
+print(sorted(names)[-1] if names else '')
+")
 
-set +e
-xcrun simctl list devices --json | grep '"name" : "iPhone 12"' 2> /dev/null
-if [[ $? -ne 0 ]]; then
-    xcrun simctl create "iPhone 12" "iPhone 12"
+if [[ -z "$DEVICE_NAME" ]]; then
+    echo "No iPhone simulator available" >&2
+    exit 1
 fi
-set -e
+
+echo "Using simulator: $DEVICE_NAME"
+SIM_DESTINATION="platform=iOS Simulator,name=${DEVICE_NAME},OS=latest"
 
 # Create TestResults.xcresult for functional tests
 FILENAME='TestResults.xcresult'
