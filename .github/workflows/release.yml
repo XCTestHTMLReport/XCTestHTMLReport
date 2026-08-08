@@ -27,7 +27,7 @@ jobs:
       version: ${{ steps.metadata.outputs.version }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         # Nothing in this job pushes. bump_version's checkout keeps its
         # credentials, because create-pull-request pushes a branch from it.
@@ -168,7 +168,7 @@ jobs:
     # backwards — after 3.0.0rc1 it proposed 2.5.2.
     if: github.event_name == 'push' && needs.build.outputs.prerelease != 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Bumps the patch component only. Major and minor bumps are deliberate
       # decisions and are made by hand before tagging.
