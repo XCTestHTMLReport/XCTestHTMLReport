@@ -3,9 +3,14 @@ name: Publish GitHub Pages
 on:
   workflow_dispatch:
 
+# Declared per job rather than at workflow level. The repository default is
+# write, so every job states its own minimum; deploy needs no contents access
+# at all.
 jobs:
   build:
     runs-on: macos-latest
+    permissions:
+      contents: read
     steps:    
     - uses: actions/checkout@v2
 
@@ -15,7 +20,7 @@ jobs:
         version: 14.2
 
     - name: Download XCResult
-      uses: dawidd6/action-download-artifact@v6
+      uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
       with:
         workflow: test-artifacts.yml
         workflow_conclusion: success

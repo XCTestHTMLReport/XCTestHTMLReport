@@ -14,24 +14,33 @@ on:
         default: true
         description: "Build, sign and package, but do not notarize or publish"
 
+# Declared per job rather than at workflow level, so no job silently inherits
+# a grant it does not need: the build only reads, publishing writes releases,
+# and the version bump also opens a pull request.
 jobs:
   build:
     runs-on: macos-latest
+    permissions:
+      contents: read
     outputs:
       prerelease: ${{ steps.metadata.outputs.prerelease }}
       version: ${{ steps.metadata.outputs.version }}
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        # Nothing in this job pushes. bump_version's checkout keeps its
+        # credentials, because create-pull-request pushes a branch from it.
+        persist-credentials: false
 
     - name: Configure Signing
-      uses: Apple-Actions/import-codesign-certs@v7
+      uses: Apple-Actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7
       with:
         p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
         p12-password: ${{ secrets.P12_PASSWORD }}
 
     - name: Setup Xcode version
-      uses: maxim-lobanov/setup-xcode@v1.6.0
+      uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
       with:
         xcode-version: latest-stable
 
@@ -129,13 +138,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'push'
+    permissions:
+      contents: write
 
     steps:
     - name: Download
       uses: actions/download-artifact@v4
 
     - name: Release
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
       with:
         prerelease: ${{ needs.build.outputs.prerelease == 'true' }}
         generate_release_notes: true
@@ -147,6 +158,9 @@ jobs:
   bump_version:
     runs-on: ubuntu-latest
     needs: [build, release]
+    permissions:
+      contents: write
+      pull-requests: write
     # Never bump after a release candidate. Beyond making no sense on its own
     # terms, rc tags use the form X.Y.ZrcN, which is not valid semver (that
     # would be X.Y.Z-rcN). version-increment cannot parse it, silently falls
@@ -159,7 +173,7 @@ jobs:
       # Bumps the patch component only. Major and minor bumps are deliberate
       # decisions and are made by hand before tagging.
       - name: Get next version
-        uses: reecetech/version-increment@2024.10.1
+        uses: reecetech/version-increment@a29aa752dc3b8118a2dc2ed93faf0e95a73a9c7e # 2024.10.1
         id: version
         with:
           scheme: semver
@@ -169,7 +183,7 @@ jobs:
         run: echo 'let version = "${{ steps.version.outputs.version }}"' > Sources/XCTestHTMLReport/Version.swift
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
           title: "${{ steps.version.outputs.version }} Version Bump"
           body: "Bumping version from ${{ steps.version.outputs.current-version }} to ${{ steps.version.outputs.version }}"

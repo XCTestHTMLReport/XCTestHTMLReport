@@ -18,6 +18,11 @@ on:
         required: true
         description: "Release tag to bump to, e.g. 3.0.0"
 
+# Only reads the tree. The repository default is write, so scope the token
+# down explicitly rather than inheriting more than is needed.
+permissions:
+  contents: read
+
 jobs:
   update_brew_formula:
     runs-on: ubuntu-latest
@@ -41,7 +46,7 @@ jobs:
         echo "bumping to ${TAG}"
 
     - name: Update Official Homebrew formula
-      uses: dawidd6/action-homebrew-bump-formula@v8
+      uses: dawidd6/action-homebrew-bump-formula@a0e064e08103c01870c6d1b05168d1b726aab119 # v8
       with:
         token: ${{ secrets.HOMEBREW_BUMP_ACCESS_TOKEN }}
         formula: xctesthtmlreport
