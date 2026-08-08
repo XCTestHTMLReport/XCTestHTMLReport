@@ -14,14 +14,14 @@ on:
         default: true
         description: "Build, sign and package, but do not notarize or publish"
 
-# Declared per job: the build only reads, publishing needs to write releases,
-# and the version bump needs to open a pull request.
-permissions:
-  contents: read
-
+# Declared per job rather than at workflow level, so no job silently inherits
+# a grant it does not need: the build only reads, publishing writes releases,
+# and the version bump also opens a pull request.
 jobs:
   build:
     runs-on: macos-latest
+    permissions:
+      contents: read
     outputs:
       prerelease: ${{ steps.metadata.outputs.prerelease }}
       version: ${{ steps.metadata.outputs.version }}

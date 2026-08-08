@@ -3,14 +3,14 @@ name: Publish GitHub Pages
 on:
   workflow_dispatch:
 
-# Only reads the tree. The repository default is write, so scope the token
-# down explicitly rather than inheriting more than is needed.
-permissions:
-  contents: read
-
+# Declared per job rather than at workflow level. The repository default is
+# write, so every job states its own minimum; deploy needs no contents access
+# at all.
 jobs:
   build:
     runs-on: macos-latest
+    permissions:
+      contents: read
     steps:    
     - uses: actions/checkout@v2
 
