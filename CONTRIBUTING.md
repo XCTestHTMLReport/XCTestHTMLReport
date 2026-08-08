@@ -54,5 +54,31 @@ green run locally means a green run on your pull request.
 Regenerate fixtures after upgrading Xcode; `.xcresult` contents change between
 Xcode versions.
 
+### Optional: run the checks before committing
+
+CI runs shellcheck, SwiftFormat, and SwiftLint. The same checks can run locally on
+staged files, so you find problems before pushing:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+That is opt-in on purpose — nothing installs it for you.
+
+The hook only checks files you are actually committing, and skips a tool entirely
+if it is not installed:
+
+```bash
+brew install shellcheck swiftformat swiftlint
+```
+
+It reports problems rather than rewriting your files, so a commit never contains
+changes you have not read. To skip it for one commit:
+
+```bash
+git commit --no-verify
+```
+
+
 
 *Some of the ideas and wording for the statements above were based on [AFNetworking](https://github.com/AFNetworking/AFNetworking).

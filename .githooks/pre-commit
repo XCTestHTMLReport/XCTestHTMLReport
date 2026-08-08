@@ -1,0 +1,53 @@
+#!/bin/bash
+# Runs the same checks CI runs, on staged files only.
+#
+# Not installed automatically — see CONTRIBUTING.md. A repository that silently
+# takes over your git config is worse than one that asks.
+#
+# Skip a single commit with:  git commit --no-verify
+set -uo pipefail
+
+staged() { git diff --cached --name-only --diff-filter=ACMR -z -- "$@"; }
+fail=0
+note() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+
+# --- shell ---------------------------------------------------------------
+if [[ -n "$(staged '*.sh' | tr -d '\0')" ]]; then
+  if command -v shellcheck >/dev/null; then
+    note "shellcheck"
+    staged '*.sh' | xargs -0 shellcheck || fail=1
+  else
+    echo "shellcheck not installed; skipping (brew install shellcheck)"
+  fi
+fi
+
+# --- swift ---------------------------------------------------------------
+swift_staged="$(staged '*.swift' | tr -d '\0')"
+if [[ -n "$swift_staged" ]]; then
+  if command -v swiftformat >/dev/null; then
+    note "swiftformat"
+    # --lint rather than formatting in place: a hook that rewrites files under
+    # you produces commits whose contents you did not read.
+    staged '*.swift' | xargs -0 swiftformat --lint || {
+      echo "run 'swiftformat .' to fix, then re-stage"
+      fail=1
+    }
+  else
+    echo "swiftformat not installed; skipping (brew install swiftformat)"
+  fi
+
+  if command -v swiftlint >/dev/null; then
+    note "swiftlint"
+    # SwiftLint reads .swiftlint.yml for its own include/exclude rules, so pass
+    # paths explicitly to keep the hook scoped to what is being committed.
+    staged '*.swift' | xargs -0 swiftlint lint --quiet || fail=1
+  else
+    echo "swiftlint not installed; skipping (brew install swiftlint)"
+  fi
+fi
+
+if [[ $fail -ne 0 ]]; then
+  printf '\n\033[31mpre-commit checks failed.\033[0m Fix the above, or commit with --no-verify.\n'
+  exit 1
+fi
+exit 0
