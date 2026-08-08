@@ -132,7 +132,7 @@ jobs:
 
     steps:
     - name: Download
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
 
     - name: Release
       uses: softprops/action-gh-release@v3
