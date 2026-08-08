@@ -45,3 +45,18 @@ jobs:
     # failing and then ignored.
     - name: SwiftLint
       run: swiftlint lint --reporter github-actions-logging
+
+  substrate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+
+    # The guard's own test runs first. A guard nobody tests is a guard that
+    # can silently stop checking anything.
+    - name: Test the substrate guard
+      run: ./Scripts/test-check-substrate.sh
+
+    - name: Check the substrate
+      run: ./Scripts/check-substrate.sh
