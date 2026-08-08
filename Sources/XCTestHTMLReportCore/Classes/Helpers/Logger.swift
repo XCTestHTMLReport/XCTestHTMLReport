@@ -41,6 +41,12 @@ public enum Logger {
     }
 
     private static func printToStandardError(_ message: String) {
-        FileHandle.standardError.write(Data((message + "\n").utf8))
+        // `FileHandle.write` is unbuffered while `print`'s stdout is block-buffered
+        // when piped, so under `2>&1` these lines would jump ahead of stdout output
+        // instead of interleaving where they occurred. It also raises an uncatchable
+        // Objective-C exception when the descriptor is closed (e.g. `2>&-`). `fputs`
+        // avoids both problems. Flushing stdout first keeps interleaving accurate.
+        fflush(stdout)
+        fputs(message + "\n", stderr)
     }
 }
