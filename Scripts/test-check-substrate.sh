@@ -54,6 +54,16 @@ if check "$TMP/e" >"$TMP/out" 2>&1; then fail "passed a doubly-indexed learning"
 grep -q "alpha.md has 2 index entries" "$TMP/out" || fail "duplicate error unclear"
 pass "fails when a learning file is indexed more than once"
 
+# 5b. Two links to the same file on ONE line -> refuse. This is the case the
+#     implementation's `grep -oF | wc -l` exists for: `grep -c` counts matching
+#     lines, so it would see one entry here and wrongly pass.
+make_fixture "$TMP/e2"
+printf -- '- [One](alpha.md) and [Two](alpha.md) on one line\n' \
+    >> "$TMP/e2/docs/learnings/INDEX.md"
+if check "$TMP/e2" >"$TMP/out" 2>&1; then fail "passed two same-line links to one file"; fi
+grep -q "alpha.md has 3 index entries" "$TMP/out" || fail "same-line duplicate error unclear"
+pass "fails when one INDEX.md line links the same learning twice"
+
 # 6. Index pointing at a file that does not exist -> refuse.
 make_fixture "$TMP/f"
 printf -- '- [Ghost](ghost.md) — nothing here\n' >> "$TMP/f/docs/learnings/INDEX.md"
@@ -76,4 +86,4 @@ grep -q "CLAUDE.md is missing" "$TMP/out" || fail "did not report the CLAUDE.md 
 grep -q "orphan.md has 0 index entries" "$TMP/out" || fail "did not report the index problem"
 pass "reports every problem in a single run"
 
-echo "All check-substrate tests passed."
+echo "All 9 check-substrate tests passed."
