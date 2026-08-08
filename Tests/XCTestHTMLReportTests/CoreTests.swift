@@ -74,7 +74,10 @@ final class CoreTests: XCTestCase {
             // would-be pass into a failure. Asserting an exact split therefore
             // measures simulator reliability rather than this project's
             // behaviour. Assert only what the source actually determines.
-            XCTAssertEqual(all, 13, "One row per test method; fixed by the sample sources")
+            //
+            // 16 = 13 XCTest methods + 3 Swift Testing `@Test` functions in
+            // SwiftTestingSuite (SampleAppUnitTests target).
+            XCTAssertEqual(all, 16, "One row per test method; fixed by the sample sources")
             XCTAssertEqual(
                 skipped,
                 1,
@@ -87,9 +90,59 @@ final class CoreTests: XCTestCase {
                 "Every remaining test lands in exactly one bucket"
             )
             XCTAssertGreaterThanOrEqual(
-                failed, 5,
-                "Five sample tests fail deliberately; a lower count means failures are being lost"
+                failed, 6,
+                "Six sample tests fail deliberately (including SwiftTestingSuite.intentionalFailure); " +
+                    "a lower count means failures are being lost"
             )
+        }
+    }
+
+    /// Swift Testing (`import Testing`, `@Test`) results are recorded
+    /// differently inside an `.xcresult` than plain XCTest results. This
+    /// asserts they still make it through the HTML pipeline: rendered at
+    /// all, with the right pass/fail status, and with the failure message
+    /// attached. See #393.
+    func testSwiftTestingResultsRendered() throws {
+        let testResultsUrl = try XCTUnwrap(testResultsUrl)
+        let summary = Summary(
+            resultPaths: [testResultsUrl.path],
+            renderingMode: .linking,
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5
+        )
+
+        let document = try SwiftSoup.parse(summary.html)
+
+        try XCTContext.runActivity(named: "Swift Testing results render like XCTest results") { _ in
+            let testCases = try document.select("div.test-summary")
+
+            func testCase(named name: String) throws -> Element {
+                try XCTUnwrap(
+                    testCases.first {
+                        let label = try? $0.select("p.list-item").first()?.text()
+                        return label?.hasPrefix(name) == true
+                    },
+                    "No rendered test case found for Swift Testing test '\(name)'"
+                )
+            }
+
+            let passing = try testCase(named: "additionWorks()")
+            XCTAssertTrue(
+                passing.hasClass("succeeded"),
+                "additionWorks() is an unconditional #expect(true)"
+            )
+
+            let tagged = try testCase(named: "taggedMultiplication()")
+            XCTAssertTrue(
+                tagged.hasClass("succeeded"),
+                "taggedMultiplication() carries a .tags() trait but still passes"
+            )
+
+            let failing = try testCase(named: "intentionalFailure()")
+            XCTAssertTrue(failing.hasClass("failed"), "intentionalFailure() calls #expect(false)")
+
+            let failureText = try failing.select("div.activity-assertion-failure").text()
+            try XCTAssertContains(failureText, "This Swift Testing test intentionally fails")
         }
     }
 
