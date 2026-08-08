@@ -46,14 +46,14 @@ final class CliTests: XCTestCase {
     }
 
     func testAttachmentsExist() throws {
-        try _testAttachmentsExist()
+        try assertAttachmentsExist()
     }
 
     func testDownsizedAttachmentsExist() throws {
-        try _testAttachmentsExist(extraArgs: ["-z"])
+        try assertAttachmentsExist(extraArgs: ["-z"])
     }
 
-    func _testAttachmentsExist(extraArgs: [String] = []) throws {
+    func assertAttachmentsExist(extraArgs: [String] = []) throws {
         let testResultsUrl = try XCTUnwrap(testResultsUrl)
         let defaultArgs = ["-r", testResultsUrl.path]
         let document = try parseReportDocument(xchtmlreportArgs: defaultArgs + extraArgs)

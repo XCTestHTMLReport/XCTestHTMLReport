@@ -91,16 +91,20 @@ struct Iteration: Test {
 }
 
 extension Iteration {
-    var htmlPlaceholderValues: [String: String] { [
-        "UUID": uuid,
-        "TITLE": "Iteration \(repetitionPolicy?.iteration ?? 0)",
-        "DURATION": duration.formattedSeconds,
-        "ICON_CLASS": status.cssClass,
-        "SCREENSHOT_FLOW": testScreenshotFlow?.screenshots.accumulateHTMLAsString ?? "",
-        "ACTIVITIES": activities.accumulateHTMLAsString,
-    ] }
+    var htmlPlaceholderValues: [String: String] {
+        [
+            "UUID": uuid,
+            "TITLE": "Iteration \(repetitionPolicy?.iteration ?? 0)",
+            "DURATION": duration.formattedSeconds,
+            "ICON_CLASS": status.cssClass,
+            "SCREENSHOT_FLOW": testScreenshotFlow?.screenshots.accumulateHTMLAsString ?? "",
+            "ACTIVITIES": activities.accumulateHTMLAsString,
+        ]
+    }
 
-    var htmlTemplate: String { HTMLTemplates.iteration }
+    var htmlTemplate: String {
+        HTMLTemplates.iteration
+    }
 }
 
 extension Iteration: ContainingAttachment {

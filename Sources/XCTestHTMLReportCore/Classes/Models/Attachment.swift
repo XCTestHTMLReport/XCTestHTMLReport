@@ -153,7 +153,10 @@ struct Attachment: HTML {
                                 .appendingPathComponent(url.relativeString)
                         ), downsizeScaleFactor: downsizeScaleFactor)
                     } else {
-                        content = try RenderingContent.downsizeFrom(content, downsizeScaleFactor: downsizeScaleFactor)
+                        content = try RenderingContent.downsizeFrom(
+                            content,
+                            downsizeScaleFactor: downsizeScaleFactor
+                        )
                     }
                 } catch {
                     Logger.error("Image resize failed with error: \(error.localizedDescription)")

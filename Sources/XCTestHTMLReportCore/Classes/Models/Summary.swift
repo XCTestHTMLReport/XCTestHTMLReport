@@ -115,9 +115,13 @@ public struct Summary {
         )
 
         for attachment in allAttachments {
-            guard case .none = attachment.content else { continue }
+            guard case .none = attachment.content else {
+                continue
+            }
             let detail = attachment.faultDescription
-            guard !alreadyFlagged.contains(detail) else { continue }
+            guard !alreadyFlagged.contains(detail) else {
+                continue
+            }
             faultCollector.record(.unresolvedAttachment, detail)
         }
     }

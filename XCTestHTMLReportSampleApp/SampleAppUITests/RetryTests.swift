@@ -1,5 +1,5 @@
 //
-//  FourthSuite.swift
+//  RetryTests.swift
 //
 //
 //  Created by Tyler Vick on 12/20/21.
@@ -37,7 +37,7 @@ class RetryTests: XCTestCase {
         }
     }
 
-    // First iteration will always fail, retry will succeed
+    /// First iteration will always fail, retry will succeed
     func testRetryOnFailure() throws {
         try XCTContext.runActivity(named: "Retryable Activity") { _ in
             if shouldSucceed() {

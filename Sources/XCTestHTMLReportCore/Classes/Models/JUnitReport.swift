@@ -1,5 +1,5 @@
 //
-//  JUnit.swift
+//  JUnitReport.swift
 //  XCTestHTMLReport
 //
 //  Created by Chris Ballinger on 4/25/18.
@@ -17,7 +17,7 @@ struct JUnitReport {
     var failures: Int {
         suites.map(\.failures).reduce(0) { $0 + $1 }
     }
-    
+
     var skipped: Int {
         suites.map(\.skipped).reduce(0) { $0 + $1 }
     }
@@ -30,6 +30,7 @@ struct JUnitReport {
         var failures: Int {
             cases.filter { $0.state == .failed }.count
         }
+
         var skipped: Int {
             cases.filter { $0.state == .skipped }.count
         }
@@ -78,7 +79,7 @@ extension JUnitReport: XMLRepresentable {
         xml +=
             "<testsuites name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)' skipped='\(skipped)'>\n"
 
-        suites.forEach { suite in
+        for suite in suites {
             xml += suite.xmlString
         }
 
@@ -94,7 +95,7 @@ extension JUnitReport.TestSuite: XMLRepresentable {
         var xml =
             "  <testsuite name='\(name.stringByEscapingXMLChars)' tests='\(tests)' failures='\(failures)' skipped='\(skipped)'>\n"
 
-        cases.forEach { testcase in
+        for testcase in cases {
             xml += testcase.xmlString
         }
 
@@ -111,9 +112,10 @@ extension JUnitReport.TestCase: XMLRepresentable {
         let timeString = String(format: "%.02f", time)
         var xml =
             "  <testcase classname='\(classname.stringByEscapingXMLChars)' name='\(name.stringByEscapingXMLChars)' time='\(timeString)'"
-        
-        /// Skipped tests can have no TestResults (logs) so we need to check the status to add the skipped tag to the xml file
-        if self.state == .skipped {
+
+        // Skipped tests can have no TestResults (logs) so we need to check the status to add the
+        // skipped tag to the xml file
+        if state == .skipped {
             xml += ">\n"
             xml += "    <skipped/>"
             xml += "\n  </testcase>\n"
@@ -184,8 +186,8 @@ private extension JUnitReport.TestCase {
         case .unknown:
             state = .unknown
         }
-        // Activities can be nested in infinite levels so here everything should be flatted
-        // To replicate cascading we add some indent
+        /// Activities can be nested in infinite levels so here everything should be flatted
+        /// To replicate cascading we add some indent
         func flatSubActivities(
             of activity: Activity,
             indent: Int,
@@ -205,7 +207,8 @@ private extension JUnitReport.TestCase {
             for (index, iteration) in testCase.iterations.enumerated() {
                 let isFailureFatal = {
                     let isLastIteration = index == testCase.iterations.indices.last
-                    // In some edge cases, there may be failed assertions during the test, but the test succeeds.
+                    // In some edge cases, there may be failed assertions during the test, but the
+                    // test succeeds.
                     // To consider an assertion fatal, the test state must be failure
                     return isLastIteration && iteration.didFail
                 }()
@@ -214,7 +217,8 @@ private extension JUnitReport.TestCase {
                     .map { flatSubActivities(of: $0, indent: 0, isFailureFatal: isFailureFatal) }
                     .flatMap { $0 }
 
-                // In the edge case the test state failed but there were zero failed assertions in the test steps,
+                // In the edge case the test state failed but there were zero failed assertions in
+                // the test steps,
                 // add a final step that indicates the failed test state
                 if isFailureFatal, !results.contains(where: { $0.state == .failed }) {
                     results += [.init(title: "Test status: \(iteration.status)", state: .failed)]

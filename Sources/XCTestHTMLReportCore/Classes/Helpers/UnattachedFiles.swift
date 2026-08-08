@@ -11,7 +11,7 @@ func removeUnattachedFiles(runs: [Run]) -> Int {
 
     var attachmentPathsLastItem: [String?] = []
     for run in runs {
-        attachmentPathsLastItem = attachmentPathsLastItem + run.allAttachments
+        attachmentPathsLastItem += run.allAttachments
             .map { $0.source?.lastPathComponent() }
         if case let RenderingContent.url(url) = run.logContent {
             attachmentPathsLastItem.append(url.lastPathComponent)
@@ -19,7 +19,7 @@ func removeUnattachedFiles(runs: [Run]) -> Int {
     }
 
     func shouldBeDeleted(fileURL: URL) -> Bool {
-        /// Do not delete directories
+        // Do not delete directories
         var isDir: ObjCBool = false
         if fileManager.fileExists(atPath: fileURL.path, isDirectory: &isDir), isDir.boolValue {
             return false

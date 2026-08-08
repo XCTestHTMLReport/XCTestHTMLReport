@@ -23,7 +23,7 @@ class SampleAppUnitTests: XCTestCase {
         try XCTSkipIf(letsSkipThis, "Test skipped")
     }
 
-    func testWithLogAttachment() throws {
+    func testWithLogAttachment() {
         let logData = "log1\nlog2\nlog3".data(using: .utf8)!
         let attachment = XCTAttachment(data: logData, uniformTypeIdentifier: "com.apple.log")
         attachment.name = "myLogFile"
@@ -31,7 +31,7 @@ class SampleAppUnitTests: XCTestCase {
         add(attachment)
     }
 
-    func testWithLogAttachmentWithoutName() throws {
+    func testWithLogAttachmentWithoutName() {
         let logData = "log4\nlog5\nlog6".data(using: .utf8)!
         let attachment = XCTAttachment(data: logData, uniformTypeIdentifier: "com.apple.log")
         attachment.lifetime = .keepAlways

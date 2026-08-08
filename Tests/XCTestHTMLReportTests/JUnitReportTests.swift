@@ -72,7 +72,7 @@ final class JUnitReportTests: XCTestCase {
         )
     }
 
-    func testXmlString() throws {
+    func testXmlString() {
         let string = jUnitReport.xmlString
         let expectedString = #"""
         <?xml version='1.0' encoding='UTF-8'?>

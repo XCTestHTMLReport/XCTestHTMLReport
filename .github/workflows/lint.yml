@@ -1,0 +1,47 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+# These jobs only read the tree. The repository default is write, so scope the
+# token down explicitly rather than inheriting more than is needed.
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    # prepareTestResults.sh is load-bearing: CI and every contributor run it to
+    # generate the test fixtures, and nothing checked it before.
+    - name: ShellCheck
+      run: |
+        shellcheck --version
+        find . -name '*.sh' -not -path './.build/*' -print0 | xargs -0 -r shellcheck
+
+  swift:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Install linters
+      run: brew install swiftformat swiftlint
+
+    - name: SwiftFormat
+      run: swiftformat --lint --reporter github-actions-log .
+
+    # Non-strict on purpose: warnings are surfaced, only violations configured
+    # as errors fail the build. The config starts green so the gate is trusted,
+    # and is meant to be tightened deliberately rather than switched on already
+    # failing and then ignored.
+    - name: SwiftLint
+      run: swiftlint lint --reporter github-actions-logging
