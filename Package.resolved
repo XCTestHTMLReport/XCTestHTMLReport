@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/apple/swift-argument-parser",
         "state": {
           "branch": null,
-          "revision": "9f39744e025c7d377987f30b03770805dcb0bcd1",
-          "version": "1.1.4"
+          "revision": "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+          "version": "1.8.2"
         }
       },
       {
@@ -24,8 +24,8 @@
         "repositoryURL": "https://github.com/nicklockwood/SwiftFormat",
         "state": {
           "branch": null,
-          "revision": "34cd9dd87b78048ce0d623a9153f9bf260ad6590",
-          "version": "0.50.7"
+          "revision": "2226e9d89bf05a604cc985bab3dccb44ff7c8ee3",
+          "version": "0.62.1"
         }
       },
       {
@@ -33,8 +33,8 @@
         "repositoryURL": "https://github.com/scinfu/SwiftSoup.git",
         "state": {
           "branch": null,
-          "revision": "6778575285177365cbad3e5b8a72f2a20583cfec",
-          "version": "2.4.3"
+          "revision": "8d6ad267714cac3ae747cefdd21f7a6665006e1f",
+          "version": "2.13.7"
         }
       },
       {
@@ -42,8 +42,8 @@
         "repositoryURL": "https://github.com/davidahouse/XCResultKit.git",
         "state": {
           "branch": null,
-          "revision": "4d13c245f374d9af67fb9260cd14a4d58f6c6c82",
-          "version": "1.2.1"
+          "revision": "d49890579f3fd10253ae3d4ba056b89e76ea971e",
+          "version": "1.2.2"
         }
       }
     ]
