@@ -54,10 +54,14 @@ green run locally means a green run on your pull request.
 Regenerate fixtures after upgrading Xcode; `.xcresult` contents change between
 Xcode versions.
 
+`docs/learnings/` collects traps this project has already paid for — one line
+each in [`docs/learnings/INDEX.md`](docs/learnings/INDEX.md). Worth a minute
+before changing CI, the linters, or the fixtures.
+
 ### Optional: run the checks before committing
 
-CI runs shellcheck, SwiftFormat, and SwiftLint. The same checks can run locally on
-staged files, so you find problems before pushing:
+CI runs shellcheck, SwiftFormat, SwiftLint, and a structural check on `CLAUDE.md`
+and `docs/learnings/`. The same checks can run locally before pushing:
 
 ```bash
 git config core.hooksPath .githooks
@@ -65,8 +69,8 @@ git config core.hooksPath .githooks
 
 That is opt-in on purpose — nothing installs it for you.
 
-The hook only checks files you are actually committing, and skips a tool entirely
-if it is not installed:
+The linters only look at files you are actually committing, and each is skipped
+entirely if it is not installed:
 
 ```bash
 brew install shellcheck swiftformat swiftlint

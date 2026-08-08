@@ -22,8 +22,10 @@ this project has already paid for.
   delimiters, which changes the bytes of every generated report.
 - Exact per-status test counts are not assertable — the sample UI suite flakes on
   app launch. Assert totals and relationships instead.
-- `upload-artifact` and `download-artifact` are a matched pair and must move
-  together; the release dry run cannot catch a mismatch.
+- `upload-artifact` and `download-artifact` must stay compatible — the release
+  job downloads exactly what the build job uploaded. Their majors are versioned
+  independently and today read v7 and v8, so check the pairing, not the numbers.
+  The release dry run cannot catch a mismatch.
 
 ## Changes
 
