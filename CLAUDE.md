@@ -30,10 +30,10 @@ this project has already paid for.
 - Work lands through pull requests, never directly on `main`.
 - **Never edit, weaken, delete, or skip a test to make something pass.** If the
   work cannot be done honestly, stopping is correct.
-- Never modify `Scripts/check-substrate.sh`, `Scripts/test-check-substrate.sh`,
-  `CLAUDE.md`, `.swiftlint.yml`, `.swiftformat`, `.githooks/`, or anything under
-  `.github/workflows/` — those are the rules you are judged by, and a workflow you
-  added would execute on your own pull request.
+- Never weaken the checks that judge your work: `Scripts/check-substrate.sh` and
+  its test, `.swiftlint.yml`, `.swiftformat`, `.githooks/`, or the CI workflows.
+  Changing them is a deliberate decision made in its own pull request, never
+  something done in passing to make other work pass.
 - Hit a trap worth remembering? Add a file under `docs/learnings/` and one line to
   its `INDEX.md`, in the same pull request.
 - A learning that can be an executable check should become one, and the learning
