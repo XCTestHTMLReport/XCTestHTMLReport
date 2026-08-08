@@ -185,4 +185,13 @@ check "$TMP/i3" >"$TMP/out" 2>&1 \
     || fail "refused a guard wired from another workflow file: $(cat "$TMP/out")"
 pass "accepts the guard wired from any workflow file"
 
+# 9d. The whole .github/workflows/ directory missing -> refuse, naming the
+#     directory. Distinct from 9: deleting lint.yml but keeping the directory
+#     takes the `elif` branch. Deleting the directory itself must take the `if`
+#     branch, which no case above exercises.
+make_fixture "$TMP/i4"; rm -rf "$TMP/i4/.github/workflows"
+if check "$TMP/i4" >"$TMP/out" 2>&1; then fail "passed with no .github/workflows/ directory"; fi
+grep -q ".github/workflows/ is missing" "$TMP/out" || fail "missing-workflows-dir error unclear"
+pass "fails when .github/workflows/ itself is missing"
+
 echo "All $cases check-substrate tests passed."
