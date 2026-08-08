@@ -48,8 +48,9 @@ swift test
 ```
 
 `prepareTestResults.sh` picks the newest available iPhone simulator automatically.
-No credentials or secrets are required — CI runs exactly these two commands, so a
-green run locally means a green run on your pull request.
+No credentials or secrets are required. These two commands reproduce CI's `test`
+job, so a green run locally means that job will be green on your pull request —
+see below for what else CI checks.
 
 Regenerate fixtures after upgrading Xcode; `.xcresult` contents change between
 Xcode versions.

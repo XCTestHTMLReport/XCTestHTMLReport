@@ -8,7 +8,8 @@ this project has already paid for.
 
 - Fixtures first: `./prepareTestResults.sh`, then `swift test`. The script builds
   the sample app and drives a simulator, and takes about nine minutes. It needs no
-  credentials — CI runs exactly these two commands.
+  credentials — these two commands reproduce CI's `test` job, so a green run
+  locally means that job will be green (other CI jobs check other things).
 - Regenerate fixtures after an Xcode upgrade; `.xcresult` contents change between
   versions.
 - Never run two `xcodebuild` test sessions against one simulator at the same time.
