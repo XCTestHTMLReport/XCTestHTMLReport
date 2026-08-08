@@ -3,6 +3,11 @@ name: Publish GitHub Pages
 on:
   workflow_dispatch:
 
+# Only reads the tree. The repository default is write, so scope the token
+# down explicitly rather than inheriting more than is needed.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: macos-latest
@@ -15,7 +20,7 @@ jobs:
         version: 14.2
 
     - name: Download XCResult
-      uses: dawidd6/action-download-artifact@v6
+      uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
       with:
         workflow: test-artifacts.yml
         workflow_conclusion: success
