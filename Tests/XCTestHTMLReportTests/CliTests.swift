@@ -1,5 +1,6 @@
 import class Foundation.Bundle
 import class Foundation.FileManager
+import struct Foundation.URL
 import struct Foundation.UUID
 import SwiftSoup
 import XCTest
@@ -25,9 +26,12 @@ final class CliTests: XCTestCase {
         guard let retryResultsUrl else {
             throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
         }
+        let outputDirectory = try makeTemporaryOutputDirectory()
 
         for attempt in 1 ... 5 {
-            let (status, _, maybeStdErr) = try xchtmlreportCmd(args: [retryResultsUrl.path])
+            let (status, _, maybeStdErr) = try xchtmlreportCmd(
+                args: [retryResultsUrl.path, "-o", outputDirectory.path]
+            )
             XCTAssertEqual(
                 status, 0,
                 "attempt \(attempt) exited \(status). stderr:\n\(maybeStdErr ?? "")"
@@ -57,13 +61,7 @@ final class CliTests: XCTestCase {
 
     func assertAttachmentsExist(extraArgs: [String] = []) throws {
         let testResultsUrl = try XCTUnwrap(testResultsUrl)
-        let outputDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(
-            at: outputDirectory,
-            withIntermediateDirectories: true
-        )
-        defer { try? FileManager.default.removeItem(at: outputDirectory) }
+        let outputDirectory = try makeTemporaryOutputDirectory()
 
         let defaultArgs = ["-r", testResultsUrl.path, "-o", outputDirectory.path]
         let document = try parseReportDocument(xchtmlreportArgs: defaultArgs + extraArgs)
@@ -103,8 +101,9 @@ final class CliTests: XCTestCase {
 
     func testLenientFlagIsAccepted() throws {
         let testResultsUrl = try XCTUnwrap(testResultsUrl)
+        let outputDirectory = try makeTemporaryOutputDirectory()
         let (status, maybeStdOut, _) = try xchtmlreportCmd(
-            args: ["--lenient", testResultsUrl.path]
+            args: ["--lenient", testResultsUrl.path, "-o", outputDirectory.path]
         )
 
         // --lenient never fails on faults, so a readable bundle always exits 0.
@@ -136,5 +135,18 @@ final class CliTests: XCTestCase {
         let (status, _, _) = try xchtmlreportCmd(args: ["--lenient", bogus])
 
         XCTAssertEqual(status, 0, "--lenient restores 2.x exit behaviour")
+    }
+
+    private func makeTemporaryOutputDirectory() throws -> URL {
+        let outputDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: outputDirectory,
+            withIntermediateDirectories: true
+        )
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: outputDirectory)
+        }
+        return outputDirectory
     }
 }
