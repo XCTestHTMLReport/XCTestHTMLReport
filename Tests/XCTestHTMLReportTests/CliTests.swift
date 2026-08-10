@@ -1,4 +1,6 @@
 import class Foundation.Bundle
+import class Foundation.FileManager
+import struct Foundation.UUID
 import SwiftSoup
 import XCTest
 
@@ -55,7 +57,15 @@ final class CliTests: XCTestCase {
 
     func assertAttachmentsExist(extraArgs: [String] = []) throws {
         let testResultsUrl = try XCTUnwrap(testResultsUrl)
-        let defaultArgs = ["-r", testResultsUrl.path]
+        let outputDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: outputDirectory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: outputDirectory) }
+
+        let defaultArgs = ["-r", testResultsUrl.path, "-o", outputDirectory.path]
         let document = try parseReportDocument(xchtmlreportArgs: defaultArgs + extraArgs)
         let reportDir = testResultsUrl.deletingLastPathComponent()
 
