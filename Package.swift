@@ -17,7 +17,6 @@ let package = Package(
         .package(url: "https://github.com/davidahouse/XCResultKit.git", from: "1.2.1"),
         .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.4.3"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
-        .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.50.4"),
     ],
     targets: [
         .executableTarget(
