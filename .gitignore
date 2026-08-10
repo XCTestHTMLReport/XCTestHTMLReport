@@ -19,3 +19,6 @@ xcuserdata/
 Tests/XCTestHTMLReportTests/Resources/index.html
 Tests/XCTestHTMLReportTests/Resources/report.junit
 Tests/XCTestHTMLReportTests/Resources/report.json
+
+# Built once by prepareTestResults.sh so each test pass reuses it.
+.derived-data/

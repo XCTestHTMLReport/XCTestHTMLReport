@@ -53,13 +53,27 @@ fi
 echo "Using simulator: $DEVICE_NAME (iOS $OS_VERSION)"
 SIM_DESTINATION="platform=iOS Simulator,name=${DEVICE_NAME},OS=${OS_VERSION}"
 
-# Create TestResults.xcresult for functional tests
-FILENAME='TestResults.xcresult'
-rm -rf "$FILENAME"
-xcodebuild test \
+# Build the sample app once, then run each pass against that build.
+#
+# Each pass used to be `xcodebuild test`, which builds before it runs — so the
+# same target was compiled three times to produce three sets of results. Fixture
+# generation is ~85% of the CI test job (#412), and most of that was rebuilds.
+DERIVED_DATA="$(pwd)/.derived-data"
+rm -rf "$DERIVED_DATA"
+xcodebuild build-for-testing \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
     -destination "$SIM_DESTINATION" \
+    -derivedDataPath "$DERIVED_DATA"
+
+# Create TestResults.xcresult for functional tests
+FILENAME='TestResults.xcresult'
+rm -rf "$FILENAME"
+xcodebuild test-without-building \
+    -project SampleApp.xcodeproj \
+    -scheme MainScheme \
+    -destination "$SIM_DESTINATION" \
+    -derivedDataPath "$DERIVED_DATA" \
     -skip-testing:SampleAppUITests/RetryTests \
     -resultBundlePath "$FILENAME" || true
 
@@ -72,10 +86,11 @@ mv "$FILENAME" "../Tests/XCTestHTMLReportTests/Resources/"
 
 SANITY_FILENAME='SanityResults.xcresult'
 rm -rf "$SANITY_FILENAME"
-xcodebuild test \
+xcodebuild test-without-building \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
     -destination "$SIM_DESTINATION" \
+    -derivedDataPath "$DERIVED_DATA" \
     -only-testing:SampleAppUITests/FirstSuite/testOne \
     -resultBundlePath "$SANITY_FILENAME" || true
 
@@ -87,10 +102,11 @@ if [[ $XCODE_VERSION != 12.* && $XCODE_VERSION != 11.* ]]; then
     # "Mixed" test results must be run separately to use -retry-tests-on-failure
     RETRY_FILENAME='RetryResults.xcresult'
     rm -rf "$RETRY_FILENAME"
-    xcodebuild test \
+    xcodebuild test-without-building \
         -project SampleApp.xcodeproj \
         -scheme MainScheme \
         -destination "$SIM_DESTINATION" \
+    -derivedDataPath "$DERIVED_DATA" \
         -test-iterations 2 \
         -retry-tests-on-failure \
         -only-testing:SampleAppUITests/RetryTests \
