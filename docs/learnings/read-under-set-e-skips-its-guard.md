@@ -16,4 +16,6 @@ the failure surfaces as a bare trace.
 Reproduce: `set -ex; read -r A B < <(true); echo after` — `after` never prints.
 
 `prepareTestResults.sh` hit exactly this. It now ends that read with `|| true` so
-the guard is reachable.
+the guard is reachable, and `Scripts/test-prepare-test-results.sh` pins the
+behaviour: it stubs `xcrun` to report no iPhone simulators and asserts the exit
+message is "No iPhone simulator available", not a bare `read` trace.

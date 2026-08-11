@@ -26,6 +26,12 @@ jobs:
         shellcheck --version
         find . -name '*.sh' -not -path './.build/*' -print0 | xargs -0 -r shellcheck
 
+    # Pins the regression docs/learnings/read-under-set-e-skips-its-guard.md
+    # describes: stubs `xcrun` with no iPhone simulators and asserts the
+    # script's own error message appears, not a bare `read`-failure trace.
+    - name: Test prepareTestResults.sh's simulator guard
+      run: ./Scripts/test-prepare-test-results.sh
+
   swift:
     runs-on: macos-latest
     steps:
