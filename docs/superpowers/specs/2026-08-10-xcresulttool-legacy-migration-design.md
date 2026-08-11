@@ -63,7 +63,7 @@ The bar is a *declared and reviewed* diff, asserted in CI, not an empty one.
 
 ### Tree shape
 
-```
+```text
 LEGACY   SampleAppUnitTests → "All tests" → "SampleAppUnitTests.xctest" → SampleAppUnitTests → tests
                             → "SwiftTestingSuite" → tests          (sibling of "All tests")
 
@@ -121,10 +121,10 @@ compare them against numbers from a different runner.
 
 One port, two adapters. New directory:
 
-```
+```text
 Sources/XCTestHTMLReportCore/Classes/ResultReading/
   ParsedResult.swift                backend-neutral model (the port)
-  ResultReader.swift                protocol: read() throws -> ParsedResult
+  ResultReader.swift                protocol: read() -> ParsedResult?
   ResultBackend.swift               detection + override
   Legacy/LegacyResultReader.swift   XCResultKit  → ParsedResult
   Modern/ModernResultReader.swift   xcresulttool → ParsedResult
@@ -134,6 +134,14 @@ Sources/XCTestHTMLReportCore/Classes/ResultReading/
 
 `Classes/Models/*` stop importing XCResultKit and build from `ParsedResult`.
 This is the only shape in which dual-path does not duplicate the renderer.
+
+`read()` returns an optional rather than throwing, mirroring the existing
+`getInvocationRecord()` contract that `Summary.init` already guards with a
+`.missingInvocationRecord` fault. A nil read is therefore reported, not
+swallowed. Failures *below* the top level are the ones that need care: a failed
+activities query returns an empty list, which without a fault would render a
+visibly gutted report and still exit 0. That path records
+`.missingActivities`.
 
 **HTML templates do not change.** `HTMLTemplates.swift` is generated and
 excluded from both linters; nothing in this work touches it.
@@ -172,7 +180,7 @@ rather than silently, so it will surface on the first modern-backend test run.
 
 `xcrun xcresulttool version` prints:
 
-```
+```text
 xcresulttool version 24514, schema version: 0.1.0 (legacy commands format version: 3.56)
 ```
 
@@ -221,7 +229,7 @@ Modern represents them as explicit `Repetition` children of the Test Case node.
 Cleaner — but the parent node also carries its own `result`, and **that result
 is not the same thing as the legacy status**:
 
-```
+```text
 RetryTests/testRetryOnFailure()
   legacy:  iteration 1 = Failure, iteration 2 = Success  → TestCase.status = .mixed
   modern:  Test Case result = "Passed",
