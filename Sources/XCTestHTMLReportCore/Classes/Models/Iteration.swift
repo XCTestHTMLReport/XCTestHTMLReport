@@ -9,7 +9,15 @@ import Foundation
 import XCResultKit
 
 struct Iteration: Test {
-    let uuid = UUID().uuidString
+    /// Assigned by the owning `TestCase`, which is the only place that knows
+    /// this iteration's final position — see `TestCase.assignIterationIdentifiers()`.
+    var uuid: String = ""
+
+    /// Position of the metadata this was built from within its suite. Only
+    /// used to break ties when ordering iterations: they are built
+    /// concurrently, and repetition numbers can repeat or be absent.
+    let sourceIndex: Int
+
     let title: String
     let identifier: String
     let objectClass: ObjectClass = .testSummary // TODO: Modify html template
@@ -24,11 +32,13 @@ struct Iteration: Test {
 
     init(
         metadata: ActionTestMetadata,
+        sourceIndex: Int,
         resultFile: ResultFile,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
+        self.sourceIndex = sourceIndex
         title = metadata.name ?? ""
         identifier = metadata.identifier ?? ""
         status = Status(rawValue: metadata.testStatus) ?? .unknown

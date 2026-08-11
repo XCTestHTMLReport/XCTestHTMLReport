@@ -55,7 +55,7 @@ enum ObjectClass: String {
 
 /// A grouping of test cases, typically representing a single XCTestCase class or test suite
 public struct TestGroup: Test {
-    let uuid = UUID().uuidString
+    let uuid: String
     let title: String
     let identifier: String
     let objectClass: ObjectClass = .testSummaryGroup
@@ -89,6 +89,7 @@ public struct TestGroup: Test {
 
     init(
         group: ActionTestSummaryGroup,
+        identifierPath: IdentifierPath,
         resultFile: ResultFile,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
@@ -97,6 +98,7 @@ public struct TestGroup: Test {
         title = group.name ?? "---group-name-not-found---"
         identifier = group.identifier ?? "---group-identifier-not-found---"
         duration = group.duration
+        uuid = identifierPath.appending(identifier).identifier
 
         Logger.substep("Initializing TestGroup \(identifier)")
 
@@ -106,42 +108,44 @@ public struct TestGroup: Test {
             let queue = DispatchQueue(label: "com.xchtmlreport.subtest.lock")
             var subTestSet: Set<TestCase> = []
 
-            for metadata in group.subtests {
+            for (sourceIndex, metadata) in group.subtests.enumerated() {
                 let operation = BlockOperation {
                     let newTest = TestCase(
                         metadata: metadata,
+                        sourceIndex: sourceIndex,
+                        identifierPath: identifierPath,
                         resultFile: resultFile,
                         renderingMode: renderingMode,
                         downsizeImagesEnabled: downsizeImagesEnabled,
                         downsizeScaleFactor: downsizeScaleFactor
                     )
                     queue.sync {
-                        if let index = subTestSet.firstIndex(of: newTest) {
-                            var existingTest = subTestSet[index]
-                            existingTest.iterations.append(contentsOf: newTest.iterations)
-                            existingTest.iterations
-                                .sort(by: {
-                                    $0.repetitionPolicy?.iteration ?? 0 < $1.repetitionPolicy?
-                                        .iteration ?? 0
-                                })
-                            subTestSet.update(with: existingTest)
-                        } else {
+                        guard let index = subTestSet.firstIndex(of: newTest) else {
                             subTestSet.insert(newTest)
+                            return
                         }
+                        var existingTest = subTestSet[index]
+                        existingTest.merge(newTest)
+                        subTestSet.update(with: existingTest)
                     }
                 }
                 operationQueue.addOperation(operation)
             }
 
             operationQueue.waitUntilAllOperationsAreFinished()
-            var subTestList = Array(subTestSet)
-            subTestList.sort(by: { $0.title < $1.title })
-            subTests.append(contentsOf: subTestList)
+
+            // `Set` iteration order is seeded per process, so this sort has to
+            // be a total order or the rendered order changes between runs. Test
+            // identifiers are unique here — they are the set's own dedupe key —
+            // which makes them a sufficient tiebreaker for equal titles.
+            subTests += subTestSet
+                .sorted(by: { ($0.title, $0.identifier) < ($1.title, $1.identifier) })
         }
 
         if !group.subtestGroups.isEmpty {
-            subTests += group.subtestGroups.map { TestGroup(
-                group: $0,
+            subTests += group.subtestGroups.enumerated().map { index, subGroup in TestGroup(
+                group: subGroup,
+                identifierPath: identifierPath.appending("group\(index)"),
                 resultFile: resultFile,
                 renderingMode: renderingMode,
                 downsizeImagesEnabled: downsizeImagesEnabled,
@@ -181,9 +185,15 @@ extension TestGroup: ContainingAttachment {
 /// Contains one or more `Iteration`s as defined by the RepetitionPolicy. When only one iteration is
 /// present, the activities will be bubbled up to `TestCase`.
 struct TestCase: Test {
-    let uuid = UUID().uuidString
+    let uuid: String
     let title: String
     let identifier: String
+
+    /// Where this test case sits in the report, kept so that iteration
+    /// identifiers can be reassigned once iterations from a repeated run have
+    /// been merged in and re-sorted.
+    private let identifierPath: IdentifierPath
+
     var objectClass: ObjectClass = .testSummary
     var duration: TimeInterval {
         iterations.reduce(0) { $0 + $1.duration }
@@ -223,6 +233,8 @@ struct TestCase: Test {
 
     init(
         metadata: ActionTestMetadata,
+        sourceIndex: Int,
+        identifierPath: IdentifierPath,
         resultFile: ResultFile,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
@@ -230,16 +242,52 @@ struct TestCase: Test {
     ) {
         title = metadata.name ?? ""
         identifier = metadata.identifier ?? ""
+        // Keyed on the test identifier rather than on position: `TestGroup`
+        // dedupes its cases on exactly that, so it is unique among a group's
+        // cases, and it survives the merging that position would not.
+        self.identifierPath = identifierPath.appending("case").appending(identifier)
+        uuid = self.identifierPath.identifier
 
         Logger.substep("Initializing TestCase \(identifier)")
 
         iterations = [Iteration(
             metadata: metadata,
+            sourceIndex: sourceIndex,
             resultFile: resultFile,
             renderingMode: renderingMode,
             downsizeImagesEnabled: downsizeImagesEnabled,
             downsizeScaleFactor: downsizeScaleFactor
         )]
+        assignIterationIdentifiers()
+    }
+
+    /// Folds another run of this same test into this one's iterations.
+    ///
+    /// `other` is the same test — callers reach this through the `Set` that
+    /// dedupes on `identifier` — so both sides share an `identifierPath` and
+    /// the merged iterations can simply be renumbered.
+    mutating func merge(_ other: TestCase) {
+        iterations.append(contentsOf: other.iterations)
+        // Repetition numbers are not necessarily distinct (older bundles have
+        // none at all), and the iterations arrive in whatever order the
+        // operations finished in — so break ties on source position to keep
+        // this a total order.
+        iterations.sort(by: {
+            ($0.repetitionPolicy?.iteration ?? 0, $0.sourceIndex) <
+                ($1.repetitionPolicy?.iteration ?? 0, $1.sourceIndex)
+        })
+        assignIterationIdentifiers()
+    }
+
+    /// Numbers the iterations by their rendered position.
+    ///
+    /// Must run again after iterations are merged in from a repeated run:
+    /// merging changes both which iterations are present and their order, and
+    /// each `iterations-<uuid>` element the page toggles has to stay unique.
+    private mutating func assignIterationIdentifiers() {
+        for index in iterations.indices {
+            iterations[index].uuid = identifierPath.appending("iteration\(index)").identifier
+        }
     }
 }
 
@@ -268,7 +316,12 @@ extension TestCase {
                 "ICON_CLASS": status.cssClass,
                 "ITEM_CLASS": objectClass.cssClass,
                 "ITERATIONS": iterations.reduce("") { $0 + $1.html },
-                "RESULT_STRING": iterationStatusCount().map { "\($0.value) \($0.key.cssClass)" }
+                // Sorted because `Dictionary` iteration order is seeded per
+                // process: unsorted, "1 failed, 1 succeeded" renders as
+                // "1 succeeded, 1 failed" on some runs and not others.
+                "RESULT_STRING": iterationStatusCount()
+                    .sorted { $0.key.cssClass < $1.key.cssClass }
+                    .map { "\($0.value) \($0.key.cssClass)" }
                     .joined(separator: ", "),
                 // Add something for repetition policy/results breakdown
             ]

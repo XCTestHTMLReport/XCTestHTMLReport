@@ -43,17 +43,21 @@ struct TestSummary: HTML {
 
     init(
         summary: ActionTestableSummary,
+        identifierPath: IdentifierPath,
         file: ResultFile,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
-        uuid = UUID().uuidString
-        testName = summary.targetName ?? ""
+        let targetName = summary.targetName ?? ""
+        let path = identifierPath.appending(targetName)
+        uuid = path.identifier
+        testName = targetName
         // TODO: Reduce this with iterations & accum with hashmap
-        tests = summary.tests.map {
+        tests = summary.tests.enumerated().map { index, group in
             TestGroup(
-                group: $0,
+                group: group,
+                identifierPath: path.appending("group\(index)"),
                 resultFile: file,
                 renderingMode: renderingMode,
                 downsizeImagesEnabled: downsizeImagesEnabled,

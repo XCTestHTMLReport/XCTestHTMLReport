@@ -58,13 +58,17 @@ struct Run: HTML {
 
     init?(
         action: ActionRecord,
+        identifierPath: IdentifierPath,
         file: ResultFile,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
         self.file = file
-        runDestination = RunDestination(record: action.runDestination)
+        runDestination = RunDestination(
+            record: action.runDestination,
+            identifierPath: identifierPath
+        )
 
         guard
             let testReference = action.actionResult.testsRef,
@@ -92,21 +96,25 @@ struct Run: HTML {
 
         let queue = DispatchQueue(label: "com.xchtmlreport.lock")
 
-        var summaries = [TestSummary]()
+        // Keyed by source position: these are built concurrently, so the order
+        // they land in is whatever order the operations happened to finish in.
+        var summaries = [Int: TestSummary]()
 
         testPlanSummaries.summaries
             .flatMap(\.testableSummaries)
-            .forEach { testableSummary in
+            .enumerated()
+            .forEach { index, testableSummary in
                 let operation = BlockOperation {
                     let summary = TestSummary(
                         summary: testableSummary,
+                        identifierPath: identifierPath.appending("target\(index)"),
                         file: file,
                         renderingMode: renderingMode,
                         downsizeImagesEnabled: downsizeImagesEnabled,
                         downsizeScaleFactor: downsizeScaleFactor
                     )
                     queue.sync {
-                        summaries.append(summary)
+                        summaries[index] = summary
                     }
                 }
                 operationQueue.addOperation(operation)
@@ -114,7 +122,13 @@ struct Run: HTML {
 
         operationQueue.waitUntilAllOperationsAreFinished()
 
-        testSummaries = summaries.sorted { $0.testName < $1.testName }
+        // Sorting on `testName` alone is not a total order — a test plan with
+        // several configurations yields several summaries for one target — and
+        // `sorted(by:)` is not stable, so ties would resolve differently from
+        // run to run. Break them on source position.
+        testSummaries = summaries
+            .sorted { ($0.value.testName, $0.key) < ($1.value.testName, $1.key) }
+            .map(\.value)
     }
 
     private var logSource: String? {

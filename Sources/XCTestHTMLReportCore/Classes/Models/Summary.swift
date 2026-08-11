@@ -35,7 +35,7 @@ public struct Summary {
         var resultFiles: [ResultFile] = []
         self.faultCollector = faultCollector
 
-        for resultPath in resultPaths {
+        for (resultIndex, resultPath) in resultPaths.enumerated() {
             Logger.step("Parsing \(resultPath)")
             let url = URL(fileURLWithPath: resultPath)
             let resultFile = ResultFile(url: url, faultCollector: faultCollector)
@@ -47,15 +47,23 @@ public struct Summary {
                 // bundle when multiple were passed.
                 continue
             }
-            let resultRuns = invocationRecord.actions.compactMap {
-                Run(
-                    action: $0,
-                    file: resultFile,
-                    renderingMode: renderingMode,
-                    downsizeImagesEnabled: downsizeImagesEnabled,
-                    downsizeScaleFactor: downsizeScaleFactor
-                )
-            }
+            // Identifiers are derived from the bundle's position in the
+            // argument list rather than from its path, so moving a bundle
+            // between directories still renders the same report. See
+            // `IdentifierPath`.
+            let resultRuns = invocationRecord.actions.enumerated()
+                .compactMap { actionIndex, action in
+                    Run(
+                        action: action,
+                        identifierPath: IdentifierPath.root
+                            .appending("bundle\(resultIndex)")
+                            .appending("action\(actionIndex)"),
+                        file: resultFile,
+                        renderingMode: renderingMode,
+                        downsizeImagesEnabled: downsizeImagesEnabled,
+                        downsizeScaleFactor: downsizeScaleFactor
+                    )
+                }
             runs.append(contentsOf: resultRuns)
         }
         self.runs = runs

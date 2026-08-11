@@ -43,10 +43,13 @@ struct RunDestination: HTML {
     let targetDevice: TargetDevice
     let status: Status
 
-    init(record: ActionRunDestinationRecord) {
+    init(record: ActionRunDestinationRecord, identifierPath: IdentifierPath) {
         Logger.substep("Parsing ActionRunDestinationRecord")
         name = record.displayName
-        targetDevice = TargetDevice(record: record.targetDeviceRecord)
+        targetDevice = TargetDevice(
+            record: record.targetDeviceRecord,
+            identifierPath: identifierPath.appending("device")
+        )
         status = .unknown // TODO: (Pierre Felgines) 04/10/2019 Find the correct value
     }
 
