@@ -146,14 +146,38 @@ jobs:
       uses: actions/download-artifact@v8
 
     - name: Release
-      uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
-      with:
-        prerelease: ${{ needs.build.outputs.prerelease == 'true' }}
-        generate_release_notes: true
-        files: |
-          application/xchtmlreport-*
+      # The GitHub CLI is preinstalled on the runner and does everything the
+      # third-party release action was doing here, so the one job that handles
+      # signed, notarized binaries and repository secrets no longer depends on
+      # a third party. Reported as superfluous by zizmor.
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # This job deliberately has no checkout, so gh cannot work out which
+        # repository it is talking to from a git remote.
+        GH_REPO: ${{ github.repository }}
+        # Through the environment rather than interpolated into the script.
+        TAG: ${{ github.ref_name }}
+        PRERELEASE: ${{ needs.build.outputs.prerelease }}
+      # --verify-tag because `gh release create` otherwise invents a tag from
+      # the default branch when the one it is given does not exist. The tag is
+      # what triggered this run, so that can only ever mean something is wrong.
+      #
+      # An unmatched glob fails the step, where the action would have published
+      # a release with no binary attached to it.
+      #
+      # Re-running this over a tag that already has a published release fails,
+      # rather than replacing its assets the way the action did. That is the
+      # behaviour we want: these binaries are signed and notarized, and quietly
+      # swapping the ones people have already downloaded is not something a
+      # re-run button should be able to do. Failed runs need no cleanup — with
+      # assets, gh creates the release as a draft, uploads, then publishes, and
+      # deletes the draft if any of that fails.
+      run: |
+        args=(--generate-notes --verify-tag)
+        if [[ "$PRERELEASE" == "true" ]]; then
+          args+=(--prerelease)
+        fi
+        gh release create "$TAG" "${args[@]}" application/xchtmlreport-*
 
   bump_version:
     runs-on: ubuntu-latest
