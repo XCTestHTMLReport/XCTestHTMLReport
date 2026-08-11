@@ -4,6 +4,7 @@ SanityResults*
 .DS_Store
 /.build
 /XCTestHTMLReportSampleApp/Build
+/XCTestHTMLReportSampleApp/.derivedData
 /Packages
 
 /*.xcodeproj

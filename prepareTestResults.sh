@@ -8,7 +8,7 @@ cd XCTestHTMLReportSampleApp
 # "iPhone 17 Pro Max" because '8' > '1', and "iPhone SE" outranks both. Compare
 # the numeric model instead, and pin the destination to the resolved runtime so
 # the name and OS always agree. Exits 1 when no iPhone simulator is available.
-IFS=$'\t' read -r DEVICE_NAME OS_VERSION < <(
+IFS=$'\t' read -r DEVICE_NAME OS_VERSION UDID < <(
     xcrun simctl list devices available --json | python3 -c '
 import json, re, sys
 
@@ -20,17 +20,17 @@ def runtime_version(identifier):
         return None
     return tuple(int(part) for part in match.group(1).split("-"))
 
-def model_rank(name):
-    match = re.search(r"iPhone (\d+)", name)
+def model_rank(entry):
+    match = re.search(r"iPhone (\d+)", entry["name"])
     # Unnumbered models (iPhone SE, iPhone X) rank below numbered ones.
-    return (1, int(match.group(1)), name) if match else (0, 0, name)
+    return (1, int(match.group(1)), entry["name"]) if match else (0, 0, entry["name"])
 
 best = None
 for identifier, entries in devices.items():
     version = runtime_version(identifier)
     if version is None:
         continue
-    iphones = [e["name"] for e in entries if e["name"].startswith("iPhone")]
+    iphones = [e for e in entries if e["name"].startswith("iPhone")]
     if not iphones:
         continue
     candidate = (version, max(iphones, key=model_rank))
@@ -39,7 +39,8 @@ for identifier, entries in devices.items():
 
 if best is not None:
     # Tab-separated: device names contain spaces.
-    print(best[1] + "\t" + ".".join(str(part) for part in best[0]))
+    version, entry = best
+    print("\t".join([entry["name"], ".".join(str(part) for part in version), entry["udid"]]))
 '
 ) || true
 # `|| true` because `read` returns non-zero on empty input, which under
@@ -50,16 +51,40 @@ if [[ -z "$DEVICE_NAME" ]]; then
     exit 1
 fi
 
-echo "Using simulator: $DEVICE_NAME (iOS $OS_VERSION)"
-SIM_DESTINATION="platform=iOS Simulator,name=${DEVICE_NAME},OS=${OS_VERSION}"
+echo "Using simulator: $DEVICE_NAME (iOS $OS_VERSION) $UDID"
+# Pin by UDID rather than name+OS: it is unambiguous when several runtimes
+# offer the same device name, and it lets the boot below and the xcodebuild
+# invocations target provably the same simulator.
+SIM_DESTINATION="id=${UDID}"
+
+# The three fixtures below used to be three `xcodebuild test` invocations, each
+# paying a full build and its own simulator boot. On CI that overhead dominated:
+# the two single-purpose bundles cost 43-45% of fixture generation while
+# producing one test and one retry suite between them (#412). Boot once and
+# build once here, then run each fixture with `test-without-building`.
+xcrun simctl boot "$UDID" 2>/dev/null || true
+xcrun simctl bootstatus "$UDID" -b
+
+# A stable path rather than a temp dir, so local runs stay incremental.
+DERIVED_DATA="${PWD}/.derivedData"
+
+# No `|| true`: the tests below are allowed to fail, but a build failure is a
+# real failure and must stop the script. Under the old `xcodebuild test || true`
+# a broken sample app surfaced only later, as a confusing `mv` error.
+xcodebuild build-for-testing \
+    -project SampleApp.xcodeproj \
+    -scheme MainScheme \
+    -destination "$SIM_DESTINATION" \
+    -derivedDataPath "$DERIVED_DATA"
 
 # Create TestResults.xcresult for functional tests
 FILENAME='TestResults.xcresult'
 rm -rf "$FILENAME"
-xcodebuild test \
+xcodebuild test-without-building \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
     -destination "$SIM_DESTINATION" \
+    -derivedDataPath "$DERIVED_DATA" \
     -skip-testing:SampleAppUITests/RetryTests \
     -resultBundlePath "$FILENAME" || true
 
@@ -72,10 +97,11 @@ mv "$FILENAME" "../Tests/XCTestHTMLReportTests/Resources/"
 
 SANITY_FILENAME='SanityResults.xcresult'
 rm -rf "$SANITY_FILENAME"
-xcodebuild test \
+xcodebuild test-without-building \
     -project SampleApp.xcodeproj \
     -scheme MainScheme \
     -destination "$SIM_DESTINATION" \
+    -derivedDataPath "$DERIVED_DATA" \
     -only-testing:SampleAppUITests/FirstSuite/testOne \
     -resultBundlePath "$SANITY_FILENAME" || true
 
@@ -87,10 +113,11 @@ if [[ $XCODE_VERSION != 12.* && $XCODE_VERSION != 11.* ]]; then
     # "Mixed" test results must be run separately to use -retry-tests-on-failure
     RETRY_FILENAME='RetryResults.xcresult'
     rm -rf "$RETRY_FILENAME"
-    xcodebuild test \
+    xcodebuild test-without-building \
         -project SampleApp.xcodeproj \
         -scheme MainScheme \
         -destination "$SIM_DESTINATION" \
+        -derivedDataPath "$DERIVED_DATA" \
         -test-iterations 2 \
         -retry-tests-on-failure \
         -only-testing:SampleAppUITests/RetryTests \
