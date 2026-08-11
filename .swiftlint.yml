@@ -9,6 +9,13 @@ included:
 
 excluded:
   - .build
+  # Xcode's build products for the sample app. #425 moved DerivedData inside
+  # the repo (gitignored) to keep local fixture generation incremental, but
+  # SwiftLint does not read .gitignore -- it walked in and reported errors from
+  # Xcode-generated sources such as GeneratedAssetSymbols.swift. CI never saw
+  # this because the lint job does not run prepareTestResults.sh, so the
+  # directory only exists on machines that generate fixtures.
+  - XCTestHTMLReportSampleApp/.derivedData
   # Generated (carries a DO NOT EDIT header) and almost entirely multiline
   # string literals holding the emitted HTML. Also excluded from SwiftFormat.
   - Sources/XCTestHTMLReportCore/Classes/HTMLTemplates.swift
