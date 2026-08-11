@@ -13,24 +13,39 @@ import XCTest
 final class JUnitReportTests: XCTestCase {
     let jUnitReport = JUnitReport(
         name: "JUnitReportName<'&\\>",
-        suites: [JUnitReport.TestSuite(
-            name: "JUnitReportTestSuiteName<'&\\>",
-            tests: 1,
-            cases: [JUnitReport.TestCase(
-                classname: "MyClassName<'&\\>",
-                name: "MyName<'&\\>",
-                time: 0.002,
-                state: .failed,
-                results: [
-                    JUnitReport.TestResult(title: "TitleHere<'&\\>", state: .systemOut),
-                    JUnitReport.TestResult(title: "SystemErrorHere<'&\\>", state: .systemErr),
-                    JUnitReport.TestResult(
-                        title: "Assertion Failure: <unknown>:0: Application com.example.test is not running",
-                        state: .failed
+        suites: [
+            JUnitReport.TestSuite(
+                name: "JUnitReportTestSuiteName<'&\\>",
+                tests: 1,
+                cases: [
+                    JUnitReport.TestCase(
+                        classname: "MyClassName<'&\\>",
+                        name: "MyName<'&\\>",
+                        time: 0.002,
+                        state: .failed,
+                        skippedMessage: "There is a known issue with this test.",
+                        results: [
+                            JUnitReport.TestResult(title: "TitleHere<'&\\>", state: .systemOut),
+                            JUnitReport.TestResult(title: "SystemErrorHere<'&\\>", state: .systemErr),
+                            JUnitReport.TestResult(
+                                title: "Assertion Failure: <unknown>:0: Application com.example.test is not running",
+                                state: .failed
+                            ),
+                        ]
                     ),
+                    JUnitReport.TestCase(
+                        classname: "MyClassName<'&\\>",
+                        name: "MyName<'&\\>",
+                        time: 0.002,
+                        state: .skipped,
+                        skippedMessage: "There is a known issue with this test.",
+                        results: [
+                            JUnitReport.TestResult(title: "TitleHere<'&\\>", state: .skipped),
+                        ]
+                    )
                 ]
-            )]
-        )]
+            )
+        ]
     )
 
     func testXmlTreeLayoutAndAttributes() throws {
@@ -76,13 +91,17 @@ final class JUnitReportTests: XCTestCase {
         let string = jUnitReport.xmlString
         let expectedString = #"""
         <?xml version='1.0' encoding='UTF-8'?>
-        <testsuites name='JUnitReportName&lt;&apos;&amp;\&gt;' tests='1' failures='1' skipped='0'>
-          <testsuite name='JUnitReportTestSuiteName&lt;&apos;&amp;\&gt;' tests='1' failures='1' skipped='0'>
+        <testsuites name='JUnitReportName&lt;&apos;&amp;\&gt;' tests='1' failures='1' skipped='1'>
+          <testsuite name='JUnitReportTestSuiteName&lt;&apos;&amp;\&gt;' tests='1' failures='1' skipped='1'>
           <testcase classname='MyClassName&lt;&apos;&amp;\&gt;' name='MyName&lt;&apos;&amp;\&gt;' time='0.00'>
             <system-out>TitleHere&lt;&apos;&amp;\&gt;</system-out>
             <system-err>SystemErrorHere&lt;&apos;&amp;\&gt;</system-err>
             <failure message='Assertion Failure: &lt;unknown&gt;:0: Application com.example.test is not running'>
             </failure>
+          </testcase>
+          <testcase classname='MyClassName&lt;&apos;&amp;\&gt;' name='MyName&lt;&apos;&amp;\&gt;' time='0.00'>
+            <skipped message='There is a known issue with this test.'>
+            </skipped>
           </testcase>
           </testsuite>
         </testsuites>
