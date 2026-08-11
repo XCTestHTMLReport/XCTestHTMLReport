@@ -436,27 +436,47 @@ which is not the sum of its repetitions — measured on `RetryResults`,
 `ParsedIteration.duration`, so both backends agree by construction and the
 node's own value is simply unused.
 
-- [ ] **Step 1: Decide**
+- [x] **Step 1: Decide**
 
-Work the table. Change any answer; the point is that each is decided
-deliberately before the port exists, not that these particular defaults win.
+All eight recommendations applied as written. The table above is the record of
+what was decided; the spec holds the same answers with rationale, and is what
+Tasks 3 and 12 are read against.
 
-- [ ] **Step 2: Record the decisions in the spec**
+- [x] **Step 2: Record the decisions in the spec**
 
-Add a "Deciding the model before the port" section to the design spec holding
-the final answers and a one-line rationale each. Task 3 and Task 12 are read
-against it, so it must not live only in this plan.
+Recorded under "Deciding the model before the port" → "The answers", with two
+constraints found while applying them and worth reading before Task 3:
 
-- [ ] **Step 3: Propagate**
+- **Answer 6 is unexercised.** `Arguments` is in the published `TestNodeType`
+  enum, but `SwiftTestingSuite` has no parameterized case and all three
+  fixtures contain zero `Arguments` nodes. Task 8 Step 6 adds one, and its
+  test fails until that lands rather than passing on an empty field.
+- **Answer 4 has a platform floor.** `UTType(filenameExtension:)` is macOS 11+,
+  the floor is 10.15, so the extension→type mapping keeps an explicit table.
 
-- [ ] Amend the Task 3 model to match every answer.
-- [ ] Remove the allow-list entries the answers void — on these defaults,
-      `activityTypeClasses` and `durations` go, leaving
-      `attachmentDisplayNames`, `failureTitlePrefix`, and `wrapperGroups`.
-- [ ] Update the spec's "not a superset" table so voided rows read as decisions
-      rather than losses.
+- [x] **Step 3: Propagate**
 
-- [ ] **Step 4: Commit**
+- [x] Task 3's model: `finish`, `activityType`, and `uniformTypeIdentifier`
+      removed; `statusRawValue: String` replaced by `ParsedStatus`;
+      `arguments: [String]` added; header comment rewritten, since "optional
+      because the modern format lacks them" stopped being the reason.
+- [x] Task 4 (legacy reader): maps into `ParsedStatus`, stops reading
+      `activityType` and `finish`, and derives `filenameExtension` from its
+      UTI via `filenameExtension(forUTI:filename:)`.
+- [x] Tasks 8–10 (modern reader): mirror status mapping, `Arguments` parsing,
+      and extension-based typing. **Task 10 reframed** — attachment typing is
+      no longer a modern-only workaround but how both backends type.
+- [x] Task 5: deletes `ObjectClass` and `ActivityType`, and mints
+      `Activity.uuid` from `IdentifierPath` rather than `UUID()`, which the
+      pre-#430 text would have done and which would have broken
+      `ReproducibilityTests`.
+- [x] Task 12: allow-list down from five entries to three;
+      `activityTypeClasses` and `durations` deleted along with their masking
+      rules, because with no field in the port there is no divergence left.
+- [x] Spec's "not a superset" table: voided rows now read **dropped** (a
+      decision) rather than **lost** (an asymmetry).
+
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/superpowers/
@@ -467,8 +487,10 @@ git commit -m "docs: settle the information model before writing ParsedResult"
 
 ## Task 3: The `ParsedResult` model
 
-Pure value types, no I/O, no XCResultKit. Lossy fields are optional; the
-renderer already treats them that way.
+Pure value types, no I/O, no XCResultKit. **Encodes the Task 2.5 answers** —
+three fields removed, one added, one retyped. Read that record in the spec
+before writing this; a field here that only one backend can populate means the
+decision was skipped, not that the model needs an optional.
 
 **Files:**
 - Create: `Sources/XCTestHTMLReportCore/Classes/ResultReading/ParsedResult.swift`
@@ -490,10 +512,16 @@ renderer already treats them that way.
 //  (XCResultKit) and modern (xcresulttool) readers produce this, and the
 //  renderer consumes only this.
 //
-//  Optional fields are ones at least one backend cannot provide. The modern
-//  format has no activity type, no activity finish time, no user-supplied
-//  attachment name, no attachment UTI, and no structured failure location.
-//  Their absence is a format limitation, never a Fault.
+//  "Backend-neutral" is a constraint, not a description: a field only one
+//  backend can populate does not belong here. Per-activity finish times,
+//  activity types, and attachment UTIs were all removed for that reason (see
+//  "Deciding the model before the port" in the design spec) — the legacy
+//  backend stops rendering them too, so the two agree by construction rather
+//  than by mask.
+//
+//  What remains optional is genuinely optional on both sides: a repetition
+//  number a non-repeated test has no value for, a filename an anonymous
+//  attachment never had. Their absence is never a Fault.
 //
 
 import Foundation
@@ -539,38 +567,64 @@ public struct ParsedGroup {
 public struct ParsedTestCase {
     public let name: String
     public let identifier: String
+    /// Swift Testing `@Test(arguments:)` values, from the modern format's
+    /// `Arguments` nodes. Empty on legacy, which has no counterpart, and empty
+    /// for non-parameterized tests.
+    ///
+    /// Present now rather than later because it is *inside* the tree: adding
+    /// the slot afterwards means reshaping the port and every reader with it.
+    /// Not yet exercised by any fixture — see Task 8.
+    public let arguments: [String]
     public let iterations: [ParsedIteration]
+}
+
+/// Test outcome, in neither backend's spelling.
+///
+/// Legacy says `Success`/`Failure`; modern says `Passed`/`Failed`. Carrying
+/// either as a raw string would force the other reader to emit words it never
+/// saw. Each reader maps into this; the spec's status table defines both
+/// mappings.
+public enum ParsedStatus {
+    case passed
+    case failed
+    case skipped
+    case expectedFailure
+    case unknown
 }
 
 public struct ParsedIteration {
     /// 1-based. `nil` when the backend reports no repetition information.
     public let iterationNumber: Int?
-    public let statusRawValue: String
+    public let status: ParsedStatus
     public let duration: TimeInterval
     public let activities: [ParsedActivity]
 }
 
 public struct ParsedActivity {
     public let title: String
-    /// Legacy `activityType` raw value. `nil` on the modern backend.
-    public let activityType: String?
     /// True when the backend marks this activity as a failure. Legacy derives
     /// it from `activityType`; modern reads `isAssociatedWithFailure`.
+    ///
+    /// This is all that survives of the legacy activity taxonomy. The other
+    /// four states have no modern source, so they are out of the port rather
+    /// than nil on one side of it.
     public let isFailure: Bool
+    /// Start only. Modern publishes no finish time, so per-activity duration
+    /// is not representable — and a fabricated `(0.00s)` is worse than none.
     public let start: Date?
-    /// `nil` on the modern backend, which reports only a start time.
-    public let finish: Date?
     public let attachments: [ParsedAttachment]
     public let subActivities: [ParsedActivity]
 }
 
 public struct ParsedAttachment {
-    /// User-supplied name. `nil` on the modern backend.
+    /// User-supplied name. `nil` on the modern backend, which exposes only the
+    /// generated filename. One of the three genuine remaining asymmetries.
     public let name: String?
     public let filename: String?
-    /// Uniform type identifier. `nil` on the modern backend, which supplies
-    /// `filenameExtension` instead.
-    public let uniformTypeIdentifier: String?
+    /// Lowercased, without a leading dot. Both backends supply this: legacy
+    /// maps its UTI down to an extension, modern reads it off the exported
+    /// filename. `AttachmentType` needs no more than this to pick a template
+    /// and a MIME type.
     public let filenameExtension: String?
     /// Opaque handle the backend's payload provider resolves to bytes.
     public let payloadReference: String?
@@ -683,9 +737,7 @@ final class LegacyResultReaderTests: XCTestCase {
         )
         XCTAssertEqual(retried.iterations.count, 2)
         XCTAssertEqual(retried.iterations.map(\.iterationNumber), [1, 2])
-        XCTAssertEqual(
-            retried.iterations.map(\.statusRawValue), ["Failure", "Success"]
-        )
+        XCTAssertEqual(retried.iterations.map(\.status), [.failed, .passed])
 
         // And a non-repeated test still has exactly one iteration.
         let passed = try XCTUnwrap(
@@ -711,9 +763,49 @@ final class LegacyResultReaderTests: XCTestCase {
         let named = try XCTUnwrap(
             attachments.first { $0.name?.hasPrefix("FileName with") == true }
         )
-        XCTAssertEqual(named.uniformTypeIdentifier, "public.plain-text")
         XCTAssertNotEqual(named.name, named.filename)
         XCTAssertEqual(named.filename?.hasSuffix(".txt"), true)
+        // The port carries no UTI; legacy maps down to the extension so both
+        // backends type attachments the same way.
+        XCTAssertEqual(named.filenameExtension, "txt")
+    }
+
+    func testUTIMapsToAnExtensionWhenTheFilenameHasNone() {
+        // Screen recordings and other generated attachments always carry an
+        // extension, so the UTI fallback needs its own coverage rather than
+        // riding on a fixture that never reaches it.
+        XCTAssertEqual(
+            LegacyResultReader.filenameExtension(
+                forUTI: "public.mpeg-4", filename: nil
+            ),
+            "mp4"
+        )
+        XCTAssertEqual(
+            LegacyResultReader.filenameExtension(
+                forUTI: "public.plain-text", filename: nil
+            ),
+            "txt"
+        )
+        // Filename wins when both are available.
+        XCTAssertEqual(
+            LegacyResultReader.filenameExtension(
+                forUTI: "public.mpeg-4", filename: "thing.PNG"
+            ),
+            "png"
+        )
+        XCTAssertNil(
+            LegacyResultReader.filenameExtension(forUTI: nil, filename: nil)
+        )
+    }
+
+    func testStatusMapsIntoTheNeutralEnum() {
+        XCTAssertEqual(LegacyResultReader.status("Success"), .passed)
+        XCTAssertEqual(LegacyResultReader.status("Failure"), .failed)
+        XCTAssertEqual(LegacyResultReader.status("Skipped"), .skipped)
+        XCTAssertEqual(
+            LegacyResultReader.status("Expected Failure"), .expectedFailure
+        )
+        XCTAssertEqual(LegacyResultReader.status("something else"), .unknown)
     }
 
     func testDestinationIsPopulated() throws {
@@ -806,6 +898,8 @@ struct LegacyResultReader: ResultReader {
             return .testCase(ParsedTestCase(
                 name: entries.first?.name ?? "",
                 identifier: identifier,
+                // Legacy has no counterpart to Swift Testing's Arguments nodes.
+                arguments: [],
                 iterations: iterations
             ))
         }
@@ -825,7 +919,7 @@ struct LegacyResultReader: ResultReader {
         else {
             return ParsedIteration(
                 iterationNumber: nil,
-                statusRawValue: metadata.testStatus,
+                status: Self.status(metadata.testStatus),
                 duration: metadata.duration ?? 0,
                 activities: []
             )
@@ -849,10 +943,22 @@ struct LegacyResultReader: ResultReader {
 
         return ParsedIteration(
             iterationNumber: summary.repetitionPolicySummary?.iteration,
-            statusRawValue: metadata.testStatus,
+            status: Self.status(metadata.testStatus),
             duration: metadata.duration ?? 0,
             activities: combined
         )
+    }
+
+    /// Legacy spellings into the neutral enum. The modern reader has the
+    /// mirror of this; neither emits the other's vocabulary.
+    static func status(_ raw: String) -> ParsedStatus {
+        switch raw {
+        case "Success": return .passed
+        case "Failure": return .failed
+        case "Skipped": return .skipped
+        case "Expected Failure": return .expectedFailure
+        default: return .unknown
+        }
     }
 
     private func hasFailure(_ activity: ParsedActivity) -> Bool {
@@ -862,11 +968,13 @@ struct LegacyResultReader: ResultReader {
     private func parseActivity(_ summary: ActionTestActivitySummary) -> ParsedActivity {
         ParsedActivity(
             title: summary.title,
-            activityType: summary.activityType,
+            // `activityType` is read only to derive this flag; the taxonomy
+            // itself is out of the port (answer 2). `finish` is dropped
+            // likewise (answer 1) — legacy has it, but keeping it would mean
+            // the two backends disagree on every activity's duration.
             isFailure: summary.activityType
                 == "com.apple.dt.xctest.activity-type.testAssertionFailure",
             start: summary.start,
-            finish: summary.finish,
             attachments: summary.attachments.map(parseAttachment),
             subActivities: summary.subactivities.map(parseActivity)
         )
@@ -878,10 +986,8 @@ struct LegacyResultReader: ResultReader {
         let file = summary.fileName?.lastPathComponent() ?? ""
         return ParsedActivity(
             title: "\(issueType) at \(file):\(summary.lineNumber):\(message)",
-            activityType: "com.apple.dt.xctest.activity-type.testAssertionFailure",
             isFailure: true,
             start: summary.timestamp,
-            finish: summary.timestamp,
             attachments: summary.attachments.map(parseAttachment),
             subActivities: []
         )
@@ -891,10 +997,39 @@ struct LegacyResultReader: ResultReader {
         ParsedAttachment(
             name: attachment.name,
             filename: attachment.filename,
-            uniformTypeIdentifier: attachment.uniformTypeIdentifier,
-            filenameExtension: nil,
+            // The port carries no UTI (answer 4). Map it down to an extension
+            // here so both backends type attachments identically instead of
+            // the difference being allow-listed.
+            filenameExtension: Self.filenameExtension(
+                forUTI: attachment.uniformTypeIdentifier,
+                filename: attachment.filename
+            ),
             payloadReference: attachment.payloadRef?.id
         )
+    }
+
+    /// Prefers the filename's own extension and falls back to the UTI.
+    ///
+    /// Legacy filenames are `<name>_<n>_<uuid>.<ext>`, so the extension is
+    /// normally right there. `UTType` would be the direct route but is macOS
+    /// 11+, and the floor here is 10.15, so the fallback is an explicit table —
+    /// the same shape `Attachment.swift` already uses for MIME types.
+    static func filenameExtension(forUTI uti: String?, filename: String?) -> String? {
+        if let filename, case let ext = (filename as NSString).pathExtension, !ext.isEmpty {
+            return ext.lowercased()
+        }
+        switch uti {
+        case "public.png": return "png"
+        case "public.jpeg": return "jpeg"
+        case "public.heic": return "heic"
+        case "com.compuserve.gif": return "gif"
+        case "public.mpeg-4": return "mp4"
+        case "public.plain-text": return "txt"
+        case "com.apple.log": return "log"
+        case "public.html": return "html"
+        case "public.zip-archive": return "zip"
+        default: return nil
+        }
     }
 }
 ```
@@ -905,9 +1040,13 @@ struct LegacyResultReader: ResultReader {
 swift test --filter LegacyResultReaderTests
 ```
 
-Expected: PASS, 3 tests. If `testRepetitionsMergeIntoOneTestCase` fails on
+Expected: PASS, 5 tests. If `testRepetitionsMergeIntoOneTestCase` fails on
 iteration ordering, check that `repetitionPolicySummary.iteration` is being
 read from the *summary*, not the metadata.
+
+`ParsedStatus` needs `Equatable` for these assertions — it is a simple enum, so
+the synthesized conformance is enough; add `: Equatable` in Task 3 if the
+compiler asks.
 
 - [ ] **Step 5: Commit**
 
@@ -961,15 +1100,86 @@ Four behaviors move out of the models and must **not** be reimplemented there:
 4. `Activity`'s two initializers collapse to one; `ParsedActivity.title` is
    already the formatted failure title for failure-derived activities.
 
-`Activity.uuid` was `ActionTestActivitySummary.uuid`; it is now
-`UUID().uuidString`, matching how the other models already synthesize theirs
-and how the HTML uses it (an element id only). `Activity.type` becomes
-`ParsedActivity.activityType.flatMap(ActivityType.init(rawValue:))`.
+**`Activity.uuid` must come from `IdentifierPath`, not `UUID()`.** It reads
+`ActionTestActivitySummary.uuid` today — an XCResultKit field, so the port
+cannot supply it, and the modern format has no activity identifier at all.
+Minting a fresh `UUID().uuidString` would compile and would silently undo #430:
+`ReproducibilityTests.testRenderingTheSameBundleTwiceProducesIdenticalBytes`
+asserts byte-identical renders of one bundle, and a random id per render breaks
+that on the first run.
+
+Give `Activity` an `identifierPath` and mint from it, exactly as `TestGroup`,
+`TestCase`, and `Iteration` already do post-#430:
+
+```swift
+// Activity.init(activity:identifierPath:...)
+uuid = identifierPath.identifier
+// ...and for each child, distinguishing siblings by index:
+subActivities = activity.subActivities.enumerated().map { index, sub in
+    Activity(
+        activity: sub,
+        identifierPath: identifierPath.appending("activity\(index)"),
+        ...
+    )
+}
+```
+
+This also satisfies the Task 2.5 rule: a synthesized path-derived id is
+backend-neutral, where an activity uuid would have been a field only the legacy
+backend could populate.
+
+**`Activity.type` and `ActivityType` are deleted** (answer 2). The port carries
+no `activityType`, so `cssClasses` reduces to the failure case:
+
+```swift
+var cssClasses: String {
+    isFailure || hasFailingSubActivities ? "activity-assertion-failure" : ""
+}
+```
+
+**`Activity.totalTime` goes with `finish`** (answer 1). `ObjectClass` is
+**deleted outright** (answer 3) — its raw values are Xcode's own internal class
+names (`IDESchemeActionTestSummaryGroup`), it has no modern equivalent, and
+threading it through would carry a legacy implementation detail into a
+backend-neutral model. `Test.objectClass` leaves the `Test` protocol too.
+
+**Neither removal touches the templates.** Supply empty strings for the
+placeholders they fed and leave `HTMLTemplates.swift` alone:
+
+```swift
+"TIME": "",          // was totalTime.formattedSeconds
+"ITEM_CLASS": "",    // was objectClass.cssClass
+```
+
+This is deliberate, and it has a visible cost worth stating rather than
+discovering during implementation. `activity.html` interpolates
+`[[TITLE]] ([[TIME]])`, so an empty `TIME` renders `Some activity ()` — a
+stray empty paren on every activity row. Removing the parens means editing
+`Sources/XCTestHTMLReportCore/HTML/activity.html` and regenerating, and
+**`createTemplates.sh` — the generator named in `HTMLTemplates.swift`'s own
+DO-NOT-EDIT header — is not in this repository.** Hand-editing the generated
+file to compensate is what that header exists to prevent.
+
+So: the port drops the fields here, both backends agree by construction, the
+allow-list entries are genuinely void, and the cosmetic cleanup (dropping the
+parens and the now-empty class attribute) belongs to the redesign workstream,
+which owns the templates and will have to solve the missing generator anyway.
+`(0.00s)` on every activity would have been worse — that is a fabricated
+number, where `()` is merely untidy.
+
+Log this as a follow-up issue rather than leaving it implicit: *restore or
+replace `createTemplates.sh`, then remove the `TIME` and `ITEM_CLASS`
+placeholders.*
 
 `Iteration.repetitionPolicy` was `ActionTestRepetitionPolicySummary?`; it
 becomes `Int?` from `ParsedIteration.iterationNumber`, and the HTML
 `"Iteration \(repetitionPolicy?.iteration ?? 0)"` becomes
 `"Iteration \(iterationNumber ?? 0)"`.
+
+`Status` comes from `ParsedStatus` rather than a raw string:
+`.passed → .success`, `.failed → .failure`, `.skipped → .skipped`,
+`.expectedFailure` and `.unknown → .unknown`. That last mapping preserves
+today's behaviour exactly — see the spec's status table.
 
 - [ ] **Step 2: Rewire `Summary.init` through the reader**
 
@@ -1569,31 +1779,57 @@ final class ModernResultReaderTests: XCTestCase {
         // parent result here would silently turn a mixed test green.
         XCTAssertEqual(retried.iterations.count, 2)
         XCTAssertEqual(retried.iterations.map(\.iterationNumber), [1, 2])
-        XCTAssertEqual(
-            retried.iterations.map(\.statusRawValue), ["Failure", "Success"]
-        )
+        XCTAssertEqual(retried.iterations.map(\.status), [.failed, .passed])
     }
 
-    func testStatusRawValuesMatchLegacyVocabulary() throws {
+    func testStatusesMapIntoTheNeutralEnum() throws {
         let cases = testCases(in: try read("TestResults"))
-        func status(_ identifier: String) throws -> String {
+        func status(_ identifier: String) throws -> ParsedStatus {
             try XCTUnwrap(cases.first { $0.identifier == identifier })
-                .iterations[0].statusRawValue
+                .iterations[0].status
         }
-        XCTAssertEqual(try status("FirstSuite/testOne()"), "Success")
-        XCTAssertEqual(try status("FirstSuite/testTwo()"), "Failure")
-        XCTAssertEqual(try status("SampleAppUnitTests/testSkipped()"), "Skipped")
+        XCTAssertEqual(try status("FirstSuite/testOne()"), .passed)
+        XCTAssertEqual(try status("FirstSuite/testTwo()"), .failed)
+        XCTAssertEqual(try status("SampleAppUnitTests/testSkipped()"), .skipped)
+
+        // Both readers must agree on the vocabulary, which is the whole point
+        // of the enum: no fixture assertion can catch one reader drifting.
+        XCTAssertEqual(ModernResultReader.status("Passed"), LegacyResultReader.status("Success"))
+        XCTAssertEqual(ModernResultReader.status("Failed"), LegacyResultReader.status("Failure"))
+        XCTAssertEqual(ModernResultReader.status("Skipped"), LegacyResultReader.status("Skipped"))
+        XCTAssertEqual(
+            ModernResultReader.status("Expected Failure"),
+            LegacyResultReader.status("Expected Failure")
+        )
+        // `unknown` is in the published schema but in no fixture.
+        XCTAssertEqual(ModernResultReader.status("unknown"), .unknown)
     }
 
-    func testExpectedFailureIsPassedThroughUnmapped() throws {
+    func testExpectedFailureStillRendersAsUnknown() throws {
         let unknownState = try XCTUnwrap(
             testCases(in: try read("RetryResults"))
                 .first { $0.identifier == "RetryTests/testInUnknownState()" }
         )
-        // Legacy emits "Expected Failure", which Status(rawValue:) does not
-        // recognise and which therefore renders as .unknown. Preserve that.
-        XCTAssertEqual(unknownState.iterations[0].statusRawValue, "Expected Failure")
+        // The model names the state; the renderer still flattens it to
+        // .unknown, which is what both backends do today. Preserve that
+        // rather than "fixing" it here.
+        XCTAssertEqual(unknownState.iterations[0].status, .expectedFailure)
         XCTAssertNil(Status(rawValue: "Expected Failure"))
+    }
+
+    func testParameterizedTestCarriesItsArguments() throws {
+        // Requires the parameterized @Test added in Step 6. Until that lands
+        // this fails, and it should: `arguments` would otherwise be a field no
+        // fixture ever populates, asserted by no test.
+        let parameterized = try XCTUnwrap(
+            testCases(in: try read("TestResults"))
+                .first { $0.identifier.contains("parameterizedAddition") },
+            "No parameterized test in the fixture — see Step 6"
+        )
+        XCTAssertFalse(
+            parameterized.arguments.isEmpty,
+            "Arguments nodes exist in the bundle but did not reach the model"
+        )
     }
 
     /// A failed activities query degrades to an empty activity list. That is
@@ -1770,10 +2006,8 @@ struct ModernResultReader: ResultReader {
             .map { message in
                 ParsedActivity(
                     title: message.name ?? "",
-                    activityType: nil,
                     isFailure: true,
                     start: nil,
-                    finish: nil,
                     attachments: [],
                     subActivities: []
                 )
@@ -1790,7 +2024,7 @@ struct ModernResultReader: ResultReader {
             // legacy reader's ordering of activitySummaries + failureSummaries.
             iterations = [ParsedIteration(
                 iterationNumber: nil,
-                statusRawValue: Self.status(node.result),
+                status: Self.status(node.result),
                 duration: node.durationInSeconds ?? 0,
                 activities: activities(for: identifier, iteration: nil)
                     + failureActivities(node)
@@ -1803,7 +2037,7 @@ struct ModernResultReader: ResultReader {
                 ParsedIteration(
                     iterationNumber: repetition.nodeIdentifier.flatMap(Int.init)
                         ?? (index + 1),
-                    statusRawValue: Self.status(repetition.result),
+                    status: Self.status(repetition.result),
                     duration: repetition.durationInSeconds ?? 0,
                     activities: activities(for: identifier, iteration: index)
                         + failureActivities(repetition)
@@ -1814,20 +2048,45 @@ struct ModernResultReader: ResultReader {
         return ParsedTestCase(
             name: node.name ?? "",
             identifier: identifier,
+            arguments: Self.arguments(of: node),
             iterations: iterations
         )
     }
 
-    /// Maps the new vocabulary onto the legacy raw values `Status` parses.
-    /// `Expected Failure` is passed through unchanged: `Status` has no case
-    /// for it, so it becomes `.unknown` — which is exactly what the legacy
-    /// backend does today.
-    private static func status(_ result: String?) -> String {
+    /// Swift Testing `@Test(arguments:)` values.
+    ///
+    /// `Arguments` is one of the documented `TestNodeType` values — the full
+    /// enum is `Test Plan`, `Unit test bundle`, `UI test bundle`, `Test Suite`,
+    /// `Test Case`, `Device`, `Test Plan Configuration`, `Arguments`,
+    /// `Repetition`, `Test Case Run`, `Failure Message`,
+    /// `Source Code Reference`, `Attachment`, `Expression`, `Test Value`,
+    /// `Runtime Warning`, from
+    /// `xcresulttool get test-results tests --schema`.
+    ///
+    /// Written from that schema, not from observed data: no fixture contains
+    /// an `Arguments` node until Step 6 adds one.
+    static func arguments(of node: TestNode) -> [String] {
+        (node.children ?? [])
+            .filter { $0.nodeType == "Arguments" }
+            .compactMap(\.name)
+    }
+
+    /// Modern vocabulary into the neutral enum — the mirror of
+    /// `LegacyResultReader.status`. Neither reader emits the other's
+    /// spelling; that was the point of answer 5.
+    ///
+    /// The full `TestResult` enum is `Passed`, `Failed`, `Skipped`,
+    /// `Expected Failure`, `unknown`, taken from
+    /// `xcresulttool get test-results tests --schema`. No fixture produces
+    /// `unknown`, so it is handled from the published schema rather than from
+    /// observed data.
+    static func status(_ result: String?) -> ParsedStatus {
         switch result {
-        case "Passed": return "Success"
-        case "Failed": return "Failure"
-        case "Skipped": return "Skipped"
-        case let other: return other ?? ""
+        case "Passed": return .passed
+        case "Failed": return .failed
+        case "Skipped": return .skipped
+        case "Expected Failure": return .expectedFailure
+        default: return .unknown
         }
     }
 
@@ -1860,13 +2119,8 @@ struct ModernResultReader: ResultReader {
     private func parseActivity(_ node: ActivityNode) -> ParsedActivity {
         ParsedActivity(
             title: node.title ?? "",
-            // The new format carries no activity type. Absent, not empty.
-            activityType: nil,
             isFailure: node.isAssociatedWithFailure ?? false,
             start: node.startTime.map { Date(timeIntervalSince1970: $0) },
-            // The new format reports no finish time, so activity duration is
-            // not derivable. Left nil rather than guessed from siblings.
-            finish: nil,
             attachments: (node.attachments ?? []).map(parseAttachment),
             subActivities: (node.childActivities ?? []).map(parseActivity)
         )
@@ -1874,13 +2128,20 @@ struct ModernResultReader: ResultReader {
 
     private func parseAttachment(_ attachment: ActivityAttachment) -> ParsedAttachment {
         let exported = attachment.uuid.flatMap { payloadStore?.exportedFileName(uuid: $0) }
+        // Prefer the attachment's own filename; fall back to the exported
+        // file. Both are `<something>.<ext>`, and this matches the order
+        // `LegacyResultReader.filenameExtension(forUTI:filename:)` uses, so
+        // the two backends type attachments identically.
+        let ext = [attachment.name, exported]
+            .compactMap { $0 }
+            .map { ($0 as NSString).pathExtension.lowercased() }
+            .first { !$0.isEmpty }
         return ParsedAttachment(
             // `name` in the new format holds what legacy calls `filename`; the
             // user-supplied name is not exposed. Report it as filename only.
             name: nil,
             filename: attachment.name,
-            uniformTypeIdentifier: nil,
-            filenameExtension: exported.map { ($0 as NSString).pathExtension },
+            filenameExtension: ext,
             payloadReference: attachment.uuid
         )
     }
@@ -1893,17 +2154,58 @@ struct ModernResultReader: ResultReader {
 swift test --filter ModernResultReaderTests
 ```
 
-Expected: PASS, 5 tests. If `testRepetitionsBecomeIterations` reports one
-iteration, `repetitions` is not matching — confirm `nodeType` is exactly
-`"Repetition"`. If `testFailedActivitiesQueryRecordsAFault` fails, the
-collector reaching the reader is not the one recording — check that
-`Summary.init` passes its own collector rather than constructing a new one.
+Expected: PASS, 6 of 7 tests, with `testParameterizedTestCarriesItsArguments`
+**failing** until Step 6 adds the fixture. That failure is the point — it is
+what stops `arguments` from shipping as a field nothing populates and nothing
+checks.
 
-- [ ] **Step 5: Commit**
+If `testRepetitionsBecomeIterations` reports one iteration, `repetitions` is
+not matching — confirm `nodeType` is exactly `"Repetition"`. If
+`testFailedActivitiesQueryRecordsAFault` fails, the collector reaching the
+reader is not the one recording — check that `Summary.init` passes its own
+collector rather than constructing a new one.
+
+- [ ] **Step 6: Give `arguments` a fixture that exercises it**
+
+`ParsedTestCase.arguments` is added on the strength of the published schema —
+no bundle in the suite contains an `Arguments` node, because
+`SwiftTestingSuite` has no parameterized case. Verified:
+`xcresulttool get test-results tests` over all three fixtures returns zero
+occurrences of `"Arguments"`.
+
+Add one to `XCTestHTMLReportSampleApp/SampleAppUnitTests/SwiftTestingSuite.swift`:
+
+```swift
+@Test(arguments: [1, 2, 3])
+func parameterizedAddition(value: Int) {
+    #expect(value + 0 == value)
+}
+```
+
+Then regenerate and confirm the nodes actually appear, rather than assuming
+they do:
+
+```bash
+./prepareTestResults.sh
+xcrun xcresulttool get test-results tests \
+  --path Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult \
+  | grep -c '"Arguments"'
+```
+
+Expected: non-zero. If it is zero, the node type is not emitted for this shape
+of test — in which case **remove `ParsedTestCase.arguments` and revisit answer
+6** rather than keeping an unpopulated field. Re-run Step 4; all 7 tests pass.
+
+This is also the first fixture change in the plan, so expect every count-based
+assertion in the existing suite to shift by the number of cases the
+parameterized test contributes. Update those counts from the actual run.
+
+- [ ] **Step 7: Commit**
 
 ```bash
 swiftformat . && git add Sources/XCTestHTMLReportCore/Classes/ResultReading/Modern/ModernResultReader.swift \
-  Tests/XCTestHTMLReportTests/ModernResultReaderTests.swift
+  Tests/XCTestHTMLReportTests/ModernResultReaderTests.swift \
+  XCTestHTMLReportSampleApp/SampleAppUnitTests/SwiftTestingSuite.swift
 git commit -m "feat: add ModernResultReader for the new xcresulttool format"
 ```
 
@@ -2245,17 +2547,33 @@ git commit -m "feat: export attachments through the modern xcresulttool path"
 
 ---
 
-## Task 10: Attachment typing without a UTI
+## Task 10: Attachment typing, on both backends
 
-The modern backend has no `uniformTypeIdentifier`. `AttachmentType` is built
-from one, so it needs an extension-based path.
+Under answer 4 the port carries no `uniformTypeIdentifier` at all, so this is
+not "how the modern backend copes without a UTI" — it is **the only way either
+backend types an attachment**. `AttachmentType` stops being built from a UTI
+and is built from a file extension, which both readers supply: legacy maps its
+UTI down (`LegacyResultReader.filenameExtension(forUTI:filename:)`, Task 4),
+modern reads it off the filename or the exported file (Task 8).
+
+The payoff is that attachment typing stops being an allow-list entry and
+becomes identical by construction. The `TODO` at `Attachment.swift:24`
+("Use UTType instead of handling each mime") was already pointing this way.
 
 **Files:**
 - Modify: `Sources/XCTestHTMLReportCore/Classes/Models/Attachment.swift`
 - Create: `Tests/XCTestHTMLReportTests/AttachmentTypeTests.swift`
 
 **Interfaces:**
-- Produces: `AttachmentType.init(filenameExtension:)`.
+- Produces: `AttachmentType.init(filenameExtension:)`, the sole constructor
+  used by `Attachment.init`.
+
+**Platform note.** `UTType(filenameExtension:)` would do this directly but is
+macOS 11+, and the floor here is 10.15. `Attachment.swift` already guards
+`UTType` behind `if #available(macOS 11.0, *)` with a hardcoded fallback for
+MIME types; the extension mapping follows the same shape, with the explicit
+table below as the floor-safe path. Do not raise the deployment target for
+this.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2280,6 +2598,33 @@ final class AttachmentTypeTests: XCTestCase {
         XCTAssertEqual(AttachmentType(filenameExtension: "gif"), .gif)
         XCTAssertEqual(AttachmentType(filenameExtension: "heic"), .heic)
         XCTAssertEqual(AttachmentType(filenameExtension: "zip"), .zip)
+    }
+
+    /// Both readers must land on the same type for the same attachment, which
+    /// is what answer 4 bought. No fixture assertion catches one drifting,
+    /// because they run against different documents.
+    func testLegacyUTIsAndModernFilenamesAgree() {
+        let cases: [(uti: String, filename: String)] = [
+            ("public.png", "shot_0_ABC.png"),
+            ("public.jpeg", "shot_0_ABC.jpeg"),
+            ("public.heic", "shot_0_ABC.heic"),
+            ("com.compuserve.gif", "anim_0_ABC.gif"),
+            ("public.mpeg-4", "rec_0_ABC.mp4"),
+            ("public.plain-text", "log_0_ABC.txt"),
+            ("com.apple.log", "log_0_ABC.log"),
+            ("public.html", "page_0_ABC.html"),
+            ("public.zip-archive", "bundle_0_ABC.zip"),
+        ]
+        for (uti, filename) in cases {
+            let viaLegacy = LegacyResultReader
+                .filenameExtension(forUTI: uti, filename: nil)
+                .map(AttachmentType.init(filenameExtension:))
+            let viaModern = AttachmentType(
+                filenameExtension: (filename as NSString).pathExtension
+            )
+            XCTAssertEqual(viaLegacy, viaModern, "\(uti) vs \(filename)")
+            XCTAssertNotEqual(viaModern, .unknown, "\(filename) typed as unknown")
+        }
     }
 
     func testUnrecognisedExtensionIsUnknown() {
@@ -2321,17 +2666,17 @@ init(filenameExtension: String) {
 }
 ```
 
-And in `Attachment.init(attachment:...)`, prefer the UTI and fall back:
+And in `Attachment.init(attachment:...)`, there is no UTI branch left — the
+extension is the only input:
 
 ```swift
-if let identifier = attachment.uniformTypeIdentifier {
-    type = AttachmentType(rawValue: identifier) ?? .unknown
-} else if let ext = attachment.filenameExtension {
-    type = AttachmentType(filenameExtension: ext)
-} else {
-    type = .unknown
-}
+type = attachment.filenameExtension
+    .map(AttachmentType.init(filenameExtension:)) ?? .unknown
 ```
+
+`AttachmentType`'s raw values stay as they are: `mimeType` still reads them via
+`UTType(rawValue:)` on macOS 11+, so the UTI strings remain useful as the
+enum's identity even though nothing constructs the type from one any more.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -2339,7 +2684,10 @@ if let identifier = attachment.uniformTypeIdentifier {
 swift test --filter AttachmentTypeTests && swift test 2>&1 | tail -5
 ```
 
-Expected: 2 new tests PASS; the full suite stays green.
+Expected: 3 new tests PASS; the full suite stays green. If
+`testLegacyUTIsAndModernFilenamesAgree` fails, the two readers disagree on a
+type — fix the mapping rather than allow-listing the difference, since removing
+that allow-list entry is the reason this task exists.
 
 - [ ] **Step 5: Commit**
 
@@ -2596,18 +2944,8 @@ the diff to a declared list.
 
 ```json
 {
-  "comment": "Each entry names one field the modern xcresulttool format does not provide, and the masking rule that removes its effect from a rendered report. The differential test masks BOTH renders with every rule here and then requires them to be byte-identical: after the declared losses are removed, nothing else may differ. Adding an entry means accepting a permanent difference between the backends — a design decision, not a way to quiet a failing test.",
+  "comment": "Each entry names one field the modern xcresulttool format does not provide, and the masking rule that removes its effect from a rendered report. The differential test masks BOTH renders with every rule here and then requires them to be byte-identical: after the declared losses are removed, nothing else may differ. Adding an entry means accepting a permanent difference between the backends — a design decision, not a way to quiet a failing test. Task 2.5 voided two earlier entries (activityTypeClasses, durations) by removing the fields from the port instead of masking the divergence; prefer that route to adding an entry here.",
   "knownLosses": [
-    {
-      "rule": "activityTypeClasses",
-      "field": "activity activityType",
-      "effect": "Activity CSS classes are absent on the modern backend; only assertion-failure styling survives, via isAssociatedWithFailure. Rendered into `<div class=\"activity [[ACTIVITY_TYPE_CLASS]] ...\">`."
-    },
-    {
-      "rule": "durations",
-      "field": "activity finish time",
-      "effect": "Per-activity durations render as 0s on the modern backend, which reports only a start time. Rendered as the bare `(0.00s)` suffix in `[[TITLE]] ([[TIME]])`, with no distinguishing element."
-    },
     {
       "rule": "attachmentDisplayNames",
       "field": "attachment user-supplied name",
@@ -2626,6 +2964,17 @@ the diff to a declared list.
   ]
 }
 ```
+
+**What the Task 2.5 decisions removed from here.** `activityTypeClasses` and
+`durations` are gone. Neither was masked away — the underlying fields left the
+port, so the legacy backend stopped rendering them too and the two agree with
+no rule at all. That is the direction to push every remaining entry: a
+divergence deleted from the model beats a divergence hidden by a mask, because
+the masked region is exactly where a regression can hide.
+
+Of the three left, `attachmentDisplayNames` and `failureTitlePrefix` are
+genuine format asymmetries with no modern source. `wrapperGroups` is a
+deliberate render difference (the flat tree, per the spec).
 
 **Why masking rather than per-line markers.** The first draft of this plan
 matched differing lines against literal marker strings. That does not work:
@@ -2664,9 +3013,12 @@ In `Package.swift`, add to the test target's `resources` array:
 import Foundation
 
 enum KnownLossMasker {
+    // Three, not five. `activityTypeClasses` and `durations` were removed by
+    // the Task 2.5 decisions: with no `activityType` or `finish` in the port,
+    // both backends render the same thing and there is nothing to mask. An
+    // unmasked diff proves more than a masked one, so removing rules here is
+    // progress, not scope creep.
     static let implementedRules: Set<String> = [
-        "activityTypeClasses",
-        "durations",
         "attachmentDisplayNames",
         "failureTitlePrefix",
         "wrapperGroups",
@@ -2687,12 +3039,6 @@ enum KnownLossMasker {
 
     private static func apply(_ rule: String, to html: String) -> String {
         switch rule {
-        case "activityTypeClasses":
-            // `<div class="activity activity-user-created no-drop-down">`
-            return replace(html, #"activity-(internal|user-created|skipped-test|delete-attachment|assertion-failure)"#, with: "")
-        case "durations":
-            // Bare `(1.23s)` / `(0.00s)` suffixes from `[[TITLE]] ([[TIME]])`.
-            return replace(html, #"\(\d+\.\d+s\)"#, with: "(DURATION)")
         case "attachmentDisplayNames":
             // The `[[NAME]]` line inside `<p class="attachment list-item">`.
             return replace(
@@ -3126,7 +3472,17 @@ Expected: FAIL — output still contains `_value`.
 
 - [ ] **Step 3: Make `ParsedResult` `Encodable` and re-point `--json`**
 
-Add `: Encodable` to every `Parsed*` type and to `ParsedNode`. Replace
+Add `: Encodable` to every `Parsed*` type, to `ParsedNode`, and to
+`ParsedStatus` — the last needs `String` raw values so `--json` emits
+`"passed"` rather than a synthesized enum object:
+
+```swift
+public enum ParsedStatus: String, Encodable {
+    case passed, failed, skipped, expectedFailure, unknown
+}
+```
+
+Replace
 `Summary.generatedJsonReport()`:
 
 ```swift

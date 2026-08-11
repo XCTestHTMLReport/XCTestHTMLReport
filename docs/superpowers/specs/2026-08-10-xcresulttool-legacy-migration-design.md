@@ -53,23 +53,31 @@ Numbers and shapes are observations, not estimates.
 
 ### The central finding: the new format is not a superset
 
+Rows marked **dropped** were losses until the model decisions below voided them:
+the field leaves the port entirely, so the legacy backend stops rendering it too
+and the two backends agree by construction. Rows marked **lost** are genuine
+asymmetries the differential still has to mask.
+
 | Legacy | New format | Verdict |
 | --- | --- | --- |
-| activity `activityType` (5 constants driving CSS classes) | absent; only `isAssociatedWithFailure: Bool` | **lost** |
-| activity `start` **and** `finish` | `startTime` only | **lost** — per-activity duration is not derivable |
+| activity `activityType` (5 constants driving CSS classes) | absent; only `isAssociatedWithFailure: Bool` | **dropped** (answer 2) — out of the port |
+| activity `start` **and** `finish` | `startTime` only | **dropped** (answer 1) — `finish` out of the port; no duration beats a fabricated one |
 | activity `uuid` | absent | synthesized locally (already how the HTML uses it) |
 | attachment `name` (user-supplied, e.g. `"HTML"`) | `name` holds the legacy *filename* | **lost** — present only in a sibling child-activity title |
 | attachment `filename` | `name` | maps, renamed |
-| attachment `uniformTypeIdentifier` | absent | derived from `exportedFileName` extension |
+| attachment `uniformTypeIdentifier` | absent | **dropped** (answer 4) — both backends type from the file extension |
 | attachment `payloadRef.id` | `payloadId` | present, but payload-by-id export is itself a legacy command |
 | `ActionTestFailureSummary.fileName` / `.lineNumber` / `.issueType` | one string on the `Failure Message` node: `"RetryTests.swift:31: XCTAssertTrue failed"` | **lost as structure**, text preserved |
 | log section `emittedOutput` | absent; structured `messages` instead | **lost** |
 | `exportRecursiveJson()` (drives `--json`) | no equivalent | **no replacement** |
 | repetitions (duplicate siblings + `repetitionPolicySummary`) | first-class `nodeType: "Repetition"` | **improved** |
+| Swift Testing `Arguments` / `Expression` / `Test Value` | first-class node types | **modern-only** (answer 6) — slot added now, unexercised by fixtures |
 | tree shape | two fewer wrapper levels | differs, see below |
 
 Consequence: byte-identical output across the two backends is not achievable.
-The bar is a *declared and reviewed* diff, asserted in CI, not an empty one.
+The bar is a *declared and reviewed* diff, asserted in CI, not an empty one —
+though the model decisions shrink what has to be declared from five entries to
+three, which makes the remaining diff a stronger proof than a larger masked one.
 
 ### Tree shape
 
@@ -244,10 +252,42 @@ backend stops rendering some things it could have — but it is a 4.0 behaviour
 change made once and visible in the model, rather than a permanent asymmetry
 hidden behind a mask.
 
-**Task 2.5 of the implementation plan carries the questions and a recommended
-answer for each. Its output belongs here**, as a subsection recording the final
-answers with a one-line rationale each. Task 3 and Task 12 are both read against
-that record, so it must not live only in the plan.
+**Task 2.5 of the implementation plan carries the questions and the reasoning
+behind each answer. The answers themselves are recorded below**, and Task 3 and
+Task 12 are read against this record rather than against the plan.
+
+### The answers
+
+| # | Question | Answer | Rationale |
+| --- | --- | --- | --- |
+| 1 | Per-activity durations? | **No** — drop `ParsedActivity.finish` | Modern publishes `startTime` only; no duration beats a fabricated `(0.00s)`. Voids the `durations` allow-list entry. |
+| 2 | The five activity-type states? | **No** — drop `ParsedActivity.activityType`, keep `isFailure` | The one genuinely useful state (`userCreated`) has no modern source at any fidelity, and a field only one backend can populate is the anti-pattern this exercise exists to catch. Voids `activityTypeClasses`. |
+| 3 | `ObjectClass` in the model? | **No** — Task 5 deletes the type | `IDESchemeActionTestSummaryGroup` is an Xcode internal class name rendered into a CSS class. No modern equivalent and no reason to acquire one. |
+| 4 | Attachment UTI as its own field? | **No** — `filenameExtension` only, both backends | `AttachmentType` needs only enough to pick a template and a MIME type. Legacy maps its UTI down to an extension, and attachment typing becomes identical rather than allow-listed. |
+| 5 | Status as a legacy raw string? | **No** — neutral enum, both readers map into it | `statusRawValue: String` would make the modern reader emit legacy spellings it never saw. Fabricating legacy shape is the line this exercise draws. |
+| 6 | Swift Testing `Arguments`? | **Yes, now** — `ParsedTestCase.arguments: [String]` | The only addition that is *inside* the tree; adding the slot later means reshaping the port. Empty on legacy and for non-parameterized tests. |
+| 7 | Insights / metrics? | **No, not now** | Separate documents from separate subcommands, attaching beside `runs` at the top level. Additive later is cheap and local; no empty slots now. |
+| 8 | Test-case duration sums repetitions? | **Yes** — keep today's behaviour | The modern Test Case node reports its own duration, which is not the sum (measured on `RetryResults`: `testJustFail()` reports 0.065s against repetitions of 0.063s and 0.068s). Summing in the renderer makes both backends agree by construction. |
+
+Net effect on the port: three fields removed (`finish`, `activityType`,
+`uniformTypeIdentifier`), one field added (`arguments`), one field retyped
+(`statusRawValue` → enum), one existing type deleted (`ObjectClass`). Net effect
+on the differential: the allow-list drops from five entries to three.
+
+**Answer 6 is not exercised by any fixture.** The authoritative `TestNodeType`
+enum — `xcresulttool get test-results tests --schema` — lists `Arguments`,
+`Expression`, and `Test Value`, but `SwiftTestingSuite` has no
+`@Test(arguments:)` case, and all three bundles contain zero `Arguments` nodes.
+The field is therefore added on the strength of the published schema, not
+observed data. The plan adds a parameterized `@Test` to the sample app so the
+slot is populated by something real; until that lands, treat `arguments` as
+unverified rather than working.
+
+**Answer 4 has a platform constraint.** `UTType(filenameExtension:)` is macOS 11+
+and the floor here is 10.15, so the extension→type mapping cannot rely on it
+alone. `Attachment.swift` already guards `UTType` behind
+`if #available(macOS 11.0, *)` with a hardcoded fallback; the extension mapping
+follows the same shape.
 
 Non-negotiable regardless of how the answers land: **no reader code whose only
 purpose is to satisfy the render-level diff.** If `ModernResultReader` is ever
@@ -261,18 +301,30 @@ These are the places where a naive port silently changes output.
 
 ### Status mapping
 
-| Legacy `testStatus` | Modern `result` | `Status` |
-| --- | --- | --- |
-| `Success` | `Passed` | `.success` |
-| `Failure` | `Failed` | `.failure` |
-| `Skipped` | `Skipped` | `.skipped` |
-| `Expected Failure` | `Expected Failure` | `.unknown` |
+Under answer 5 the port carries a neutral `ParsedStatus`, and this table is the
+definition of **both** readers' mappings rather than a note about one. Neither
+reader emits the other's spelling.
 
-`Status` has raw values `""`, `Failure`, `Success`, `Skipped`, `Mixed`, so
-`Status(rawValue: "Expected Failure")` returns nil and falls through to
-`.unknown` today. The modern reader must reproduce that, not "fix" it.
-Whether expected failures deserve their own status is a separate question and
-explicitly **out of scope** for this work.
+| Legacy `testStatus` | Modern `result` | `ParsedStatus` | Renders as `Status` |
+| --- | --- | --- | --- |
+| `Success` | `Passed` | `.passed` | `.success` |
+| `Failure` | `Failed` | `.failed` | `.failure` |
+| `Skipped` | `Skipped` | `.skipped` | `.skipped` |
+| `Expected Failure` | `Expected Failure` | `.expectedFailure` | `.unknown` |
+| *(anything else)* | `unknown` | `.unknown` | `.unknown` |
+
+The modern `TestResult` enum is `Passed`, `Failed`, `Skipped`,
+`Expected Failure`, `unknown` — taken from
+`xcresulttool get test-results tests --schema`, not inferred from the fixtures,
+which never produce `unknown`.
+
+`.expectedFailure` renders as `Status.unknown` because `Status` has raw values
+`""`, `Failure`, `Success`, `Skipped`, `Mixed` and no case for it, so
+`Status(rawValue: "Expected Failure")` returns nil today. Both readers must
+reproduce that, not "fix" it. Giving expected failures their own status is a
+separate question, explicitly **out of scope** — but note the model now names
+the state even though the renderer flattens it, so the redesign can act on it
+without another port change.
 
 ### Iterations — the subtle one
 
