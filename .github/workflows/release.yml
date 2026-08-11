@@ -144,6 +144,15 @@ jobs:
     steps:
     - name: Download
       uses: actions/download-artifact@v8
+      # Both are given explicitly because the default layout is not stable and
+      # the release step globs against it. Downloading everything unnamed put
+      # the archive in a directory per artifact under v4 and puts it straight
+      # in the workspace under v8 — the version bump in #404 silently moved it
+      # and nothing noticed, because the action this job used to publish with
+      # treats an unmatched file pattern as success.
+      with:
+        name: application
+        path: application
 
     - name: Release
       # The GitHub CLI is preinstalled on the runner and does everything the
