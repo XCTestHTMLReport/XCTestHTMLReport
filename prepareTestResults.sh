@@ -128,4 +128,21 @@ if [[ $XCODE_VERSION != 12.* && $XCODE_VERSION != 11.* ]]; then
     mv "$RETRY_FILENAME" "../Tests/XCTestHTMLReportTests/Resources/"
 fi
 
+# Create a real macOS run destination fixture. The report used to hardcode
+# every destination as iOS, which an iPhone-only fixture suite could not catch.
+MACOS_FILENAME='MacOSResults.xcresult'
+rm -rf "$MACOS_FILENAME"
+SAMPLE_APP_DIR="$PWD"
+(
+    cd MacOSResultFixture
+    xcodebuild test \
+        -scheme Fixture \
+        -destination 'platform=macOS' \
+        -resultBundlePath "$SAMPLE_APP_DIR/$MACOS_FILENAME"
+)
+
+echo "${MACOS_FILENAME} should identify the run destination as macOS"
+rm -rf "../Tests/XCTestHTMLReportTests/Resources/${MACOS_FILENAME}"
+mv "$MACOS_FILENAME" "../Tests/XCTestHTMLReportTests/Resources/"
+
 echo "$(tput setaf 2)$(basename "$0") successfully finished$(tput sgr 0)"

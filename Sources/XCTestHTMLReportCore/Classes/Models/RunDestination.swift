@@ -38,14 +38,31 @@ private extension Status {
     }
 }
 
+private extension ActionSDKRecord {
+    var operatingSystemName: String {
+        let simulatorPrefix = "Simulator - "
+        let platformAndVersion = name.hasPrefix(simulatorPrefix)
+            ? String(name.dropFirst(simulatorPrefix.count))
+            : name
+        let versionSuffix = " \(operatingSystemVersion)"
+
+        guard platformAndVersion.hasSuffix(versionSuffix) else {
+            return platformAndVersion
+        }
+        return String(platformAndVersion.dropLast(versionSuffix.count))
+    }
+}
+
 struct RunDestination: HTML {
     let name: String
+    let operatingSystemName: String
     let targetDevice: TargetDevice
     let status: Status
 
     init(record: ActionRunDestinationRecord) {
         Logger.substep("Parsing ActionRunDestinationRecord")
         name = record.displayName
+        operatingSystemName = record.targetSDKRecord.operatingSystemName
         targetDevice = TargetDevice(record: record.targetDeviceRecord)
         status = .unknown // TODO: (Pierre Felgines) 04/10/2019 Find the correct value
     }
@@ -60,6 +77,7 @@ struct RunDestination: HTML {
             "DEVICE_NAME": name,
             "DEVICE_IDENTIFIER": targetDevice.uniqueIdentifier,
             "DEVICE_MODEL": targetDevice.model,
+            "DEVICE_OS_NAME": operatingSystemName,
             "DEVICE_OS": targetDevice.osVersion,
         ]
     }
