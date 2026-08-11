@@ -414,19 +414,39 @@ schema. This is a breaking change to `--json` output for every user, landing in
 
 **"Identical across backends" means schema identity, not value identity.** Both
 backends emit the same field names, nesting, enum encoding, and
-`schemaVersion`; every key present on one is present on the other. The *values*
-may differ exactly where the differential allow-list already says they differ,
-and nowhere else:
+`schemaVersion`; every key present on one is present on the other.
 
-- `attachment.name` — populated on legacy, `null` on modern
-- failure activity titles — legacy carries the `<issueType> at ` prefix
-- group nesting — legacy has the wrapper levels, modern does not
-- `testCase.arguments` — populated on modern for parameterized Swift Testing
-  cases, always `[]` on legacy
+Permitted value differences fall into **two distinct classes**, and conflating
+them would smuggle a fourth entry into a three-entry allow-list.
 
-Any other value difference is a bug in a reader, not a permitted variance.
-Stating this matters because the acceptance criteria would otherwise contradict
-the allow-list, which deliberately preserves three render-level differences.
+*Class 1 — the three differential allow-list rules.* These are render-level
+differences the masker already declares, and they surface in `--json` for the
+same reason they surface in HTML:
+
+| Rule | In `--json` |
+| --- | --- |
+| `attachmentDisplayNames` | `attachment.name` populated on legacy, `null` on modern |
+| `failureTitlePrefix` | failure titles carry the legacy `<issueType>` prefix |
+| `wrapperGroups` | legacy group nesting has the wrapper levels |
+
+*Class 2 — a model-level capability difference, not an allow-list entry.*
+`testCase.arguments` is populated on modern for parameterized Swift Testing
+cases and always `[]` on legacy, which has no counterpart. It is **not** an
+allow-list rule and needs no masking rule, because nothing renders it — the
+templates have no slot for arguments, so it cannot appear in the HTML
+differential at all. It is visible only in `--json`.
+
+The differential therefore does not exclude parameterized cases; it simply
+never sees this field. `--json` comparison must compare `arguments` separately,
+asserting legacy is `[]` rather than asserting the two are equal.
+
+Note the fixture limitation this inherits: until the parameterized `@Test` lands
+(Task 8), no bundle produces a non-empty `arguments` on either backend, so a
+naive equality assertion would pass vacuously — both sides being `[]` proves
+nothing about the modern reader.
+
+Any value difference outside these two classes is a bug in a reader, not a
+permitted variance.
 
 Rationale: the current output is Apple's internal shape and is disappearing
 regardless. The break is coming either way; doing it deliberately means it
