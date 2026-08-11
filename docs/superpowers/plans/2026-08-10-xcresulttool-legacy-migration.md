@@ -2089,9 +2089,19 @@ import XCTest
 @testable import XCTestHTMLReportCore
 
 final class ResultBackendTests: XCTestCase {
-    func testExplicitChoicesResolveToThemselves() {
-        XCTAssertEqual(ResultBackend.legacy.resolved(), .legacy)
+    func testModernAlwaysResolvesToModern() {
         XCTAssertEqual(ResultBackend.modern.resolved(), .modern)
+    }
+
+    func testLegacyDemotesWhenTheToolchainDropsIt() {
+        // Conditional rather than absolute: asserting .legacy -> .legacy
+        // outright would start failing the day Apple removes the commands,
+        // which is precisely when this fallback needs to work.
+        if XCResultToolClient.legacyCommandsAvailable {
+            XCTAssertEqual(ResultBackend.legacy.resolved(), .legacy)
+        } else {
+            XCTAssertEqual(ResultBackend.legacy.resolved(), .modern)
+        }
     }
 
     func testAutoNeverResolvesToAuto() {
@@ -2158,11 +2168,26 @@ public enum ResultBackend: String, CaseIterable {
     case modern
 
     /// Never returns `.auto`.
+    ///
+    /// `.legacy` is honoured only when the toolchain still offers the legacy
+    /// commands. An explicit `--result-reader legacy` on a toolchain without
+    /// them demotes to `.modern` rather than failing every read: the spec's
+    /// rule is that a legacy command failing degrades to working, not broken.
     public func resolved() -> ResultBackend {
         switch self {
-        case .legacy: return .legacy
-        case .modern: return .modern
-        case .auto: return XCResultToolClient.legacyCommandsAvailable ? .legacy : .modern
+        case .modern:
+            return .modern
+        case .legacy, .auto:
+            guard XCResultToolClient.legacyCommandsAvailable else {
+                if self == .legacy {
+                    Logger.warning(
+                        "This toolchain has no legacy xcresulttool commands; "
+                            + "falling back to the modern reader."
+                    )
+                }
+                return .modern
+            }
+            return .legacy
         }
     }
 }
@@ -2212,6 +2237,20 @@ plus the conformance next to the existing `RenderingMode` one:
 extension ResultBackend: ExpressibleByArgument {}
 ```
 
+Then thread it into `run()`. Declaring the option without passing it leaves a
+flag that parses, validates, and does nothing:
+
+```swift
+let summary = Summary(
+    resultPaths: summaryOptions.finalResults,
+    renderingMode: summaryOptions.finalRenderingMode,
+    downsizeImagesEnabled: summaryOptions.downsizeImages,
+    downsizeScaleFactor: summaryOptions.downsizeScaleFactor,
+    faultCollector: faultCollector,
+    backend: summaryOptions.resultReader
+)
+```
+
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
@@ -2228,14 +2267,19 @@ out as the easiest way to get the migration wrong.
 - [ ] **Step 5: Verify the flag end to end**
 
 ```bash
+set -o pipefail
 swift build
-.build/debug/xchtmlreport --result-reader modern \
-  Tests/XCTestHTMLReportTests/Resources/SanityResults.xcresult -o /tmp/modern-check
-echo "exit=$?"
-grep -c "test-summary" /tmp/modern-check/index.html
+for reader in legacy modern; do
+  .build/debug/xchtmlreport --result-reader "$reader" \
+    Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult \
+    -o "/tmp/check-$reader" >/dev/null
+  echo "$reader exit=$? groups=$(grep -c 'test-summary-group' "/tmp/check-$reader/index.html")"
+done
 ```
 
-Expected: exit 0 and a non-zero count.
+Expected: both exit 0. The two group counts must **differ** — legacy renders the
+extra `Selected tests` / `*.xctest` wrapper levels and modern does not. Equal
+counts mean the flag is not reaching `Summary` and both runs used one backend.
 
 - [ ] **Step 6: Commit**
 
