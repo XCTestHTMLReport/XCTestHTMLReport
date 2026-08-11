@@ -1,8 +1,10 @@
 TestResults*
 RetryResults*
 SanityResults*
+MacOSResults*
 .DS_Store
 /.build
+/XCTestHTMLReportSampleApp/MacOSResultFixture/.build
 /XCTestHTMLReportSampleApp/Build
 /XCTestHTMLReportSampleApp/.derivedData
 /Packages

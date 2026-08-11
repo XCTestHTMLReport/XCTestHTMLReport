@@ -16,6 +16,38 @@ final class CoreTests: XCTestCase {
             .url(forResource: "TestResults", withExtension: "xcresult")
     }
 
+    var macOSResultsUrl: URL? {
+        Bundle.testBundle
+            .url(forResource: "MacOSResults", withExtension: "xcresult")
+    }
+
+    func testRunDestinationUsesPlatformNameFromSDK() throws {
+        let fixtures = try [
+            (XCTUnwrap(testResultsUrl), "iOS"),
+            (XCTUnwrap(macOSResultsUrl), "macOS"),
+        ]
+
+        for (resultsUrl, platform) in fixtures {
+            let summary = Summary(
+                resultPaths: [resultsUrl.path],
+                renderingMode: .linking,
+                downsizeImagesEnabled: false,
+                downsizeScaleFactor: 0.5
+            )
+
+            let document = try SwiftSoup.parse(summary.html)
+            let deviceOS = try XCTUnwrap(document.select("li.device-os").first()).text()
+
+            XCTAssertNotNil(
+                deviceOS.range(
+                    of: #"^\#(platform) \d+(?:\.\d+)+$"#,
+                    options: .regularExpression
+                ),
+                "Expected the platform name and version from \(resultsUrl.lastPathComponent), got '\(deviceOS)'"
+            )
+        }
+    }
+
     func testMixedStatusFromTestRetries() throws {
         let retryResultsUrl = try getRetryResultsUrl()
 
