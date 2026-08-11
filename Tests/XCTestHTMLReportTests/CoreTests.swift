@@ -68,16 +68,21 @@ final class CoreTests: XCTestCase {
             let failed = try XCTUnwrap(texts[3].intGroupMatch("Failed \\((\\d+)\\)"))
             let mixed = try XCTUnwrap(texts[4].intGroupMatch("Mixed \\((\\d+)\\)"))
 
-            // Fixtures are regenerated on every run, so the pass/fail split is
-            // not fixed: the sample UI tests launch the app in setUp with
-            // continueAfterFailure = false, and a slow simulator turns a
-            // would-be pass into a failure. Asserting an exact split therefore
-            // measures simulator reliability rather than this project's
-            // behaviour. Assert only what the source actually determines.
+            // Fixtures are regenerated on every run, so assert only what the
+            // sample sources actually determine, not the pass/fail split.
             //
-            // 16 = 13 XCTest methods + 3 Swift Testing `@Test` functions in
-            // SwiftTestingSuite (SampleAppUnitTests target).
-            XCTAssertEqual(all, 16, "One row per test method; fixed by the sample sources")
+            // The original reason for that caution -- the suites launched the
+            // app in setUp with continueAfterFailure = false, so a slow
+            // simulator turned a would-be pass into a failure -- no longer
+            // applies: #423 removed those launches. The caution stands anyway,
+            // because a run still depends on the simulator behaving, and an
+            // exact split would measure that rather than this project.
+            //
+            // 17 = 14 XCTest methods + 3 Swift Testing `@Test` functions in
+            // SwiftTestingSuite (SampleAppUnitTests target). The 14th is
+            // FirstSuite.testAttachScreenshot, added by #393 to give the image
+            // rendering path a fixture.
+            XCTAssertEqual(all, 17, "One row per test method; fixed by the sample sources")
             XCTAssertEqual(
                 skipped,
                 1,

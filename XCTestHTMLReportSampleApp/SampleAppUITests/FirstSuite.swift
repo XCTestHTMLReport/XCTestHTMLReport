@@ -45,6 +45,26 @@ class FirstSuite: XCTestCase {
         add(html)
     }
 
+    /// Produces the report's only image attachment.
+    ///
+    /// Since Xcode 15 the suites capture screen recordings rather than
+    /// screenshots, so every image path in the tool -- the `screenshot` CSS
+    /// class, the `screenshot.html` template, the image-preview machinery, and
+    /// the `-z` downsizing branch -- had no fixture exercising it at all. See
+    /// #393.
+    ///
+    /// `XCUIScreen.main.screenshot()` captures the simulator screen and does
+    /// NOT require the app to be running. Do not add `XCUIApplication().launch()`
+    /// to make this "more realistic": #423 removed the launches from these
+    /// suites because they were pure flake risk with no fixture value, and a
+    /// screenshot of the idle screen exercises the same `public.png` path.
+    func testAttachScreenshot() {
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = "Screenshot"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
     func testOne() {
         XCTContext.runActivity(named: "Text Attachment") { activity in
             let logs = """

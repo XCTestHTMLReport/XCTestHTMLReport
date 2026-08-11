@@ -59,19 +59,35 @@ final class CliTests: XCTestCase {
         let document = try parseReportDocument(xchtmlreportArgs: defaultArgs + extraArgs)
         let reportDir = testResultsUrl.deletingLastPathComponent()
 
-        // Remove this logic for now since Xcode 15 attaches videos by default.
-        // We'll want to create a separate test result specifically with screenshots enabled
-//        try XCTContext.runActivity(named: "Image attachments exist") { _ in
-//            let imgTags = try document.select("img.screenshot, img.screenshot-flow")
-//            XCTAssertFalse(imgTags.isEmpty())
-//
-//            try imgTags.forEach { img in
-//                let src = try img.attr("src")
-//                XCTAssertTrue(src.starts(with: "TestResults.xcresult/"))
-//                let attachmentUrl = try XCTUnwrap(URL(string: src, relativeTo: reportDir))
-//                XCTAssertNoThrow(try attachmentUrl.checkResourceIsReachable())
-//            }
-//        }
+        // Restored by #393. This was commented out when Xcode 15 began attaching
+        // videos by default, which left every image path in the tool -- the
+        // `screenshot` CSS class, screenshot.html, and the `-z` downsizing
+        // branch -- with no coverage at all. `FirstSuite.testAttachScreenshot`
+        // now attaches a real `public.png`, so these assertions have something
+        // to bite on. If this stops finding images, the fixture lost its
+        // screenshot; do not comment it out again.
+        try XCTContext.runActivity(named: "Image attachments exist") { _ in
+            let imgTags = try document
+                .select("img.screenshot, img.screenshot-flow, img.screenshot-tail")
+            XCTAssertFalse(
+                imgTags.isEmpty(),
+                "No image attachments rendered. Expected at least the screenshot "
+                    + "attached by FirstSuite.testAttachScreenshot."
+            )
+
+            try imgTags.forEach { img in
+                let src = try img.attr("src")
+                XCTAssertTrue(
+                    src.starts(with: "TestResults.xcresult/"),
+                    "Unexpected image src: \(src)"
+                )
+                let attachmentUrl = try XCTUnwrap(URL(string: src, relativeTo: reportDir))
+                XCTAssertNoThrow(
+                    try attachmentUrl.checkResourceIsReachable(),
+                    "Image referenced but not exported: \(src)"
+                )
+            }
+        }
 
         try XCTContext.runActivity(named: "Other attachments exist", block: { _ in
             let spanTags = try document.select("span.icon.preview-icon")
