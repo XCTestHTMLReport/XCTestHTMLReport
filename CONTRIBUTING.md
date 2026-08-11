@@ -7,6 +7,7 @@ Please read it before you start participating.
 
 * [Reporting Issues](#reporting-issues)
 * [Submitting Pull Requests](#submitting-pull-requests)
+* [AI-assisted contributions](#ai-assisted-contributions)
 
 ## Reporting Issues
 
@@ -36,6 +37,9 @@ This information will help  review and fix your issue faster.
 Pull requests are welcome, and greatly encouraged. When submitting a pull request, please add a description that explains what the changes are about. Link the ticket whenever possible.
 
 * As usual, anyone can clone the repository. Then do the fixes/improvements as needed in own repository. When it is finished you can start the request to pull code from your own repo to XCTestHTMLReport repo. 
+
+If you want to take an open issue, comment on it first and I will assign it to
+you. That costs you one line and guarantees your work gets read.
 
 ### Building and testing
 
@@ -79,6 +83,29 @@ changes you have not read. To skip it for one commit:
 git commit --no-verify
 ```
 
+## AI-assisted contributions
 
+Using an AI assistant to write a patch is fine. Much of this project's recent
+work was written that way. What is not fine is submitting code you have not
+read, have not run, or cannot explain.
+
+If you used an assistant, say so in the pull request description. One line is
+enough: which tool, and what it did.
+
+Every pull request, however it was written, clears the same bar:
+
+* You ran `./prepareTestResults.sh && swift test` and the suite passes.
+* You read every line of the diff and can answer questions about it.
+* The change addresses a problem you actually have, or an issue you asked for.
+
+Pull requests that look like automated volume submissions are closed without
+review. The signals are opening against issues you have no stake in, describing
+verification you did not perform, and doing the same thing across many unrelated
+repositories on the same day.
+
+This is not a judgment about machine-written code. Reviewing a patch costs more
+than generating one, and a maintainer's review time is the scarce resource here.
+A patch nobody asked for spends that resource without consent, and it does so
+whether or not the code is any good.
 
 *Some of the ideas and wording for the statements above were based on [AFNetworking](https://github.com/AFNetworking/AFNetworking).
