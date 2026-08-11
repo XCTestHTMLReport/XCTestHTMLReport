@@ -78,11 +78,11 @@ final class CoreTests: XCTestCase {
             // because a run still depends on the simulator behaving, and an
             // exact split would measure that rather than this project.
             //
-            // 17 = 14 XCTest methods + 3 Swift Testing `@Test` functions in
-            // SwiftTestingSuite (SampleAppUnitTests target). The 14th is
-            // FirstSuite.testAttachScreenshot, added by #393 to give the image
-            // rendering path a fixture.
-            XCTAssertEqual(all, 17, "One row per test method; fixed by the sample sources")
+            // 18 = 15 XCTest methods + 3 Swift Testing `@Test` functions in
+            // SwiftTestingSuite (SampleAppUnitTests target). The latest is
+            // FirstSuite.testAttachDeletedOnSuccess, whose passing attachment
+            // retains metadata but has no payload.
+            XCTAssertEqual(all, 18, "One row per test method; fixed by the sample sources")
             XCTAssertEqual(
                 skipped,
                 1,

@@ -65,6 +65,13 @@ class FirstSuite: XCTestCase {
         add(screenshot)
     }
 
+    func testAttachDeletedOnSuccess() {
+        let attachment = XCTAttachment(string: "This payload is removed after the test passes")
+        attachment.name = "Deleted on Success"
+        attachment.lifetime = .deleteOnSuccess
+        add(attachment)
+    }
+
     func testOne() {
         XCTContext.runActivity(named: "Text Attachment") { activity in
             let logs = """

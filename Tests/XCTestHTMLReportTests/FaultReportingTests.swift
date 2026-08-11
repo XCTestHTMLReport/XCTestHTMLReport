@@ -36,7 +36,7 @@ final class FaultReportingTests: XCTestCase {
         XCTAssertEqual(summary.faults, [], "Clean fixture must not produce faults")
     }
 
-    func testValidateFlagsUnresolvedAttachments() throws {
+    func testValidateIgnoresPayloadlessAttachments() throws {
         let url = try XCTUnwrap(
             Bundle.testBundle.url(forResource: "TestResults", withExtension: "xcresult")
         )
@@ -49,14 +49,27 @@ final class FaultReportingTests: XCTestCase {
             downsizeScaleFactor: 0.25,
             faultCollector: collector
         )
+
+        let payloadlessAttachments = summary.allAttachments.filter { attachment in
+            guard attachment.payloadId == nil else {
+                return false
+            }
+            if case .none = attachment.content {
+                return true
+            }
+            return false
+        }
+        XCTAssertFalse(
+            payloadlessAttachments.isEmpty,
+            "Fixture must contain an attachment whose payload was deleted after a passing test"
+        )
+
         summary.validate()
 
-        // Every attachment the model knows about must have resolved to real
-        // content. An unresolved one renders as an empty src.
         let unresolved = summary.faults.filter { $0.kind == .unresolvedAttachment }
         XCTAssertEqual(
             unresolved, [],
-            "Unresolved attachments: \(unresolved.map(\.detail))"
+            "Payload-less attachments must not be reported as unresolved: \(unresolved.map(\.detail))"
         )
     }
 
