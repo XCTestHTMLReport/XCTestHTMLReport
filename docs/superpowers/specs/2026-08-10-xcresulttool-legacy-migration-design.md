@@ -222,6 +222,39 @@ Any hard failure of a legacy command also demotes the backend to modern, so a
 version string that changes shape unexpectedly degrades to working rather than
 broken.
 
+## Deciding the model before the port
+
+`ParsedResult` is the one artifact this migration could end up building twice.
+Shaped so the current templates render unchanged, it is not backend-neutral —
+it is legacy-shaped, and the modern reader spends its life supplying `nil` for
+fields that exist only because the old UI reads them.
+
+The redesign's *visual* work is a sibling workstream and does not gate this one.
+Its **information model** does, because that is what the port encodes. So a
+bounded set of questions gets answered before Task 3 writes the model:
+per-activity durations, activity types, `ObjectClass`, attachment typing, status
+representation, Swift Testing arguments, insights and metrics, and whether
+test-case duration sums repetitions.
+
+Direction of the win: each answer either removes a field from the port or an
+entry from the differential allow-list. Deliberately holding the legacy backend
+down to the modern backend's capability makes the two agree, and an unmasked
+diff proves more than a masked one. The cost is one-way and honest — the legacy
+backend stops rendering some things it could have — but it is a 4.0 behaviour
+change made once and visible in the model, rather than a permanent asymmetry
+hidden behind a mask.
+
+**Task 2.5 of the implementation plan carries the questions and a recommended
+answer for each. Its output belongs here**, as a subsection recording the final
+answers with a one-line rationale each. Task 3 and Task 12 are both read against
+that record, so it must not live only in the plan.
+
+Non-negotiable regardless of how the answers land: **no reader code whose only
+purpose is to satisfy the render-level diff.** If `ModernResultReader` is ever
+tempted to fabricate an `activityType`, the port is wrong, not the reader. The
+current templates are a verification scaffold with a retirement date, not a
+compatibility target.
+
 ## Parity rules
 
 These are the places where a naive port silently changes output.
@@ -393,12 +426,13 @@ both paths are exercised on every PR while legacy still exists.
 
 Each phase leaves `main` shippable and green.
 
-0. **Prerequisite: #430 lands.** Deterministic identifiers are not a nice-to-have
-   for this work — without them the differential in phase 3 cannot distinguish a
-   reader regression from ordinary identifier churn. #430 is open and green
-   except for the `test` leg. Do not start phase 1 against a tree where renders
-   are still nondeterministic; the phase-1 "output byte-identical" gate below
-   depends on it.
+0. **Prerequisite: #430 — merged 2026-08-11 (`a28b131`).** Deterministic
+   identifiers are not a nice-to-have for this work: without them the
+   differential in phase 3 cannot distinguish a reader regression from ordinary
+   identifier churn, and the phase-1 "output byte-identical" gate is unusable.
+   Satisfied; branch from a `main` at or after that commit.
+0b. **Settle the information model** before `ParsedResult` is written. See
+   "Deciding the model before the port" below.
 1. **Extract the port.** Introduce `ParsedResult` and `LegacyResultReader`;
    move the models onto `ParsedResult`. XCResultKit still present, still the
    only backend. Pure refactor — all 23 tests green, output byte-identical

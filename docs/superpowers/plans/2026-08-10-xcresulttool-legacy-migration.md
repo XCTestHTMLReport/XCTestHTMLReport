@@ -21,12 +21,12 @@ issue), `xcrun xcresulttool`.
 
 ## Global Constraints
 
-- **Prerequisite: [PR #430](https://github.com/XCTestHTMLReport/XCTestHTMLReport/pull/430)
-  must land before Task 1.** It makes report identifiers deterministic
+- **Prerequisite [PR #430](https://github.com/XCTestHTMLReport/XCTestHTMLReport/pull/430):
+  merged 2026-08-11 as `a28b131`.** It makes report identifiers deterministic
   (`IdentifierPath`, lowercase `[0-9a-f]{32}`), which every comparison in this
-  plan depends on. It also creates
-  `Tests/XCTestHTMLReportTests/ReproducibilityTests.swift` — the same path Task 1
-  creates. Rebase onto it; do not re-create that file.
+  plan depends on, and it ships
+  `Tests/XCTestHTMLReportTests/ReproducibilityTests.swift`. Branch from a `main`
+  at or after that commit, and append to that file rather than creating it.
 - This work targets **milestone 4.0**, not 3.0. 3.0.0 shipped 2026-08-07.
 - `Sources/XCTestHTMLReportCore/Classes/HTMLTemplates.swift` is excluded from
   SwiftFormat and SwiftLint. **Never edit it.** No task in this plan changes
@@ -326,6 +326,141 @@ until Task 5 is verified** — a new fixture generation invalidates this baselin
 ```bash
 swiftformat . && git add Tests/XCTestHTMLReportTests/BaselineCaptureTests.swift
 git commit -m "test: add opt-in baseline render capture for refactor guarding"
+```
+
+---
+
+## Task 2.5: Settle the information model before the port
+
+**This is a decision task, not a code task.** It produces answers, and those
+answers change Task 3's model and Task 12's allow-list.
+
+`ParsedResult` is the artifact this migration would otherwise have to build
+twice. Shaped to let the current templates render unchanged, it is not
+backend-neutral — it is legacy-shaped, and the modern reader spends its life
+filling in `nil` for fields that exist only because the old UI reads them. The
+tell is already in the codebase: `ObjectClass` carries raw values
+`IDESchemeActionTestSummaryGroup` and `IDESchemeActionTestSummary` — Xcode's
+internal class names, rendered directly into CSS class names.
+
+The 4.0 redesign is a sibling workstream (see the spec header), and its *visual*
+design must not gate this work. But its **information model** — which facts the
+report shows, at what granularity — is exactly what `ParsedResult` encodes, and
+answering that is an afternoon, not a design phase.
+
+Note the direction of the win. Every question below either removes a field from
+the port or removes an entry from the differential allow-list. Deliberately
+holding the legacy backend down to the modern backend's capability makes the two
+agree, which makes the differential *stronger* — a masked diff proves less than
+an unmasked one. The cost is honest and one-way: the legacy backend stops
+rendering things it could have rendered. That is a 4.0 behaviour change, made
+once, visible in the model, rather than a permanent asymmetry papered over by a
+mask.
+
+**Files:**
+- Modify: `docs/superpowers/specs/2026-08-10-xcresulttool-legacy-migration-design.md`
+  (record the answers under "Deciding the model before the port")
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces: the decisions Task 3 encodes and Task 12 allow-lists.
+
+### The decisions
+
+Recommended answers below. Each is a default to edit, not a conclusion.
+
+| # | Question | Recommendation |
+| --- | --- | --- |
+| 1 | Per-activity durations? | **No.** Drop `ParsedActivity.finish`. |
+| 2 | The five activity-type visual states? | **No.** Drop `ParsedActivity.activityType`; keep `isFailure`. |
+| 3 | `ObjectClass` in the new model? | **No.** Delete the type in Task 5. |
+| 4 | Attachment UTI as its own field? | **No.** Keep `filenameExtension` only; derive type from it on both backends. |
+| 5 | Status as a legacy raw string? | **No.** Neutral enum; both readers map into it. |
+| 6 | Swift Testing `Arguments`? | **Yes, now.** It is a tree reshape, expensive later. |
+| 7 | Insights / metrics? | **No, not now.** Additive at top level, cheap later. |
+| 8 | Test-case duration sums repetitions? | **Yes**, keep today's behaviour. |
+
+**1 — Per-activity durations.** The modern format publishes `startTime` only, so
+the honest render is no duration at all rather than `(0.00s)`. Dropping `finish`
+from the port deletes the `durations` allow-list entry outright: with no field,
+there is no divergence to mask. The alternative — inferring duration from the
+next sibling's `startTime` — is already out of scope in the spec, and would put
+a fabricated number in front of users.
+
+**2 — Activity types.** Of the five constants, `attachmentContainer` already
+renders no CSS class, and `assertionFailure` is fully covered by `isFailure`,
+which both backends provide. That leaves `internal`, `userCreated`,
+`deletedAttachment`, and `skippedTest`. The genuinely useful one is
+`userCreated` — activities the test author wrote via `XCTContext.runActivity`,
+as against framework noise — and the modern format has no source for it at any
+fidelity. Modelling a field exactly one backend can populate is the anti-pattern
+this task exists to catch. Drop it, delete the `activityTypeClasses` allow-list
+entry, and let the redesign decide what visual weight user-authored steps get
+from data that will actually exist.
+
+**3 — `ObjectClass`.** Legacy Xcode internals in a CSS class name. It has no
+modern equivalent and no reason to acquire one. Task 5 deletes it rather than
+threading it through the port.
+
+**4 — Attachment typing.** `uniformTypeIdentifier` exists on legacy and not on
+modern, and `AttachmentType` needs only enough to pick a template and a MIME
+type. Derive both from the file extension on both backends — legacy maps its
+UTI down to an extension — and attachment typing becomes identical rather than
+allow-listed. `UTType(filenameExtension:)` does the work; the TODO at
+`Attachment.swift:24` was already pointing here.
+
+**5 — Status.** `statusRawValue: String` carries legacy spellings
+(`"Success"`, `"Failure"`), so the modern reader would have to emit legacy
+strings it never saw — fabricating legacy shape, which is the line this task
+draws. Replace with a neutral enum; each reader maps into it
+(`Success`/`Passed` → `.passed`, and so on). The spec's status-mapping table
+becomes the definition of both mappings rather than a note about one.
+
+**6 — Swift Testing arguments.** The modern format has `Arguments`,
+`Expression`, and `Test Value` node types with no legacy counterpart. A
+parameterized `@Test` currently collapses to one row; without a slot it stays
+collapsed and the port has to be reshaped to add one later. Add
+`ParsedTestCase.arguments: [String]` now — empty on legacy, empty for
+non-parameterized tests. This is the one place where adding beats deferring,
+because it is *inside* the tree.
+
+**7 — Insights and metrics.** The opposite case: both are separate documents
+from separate subcommands, and both attach at the top of `ParsedResult` beside
+`runs`. Adding a top-level field later is cheap and local; reshaping the tree is
+not. Leave them out, and do not add empty slots for them.
+
+**8 — Test-case duration.** The modern Test Case node reports its own duration,
+which is not the sum of its repetitions — measured on `RetryResults`,
+`testJustFail()` reports 0.065s against repetitions of 0.063s and 0.068s.
+`TestCase.duration` sums today. Keep summing, computed in the renderer from
+`ParsedIteration.duration`, so both backends agree by construction and the
+node's own value is simply unused.
+
+- [ ] **Step 1: Decide**
+
+Work the table. Change any answer; the point is that each is decided
+deliberately before the port exists, not that these particular defaults win.
+
+- [ ] **Step 2: Record the decisions in the spec**
+
+Add a "Deciding the model before the port" section to the design spec holding
+the final answers and a one-line rationale each. Task 3 and Task 12 are read
+against it, so it must not live only in this plan.
+
+- [ ] **Step 3: Propagate**
+
+- [ ] Amend the Task 3 model to match every answer.
+- [ ] Remove the allow-list entries the answers void — on these defaults,
+      `activityTypeClasses` and `durations` go, leaving
+      `attachmentDisplayNames`, `failureTitlePrefix`, and `wrapperGroups`.
+- [ ] Update the spec's "not a superset" table so voided rows read as decisions
+      rather than losses.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add docs/superpowers/
+git commit -m "docs: settle the information model before writing ParsedResult"
 ```
 
 ---
