@@ -1,0 +1,103 @@
+# TEMPORARY — measurement only, for #412. Delete before merging this PR.
+#
+# Cross-run wall clock cannot measure a change in this repository: identical
+# code has varied 1.8x between runners (see #412). This job therefore runs both
+# the old and new fixture generators on the SAME runner, back to back, in
+# counterbalanced order (old, new, new, old) so ordering effects cancel.
+name: AB 412
+
+on:
+  pull_request:
+    paths:
+      - 'prepareTestResults.sh'
+      - '.github/workflows/ab-412.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ab:
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+
+    - name: Setup Xcode version
+      uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+      with:
+        xcode-version: latest-stable
+
+    - name: Extract the baseline generator from main
+      run: |
+        git show origin/main:prepareTestResults.sh > /tmp/old-prepare.sh
+        chmod +x /tmp/old-prepare.sh
+        cp prepareTestResults.sh /tmp/new-prepare.sh
+        chmod +x /tmp/new-prepare.sh
+
+    - name: Run A/B
+      run: |
+        set -u
+        results=""
+
+        reset_state() {
+          # Both generators must start from the same cold state, or whichever
+          # runs second wins on a warm build cache / booted simulator.
+          rm -rf ~/Library/Developer/Xcode/DerivedData || true
+          rm -rf XCTestHTMLReportSampleApp/.derivedData || true
+          rm -rf Tests/XCTestHTMLReportTests/Resources/*.xcresult || true
+          xcrun simctl shutdown all 2>/dev/null || true
+          sleep 5
+        }
+
+        run_variant() {
+          variant="$1"
+          label="$2"
+          reset_state
+          start=$(date +%s)
+          if ! "/tmp/${variant}-prepare.sh" > "/tmp/${label}.log" 2>&1; then
+            echo "::warning::${label} (${variant}) exited non-zero"
+          fi
+          end=$(date +%s)
+          elapsed=$((end - start))
+          echo "${label} ${variant} ${elapsed}s"
+          results="${results}${label}|${variant}|${elapsed}"$'\n'
+
+          # A run that produced no usable fixtures is not a fast run, it is a
+          # broken one. Record the bundle count so the timing can be trusted.
+          count=$(find Tests/XCTestHTMLReportTests/Resources -maxdepth 1 -name '*.xcresult' | wc -l | tr -d ' ')
+          echo "  bundles produced: ${count}"
+          results="${results}${label}|bundles|${count}"$'\n'
+        }
+
+        run_variant old  run1
+        run_variant new  run2
+        run_variant new  run3
+        run_variant old  run4
+
+        {
+          echo "## #412 A/B — same runner, counterbalanced"
+          echo
+          echo '| run | variant | seconds | bundles |'
+          echo '| --- | --- | --- | --- |'
+          printf '%s\n' "$results" | awk -F'|' '
+            $2=="bundles" { b[$1]=$3; next }
+            NF==3 { order[++n]=$1; v[$1]=$2; s[$1]=$3 }
+            END { for (i=1;i<=n;i++) { r=order[i]; printf "| %s | %s | %s | %s |\n", r, v[r], s[r], b[r] } }
+          '
+          echo
+          echo "Runner: $(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo unknown), $(sysctl -n hw.ncpu) cores"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        printf '%s\n' "$results"
+
+    - name: Upload generator logs
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: ab-412-logs
+        path: /tmp/run*.log
+        retention-days: 7
