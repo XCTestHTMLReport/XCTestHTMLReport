@@ -891,10 +891,12 @@ Subprocess plumbing for the modern backend, with the schema version pinned.
 - Create: `Tests/XCTestHTMLReportTests/XCResultToolClientTests.swift`
 
 **Interfaces:**
-- Produces: `XCResultToolClient(bundleURL: URL)` with
+- Produces: the `XCResultToolInvoking` protocol, and
+  `XCResultToolClient(bundleURL: URL)` conforming to it with
   `func json<T: Decodable>(_ arguments: [String], as: T.Type) throws -> T`,
-  `func run(_ arguments: [String]) throws -> Data`, and
-  `static var legacyCommandsAvailable: Bool`.
+  `func run(_ arguments: [String]) throws -> Data`, plus
+  `static var legacyCommandsAvailable: Bool`. Task 8 depends on the protocol to
+  inject a failing client.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -981,7 +983,15 @@ enum XCResultToolError: Error, CustomStringConvertible {
     }
 }
 
-struct XCResultToolClient {
+/// Seam for injecting a failing client in tests. `ModernResultReader` degrades
+/// rather than aborting when a subcommand fails, so the only way to prove the
+/// degradation is reported is to make a subcommand fail on demand.
+protocol XCResultToolInvoking {
+    func run(_ arguments: [String]) throws -> Data
+    func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T
+}
+
+struct XCResultToolClient: XCResultToolInvoking {
     /// The schema this reader was written against. Bump deliberately, with a
     /// differential run, never as a reflex to a decode failure.
     static let schemaVersion = "0.1.0"
@@ -1396,6 +1406,49 @@ final class ModernResultReaderTests: XCTestCase {
         XCTAssertNil(Status(rawValue: "Expected Failure"))
     }
 
+    /// A failed activities query degrades to an empty activity list. That is
+    /// only acceptable because it is *reported*: without the fault the CLI
+    /// exits 0 on a report whose tests have no activities at all.
+    func testFailedActivitiesQueryRecordsAFault() throws {
+        let url = try XCTUnwrap(
+            Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
+        )
+
+        /// Passes everything through to the real tool except `activities`,
+        /// which always fails.
+        struct ActivitiesFailingClient: XCResultToolInvoking {
+            let wrapped: XCResultToolClient
+
+            func run(_ arguments: [String]) throws -> Data {
+                try wrapped.run(arguments)
+            }
+
+            func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
+                if arguments.contains("activities") {
+                    throw XCResultToolError.executionFailed(
+                        arguments: arguments, status: 1, stderr: "injected failure"
+                    )
+                }
+                return try wrapped.json(arguments, as: type)
+            }
+        }
+
+        let collector = FaultCollector()
+        let reader = ModernResultReader(
+            client: ActivitiesFailingClient(wrapped: XCResultToolClient(bundleURL: url)),
+            payloadStore: nil,
+            faultCollector: collector
+        )
+        let result = try XCTUnwrap(reader.read())
+
+        // The read still succeeds — degraded, not aborted.
+        XCTAssertFalse(testCases(in: result).isEmpty)
+        XCTAssertTrue(
+            collector.faults.contains { $0.kind == .missingActivities },
+            "A failed activities query must be reported, not swallowed"
+        )
+    }
+
     func testTreeIsFlatWithoutLegacyWrapperGroups() throws {
         let result = try read("TestResults")
         let targets = result.runs.flatMap(\.testables).map(\.targetName).sorted()
@@ -1441,8 +1494,10 @@ Expected: FAIL — `cannot find 'ModernResultReader' in scope`.
 import Foundation
 
 struct ModernResultReader: ResultReader {
-    let client: XCResultToolClient
+    let client: XCResultToolInvoking
     let payloadStore: ModernPayloadStore?
+    /// The collector `Summary.init` owns, so a fault recorded here reaches
+    /// `summary.faults` and drives the CLI's exit-3 degradation path.
     let faultCollector: FaultCollector
 
     func read() -> ParsedResult? {
@@ -1608,9 +1663,11 @@ struct ModernResultReader: ResultReader {
 swift test --filter ModernResultReaderTests
 ```
 
-Expected: PASS, 4 tests. If `testRepetitionsBecomeIterations` reports one
+Expected: PASS, 5 tests. If `testRepetitionsBecomeIterations` reports one
 iteration, `repetitions` is not matching — confirm `nodeType` is exactly
-`"Repetition"`.
+`"Repetition"`. If `testFailedActivitiesQueryRecordsAFault` fails, the
+collector reaching the reader is not the one recording — check that
+`Summary.init` passes its own collector rather than constructing a new one.
 
 - [ ] **Step 5: Commit**
 
