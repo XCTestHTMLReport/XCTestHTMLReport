@@ -52,7 +52,7 @@ Numbers and shapes are observations, not estimates.
 | attachment `filename` | `name` | maps, renamed |
 | attachment `uniformTypeIdentifier` | absent | derived from `exportedFileName` extension |
 | attachment `payloadRef.id` | `payloadId` | present, but payload-by-id export is itself a legacy command |
-| `ActionTestFailureSummary.fileName` / `.lineNumber` / `.issueType` | one string: `"RetryTests.swift:31: XCTAssertTrue failed"` | **lost as structure** |
+| `ActionTestFailureSummary.fileName` / `.lineNumber` / `.issueType` | one string on the `Failure Message` node: `"RetryTests.swift:31: XCTAssertTrue failed"` | **lost as structure**, text preserved |
 | log section `emittedOutput` | absent; structured `messages` instead | **lost** |
 | `exportRecursiveJson()` (drives `--json`) | no equivalent | **no replacement** |
 | repetitions (duplicate siblings + `repetitionPolicySummary`) | first-class `nodeType: "Repetition"` | **improved** |
@@ -249,11 +249,26 @@ rather than by users.
 Legacy gives `fileName`, `lineNumber`, `issueType`, `message` as fields, which
 `Activity.init(failureSummary:)` formats as
 `"<issueType> at <file>:<line>:<message>"`. Modern gives one pre-joined string.
-The modern reader populates `message` with that string and leaves
-`fileName`/`lineNumber`/`issueType` nil, producing a shorter title. It does
-**not** regex the file and line back out — that would build a visible UI
-element on an inferred parse of a string Apple can reformat without notice.
-This is a declared entry in the diff allow-list.
+
+**Which document that string comes from matters.** The two sources are not
+equivalent — measured on `TestResults`:
+
+| Source | `FirstSuite/testTwo()` failure text |
+| --- | --- |
+| `get test-results tests`, `Failure Message` node | `FirstSuite.swift:66: XCTAssertTrue failed - Test failed` |
+| `get test-results activities`, activity title | `XCTAssertTrue failed - Test failed` |
+
+The activities document drops the file and line entirely. The modern reader
+therefore sources failure text from the `Failure Message` nodes, which retain
+it, and appends those to the activity list. Skipped tests carry their reason on
+the same node (`Test skipped - Test skipped`).
+
+What remains lost is the *structure*: the reader populates the title with the
+string as given and leaves `fileName`/`lineNumber`/`issueType` nil rather than
+regexing them back out, since that would build visible UI on an inferred parse
+of a format Apple can reformat without notice. The residual difference — legacy
+renders `Assertion Failure at FirstSuite.swift:66:...`, modern renders
+`FirstSuite.swift:66: ...` — is a declared entry in the diff allow-list.
 
 ## `--json` becomes our own schema
 
@@ -347,6 +362,16 @@ Out of scope, deliberately:
   durations inferred from sibling `startTime`s, attachment names recovered from
   child-activity titles).
 - Raising the macOS 10.15 floor or the Swift 5.5 tools version.
+- Multi-destination result bundles. `prepareTestResults.sh` boots one
+  simulator, so no fixture exercises more than one destination. The modern
+  reader emits one run per reported device, matching legacy's
+  one-run-per-`ActionRecord`, but that mapping is written from the format and
+  **not verified against a two-destination bundle**. The differential asserts
+  run-count parity so a divergence fails loudly; that is the most the current
+  fixtures allow, and the path should not be described as tested.
+- Subprocess timeouts. Neither backend bounds how long `xcresulttool` may run;
+  XCResultKit does not either, so this is not a regression. A hang would hang
+  the tool. Worth its own issue rather than being folded in here.
 - Build-results, code-coverage, and insights subcommands of the new format —
   the report does not surface them. `ResultFile.getCodeCoverage()` is dead code
   today (defined, never called) and is deleted rather than ported.

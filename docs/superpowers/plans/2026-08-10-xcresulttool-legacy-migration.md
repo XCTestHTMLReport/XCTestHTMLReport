@@ -989,6 +989,8 @@ enum XCResultToolError: Error, CustomStringConvertible {
 protocol XCResultToolInvoking {
     func run(_ arguments: [String]) throws -> Data
     func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T
+    /// Identifies the bundle in log messages.
+    var bundleDescription: String { get }
 }
 
 struct XCResultToolClient: XCResultToolInvoking {
@@ -997,6 +999,8 @@ struct XCResultToolClient: XCResultToolInvoking {
     static let schemaVersion = "0.1.0"
 
     let bundleURL: URL
+
+    var bundleDescription: String { bundleURL.lastPathComponent }
 
     func run(_ arguments: [String]) throws -> Data {
         let process = Process()
@@ -1054,14 +1058,24 @@ struct XCResultToolClient: XCResultToolInvoking {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = ["xcresulttool", "version"]
         let pipe = Pipe()
+        let errorPipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe()
+        process.standardError = errorPipe
         do {
             try process.run()
         } catch {
             return false
         }
+        // Drain stderr too. An undrained pipe that fills blocks the child in
+        // write() forever, and this probe runs before anything else works.
+        let errorDrained = DispatchGroup()
+        errorDrained.enter()
+        DispatchQueue.global().async {
+            _ = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            errorDrained.leave()
+        }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        errorDrained.wait()
         process.waitUntilExit()
         let text = String(data: data, encoding: .utf8) ?? ""
         return text.contains("legacy commands format version")
@@ -1327,6 +1341,14 @@ case missingActivities
 to `Status.unknown` downstream because `Status` has no matching raw value.
 That is today's legacy behavior and must be reproduced, **not fixed**.
 
+**Coverage limit, stated plainly.** `prepareTestResults.sh` boots one
+simulator, so every fixture has exactly one destination. Multi-destination
+behaviour is therefore **not covered by the fixture suite** — the run-per-device
+mapping is written from the format, not verified against a two-destination
+bundle. `testRunCountsMatchAcrossBackends` makes a divergence fail loudly rather
+than pass silently, which is the most the current fixtures allow. Do not claim
+this path is tested.
+
 **Rule 2 — multi-repetition status.** A Test Case node carries its own
 `result`, which is **not** the legacy status. `testRetryOnFailure()` has
 `result: "Passed"` with children `Failed` then `Passed`; legacy reports
@@ -1419,6 +1441,8 @@ final class ModernResultReaderTests: XCTestCase {
         struct ActivitiesFailingClient: XCResultToolInvoking {
             let wrapped: XCResultToolClient
 
+            var bundleDescription: String { wrapped.bundleDescription }
+
             func run(_ arguments: [String]) throws -> Data {
                 try wrapped.run(arguments)
             }
@@ -1505,13 +1529,6 @@ struct ModernResultReader: ResultReader {
             let tests = try client.json(
                 ["get", "test-results", "tests"], as: TestResultsTests.self
             )
-            let device = tests.devices?.first
-            let destination = ParsedDestination(
-                displayName: device?.deviceName ?? "",
-                deviceIdentifier: device?.deviceId ?? "",
-                modelName: device?.modelName ?? "",
-                operatingSystemVersion: device?.osVersion ?? ""
-            )
             let testables = (tests.testNodes ?? [])
                 .flatMap { $0.children ?? [] }
                 .filter { Self.bundleNodeTypes.contains($0.nodeType ?? "") }
@@ -1521,13 +1538,29 @@ struct ModernResultReader: ResultReader {
                         groups: (bundle.children ?? []).map(parseGroup)
                     )
                 }
-            return ParsedResult(runs: [
+
+            // One run per destination, matching legacy's one-run-per-ActionRecord.
+            // Collapsing to `devices.first` would silently drop every extra
+            // destination in a multi-simulator test plan — and because the
+            // fixture suite runs on a single simulator, nothing here would
+            // catch it. `testRunCountsMatchAcrossBackends` is the guard.
+            let devices = tests.devices ?? []
+            guard !devices.isEmpty else {
+                Logger.warning("No destinations reported for \(client.bundleDescription)")
+                return ParsedResult(runs: [])
+            }
+            return ParsedResult(runs: devices.map { device in
                 ParsedRun(
-                    destination: destination,
+                    destination: ParsedDestination(
+                        displayName: device.deviceName ?? "",
+                        deviceIdentifier: device.deviceId ?? "",
+                        modelName: device.modelName ?? "",
+                        operatingSystemVersion: device.osVersion ?? ""
+                    ),
                     logReference: "action",
                     testables: testables
-                ),
-            ])
+                )
+            })
         } catch {
             Logger.warning("Modern reader failed: \(error)")
             return nil
@@ -1554,17 +1587,45 @@ struct ModernResultReader: ResultReader {
         )
     }
 
+    /// `Failure Message` children carry `File.swift:66: message`, which the
+    /// activities document does not — its titles drop the file and line
+    /// entirely. Measured on `TestResults`: the tests tree gives
+    /// `"FirstSuite.swift:66: XCTAssertTrue failed - Test failed"` where
+    /// activities gives only `"XCTAssertTrue failed - Test failed"`. Sourcing
+    /// failures from here is strictly closer to legacy, which formats
+    /// `"<issueType> at <file>:<line>:<message>"`.
+    ///
+    /// Skipped tests use the same node (`"Test skipped - Test skipped"`).
+    private func failureActivities(_ node: TestNode) -> [ParsedActivity] {
+        (node.children ?? [])
+            .filter { $0.nodeType == "Failure Message" }
+            .map { message in
+                ParsedActivity(
+                    title: message.name ?? "",
+                    activityType: nil,
+                    isFailure: true,
+                    start: nil,
+                    finish: nil,
+                    attachments: [],
+                    subActivities: []
+                )
+            }
+    }
+
     private func parseTestCase(_ node: TestNode) -> ParsedTestCase {
         let repetitions = (node.children ?? []).filter { $0.nodeType == "Repetition" }
         let identifier = node.nodeIdentifier ?? ""
 
         let iterations: [ParsedIteration]
         if repetitions.isEmpty {
+            // Activities first, then the failure messages, matching the
+            // legacy reader's ordering of activitySummaries + failureSummaries.
             iterations = [ParsedIteration(
                 iterationNumber: nil,
                 statusRawValue: Self.status(node.result),
                 duration: node.durationInSeconds ?? 0,
                 activities: activities(for: identifier, iteration: nil)
+                    + failureActivities(node)
             )]
         } else {
             // The parent node's own `result` summarises the retries and is not
@@ -1577,6 +1638,7 @@ struct ModernResultReader: ResultReader {
                     statusRawValue: Self.status(repetition.result),
                     duration: repetition.durationInSeconds ?? 0,
                     activities: activities(for: identifier, iteration: index)
+                        + failureActivities(repetition)
                 )
             }
         }
@@ -2588,6 +2650,14 @@ final class DifferentialTests: XCTestCase {
             XCTAssertEqual(
                 statuses(legacy), statuses(modern),
                 "\(fixture): identifier→status differs between backends"
+            )
+
+            // Assert before zipping: `zip` truncates to the shorter sequence,
+            // so a backend that produced fewer runs would compare equal on the
+            // ones it did produce and pass.
+            XCTAssertEqual(
+                legacy.runs.count, modern.runs.count,
+                "\(fixture): backends disagree on the number of runs"
             )
 
             for (legacyRun, modernRun) in zip(legacy.runs, modern.runs) {
