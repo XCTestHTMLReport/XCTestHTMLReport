@@ -226,9 +226,19 @@ advertises. Exposed as a CLI option (`--result-reader legacy|modern|auto`,
 default `auto`) so the harness can drive it through the existing
 `xchtmlreportCmd` helper.
 
-Any hard failure of a legacy command also demotes the backend to modern, so a
-version string that changes shape unexpectedly degrades to working rather than
-broken.
+Demotion is scoped to **capability detection only**. `auto` and an explicit
+`legacy` both fall back to `modern` when the toolchain does not advertise the
+legacy commands, so a version string that changes shape unexpectedly degrades
+to working rather than broken.
+
+It is deliberately **not** "any hard failure of a legacy command demotes".
+A corrupt bundle, a permission error, a truncated `.xcresult`, or a subprocess
+that dies for an unrelated reason are not evidence that legacy support is
+gone — and silently retrying them on the modern reader would replace a clear
+failure with a partial report that looks fine. Those failures propagate through
+`FaultCollector` (`.missingInvocationRecord`, `.missingActivities`,
+`.payloadExportFailed`) and reach the exit-3 path, exactly as they would if
+only one backend existed.
 
 ## Deciding the model before the port
 
@@ -271,8 +281,23 @@ Task 12 are read against this record rather than against the plan.
 
 Net effect on the port: three fields removed (`finish`, `activityType`,
 `uniformTypeIdentifier`), one field added (`arguments`), one field retyped
-(`statusRawValue` → enum), one existing type deleted (`ObjectClass`). Net effect
-on the differential: the allow-list drops from five entries to three.
+(`statusRawValue` → enum), one existing type deleted (`ObjectClass`).
+
+Net effect on the differential: the allow-list drops from five entries to
+three. Naming them, since this record is what Task 12 is read against —
+`activityTypeClasses` and `durations` are **deleted**, because with no field in
+the port there is no divergence to mask:
+
+| Rule | What still differs | Exercised by |
+| --- | --- | --- |
+| `attachmentDisplayNames` | Modern exposes only the generated filename, so display names fall back to the type-derived label (`Screenshot`, `Video`, `File`). No modern source for the user-supplied name. | `TestResults` — `FirstSuite/testWithSpecialChars()` and `testAttachHtmlData()` both set `XCTAttachment.name` |
+| `failureTitlePrefix` | Legacy renders `<issueType> at <file>:<line>:<message>`; modern's `Failure Message` node gives `<file>:<line>: <message>` pre-joined, with no `issueType`. | `TestResults` — every failing case; `RetryResults` — `testJustFail()` |
+| `wrapperGroups` | Modern omits the legacy `Selected tests` / `All tests` and `<target>.xctest` levels. A deliberate render difference, not a format loss. | `TestResults` — both bundles; `SanityResults` |
+
+Everything outside these three must be byte-identical after masking. An
+addition to this table is a design decision requiring a written justification,
+not a way to quiet a failing differential — and the preferred move is always to
+delete the field from the port instead, as answers 1, 2, and 4 did.
 
 **Answer 6 is not exercised by any fixture.** The authoritative `TestNodeType`
 enum — `xcresulttool get test-results tests --schema` — lists `Arguments`,
@@ -390,6 +415,23 @@ for every user, landing in 4.0 with release notes.
 Rationale: the current output is Apple's internal shape and is disappearing
 regardless. The break is coming either way; doing it deliberately means it
 happens once, on our schedule, rather than twice and by surprise.
+
+**`ParsedResult` is an internal Swift model, not a wire contract.** Deriving
+`--json` from it with a synthesized `Encodable` would publish whatever the type
+happens to look like on the day, and every later field rename would be a silent
+breaking change to a public output. Task 14 must therefore write the contract
+down before it ships, covering at minimum:
+
+- field names and nesting, with a complete worked example from a real fixture
+- enum encoding (`ParsedStatus` as lowercase strings, not ordinals)
+- null versus omitted for every optional — one rule, applied uniformly
+- duration units (seconds as a JSON number) and timestamp format
+- array ordering guarantees, so consumers can diff two reports
+- a top-level schema version, and what a consumer should do when it changes
+
+Until that exists the `--json` change is specified only as "our schema", which
+is not a contract anyone can build against. This is a Task 14 deliverable, not
+a follow-up: the flag is public output, and #391 is where it changes.
 
 ## Verification
 

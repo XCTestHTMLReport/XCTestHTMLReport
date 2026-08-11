@@ -3470,7 +3470,23 @@ swift test --filter JsonReportTests
 
 Expected: FAIL — output still contains `_value`.
 
-- [ ] **Step 3: Make `ParsedResult` `Encodable` and re-point `--json`**
+- [ ] **Step 3: Write the wire contract before writing the encoder**
+
+`--json` is public output. A synthesized `Encodable` publishes whatever the
+Swift type looks like that day, which makes every later field rename a silent
+breaking change for consumers. Document the contract first, in
+`docs/json-schema.md`, covering: field names and nesting with a complete worked
+example from `SanityResults`; `ParsedStatus` encoded as lowercase strings, not
+ordinals; one uniform rule for null-versus-omitted on every optional; durations
+as seconds (JSON number) and timestamps as ISO-8601; array ordering guarantees
+so two reports can be diffed; and a top-level `schemaVersion` with a stated
+policy for what changes bump it.
+
+Write it from the final `ParsedResult`, then make the encoder match the
+document — not the other way round. The spec's `--json` section lists these as
+required.
+
+- [ ] **Step 4: Make `ParsedResult` `Encodable` and re-point `--json`**
 
 Add `: Encodable` to every `Parsed*` type, to `ParsedNode`, and to
 `ParsedStatus` — the last needs `String` raw values so `--json` emits
@@ -3507,7 +3523,7 @@ public func generatedJsonReport() -> String {
 Delete `ResultFile.exportJson()` and its `exportRecursiveJson()` call — the
 last XCResultKit use outside `LegacyResultReader`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 5: Run tests to verify they pass**
 
 ```bash
 swift test --filter JsonReportTests && swift test 2>&1 | tail -5
@@ -3515,7 +3531,7 @@ swift test --filter JsonReportTests && swift test 2>&1 | tail -5
 
 Expected: 2 new tests PASS; full suite green.
 
-- [ ] **Step 5: Confirm XCResultKit is confined to one file**
+- [ ] **Step 6: Confirm XCResultKit is confined to one file**
 
 ```bash
 grep -rln "import XCResultKit" Sources/
@@ -3524,7 +3540,7 @@ grep -rln "import XCResultKit" Sources/
 Expected: exactly
 `Sources/XCTestHTMLReportCore/Classes/ResultReading/Legacy/LegacyResultReader.swift`.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 swiftformat . && git add -A
