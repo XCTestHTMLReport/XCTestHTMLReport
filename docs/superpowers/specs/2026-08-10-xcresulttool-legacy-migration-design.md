@@ -408,9 +408,25 @@ renders `Assertion Failure at FirstSuite.swift:66:...`, modern renders
 `--json` is currently `exportRecursiveJson()`: a raw dump of Apple's internal
 legacy object graph. It has no new-format equivalent.
 
-`--json` will emit the `ParsedResult` model as JSON, with a documented schema,
-**identically on both backends**. This is a breaking change to `--json` output
-for every user, landing in 4.0 with release notes.
+`--json` will emit the `ParsedResult` model as JSON with a documented, versioned
+schema. This is a breaking change to `--json` output for every user, landing in
+4.0 with release notes.
+
+**"Identical across backends" means schema identity, not value identity.** Both
+backends emit the same field names, nesting, enum encoding, and
+`schemaVersion`; every key present on one is present on the other. The *values*
+may differ exactly where the differential allow-list already says they differ,
+and nowhere else:
+
+- `attachment.name` — populated on legacy, `null` on modern
+- failure activity titles — legacy carries the `<issueType> at ` prefix
+- group nesting — legacy has the wrapper levels, modern does not
+- `testCase.arguments` — populated on modern for parameterized Swift Testing
+  cases, always `[]` on legacy
+
+Any other value difference is a bug in a reader, not a permitted variance.
+Stating this matters because the acceptance criteria would otherwise contradict
+the allow-list, which deliberately preserves three render-level differences.
 
 Rationale: the current output is Apple's internal shape and is disappearing
 regardless. The break is coming either way; doing it deliberately means it

@@ -1219,6 +1219,24 @@ Keep the per-id `payloadLockTable` and both `NSLock` comment blocks verbatim.
 They document a real race in XCResultKit's shared-temp-path export, and the
 legacy backend still hits it.
 
+**Fix the missing fault in `exportLogs` while you are in this file.** Its write
+failure path logs and returns nil without recording anything:
+
+```swift
+} catch {
+    Logger.warning("Can't write output to \(url). \(error.localizedDescription)")
+    faultCollector.record(.logExportFailed, "log \(reference)")   // <- was missing
+    return nil
+}
+```
+
+A log that reads but fails to write currently ships a report missing it and
+still exits 0. This is pre-existing rather than introduced by the port, but the
+modern provider has the same shape (Task 9), and leaving one of two
+implementations silent is how the asymmetry survives. Both record; both get
+coverage in `FaultReportingTests` — assert `.logExportFailed` appears when the
+destination cannot be written, on each backend.
+
 - [ ] **Step 4: Build and run the full suite**
 
 ```bash
@@ -1273,8 +1291,8 @@ Subprocess plumbing for the modern backend, with the schema version pinned.
   `XCResultToolClient(bundleURL: URL)` conforming to it with
   `func json<T: Decodable>(_ arguments: [String], as: T.Type) throws -> T`,
   `func run(_ arguments: [String]) throws -> Data`, plus
-  `static var legacyCommandsAvailable: Bool`. Task 8 depends on the protocol to
-  inject a failing client.
+  `static var legacyCapability: LegacyCapability`. Task 8 depends on the
+  protocol to inject a failing client.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1318,7 +1336,7 @@ final class XCResultToolClientTests: XCTestCase {
         // Not asserting a value: it is true on today's toolchains and false
         // once Apple removes the legacy commands. Asserting either would make
         // this test a time bomb. Assert only that detection runs.
-        _ = XCResultToolClient.legacyCommandsAvailable
+        _ = XCResultToolClient.legacyCapability
     }
 }
 ```
@@ -1431,7 +1449,10 @@ struct XCResultToolClient: XCResultToolInvoking {
     /// `xcresulttool version` prints
     /// `... (legacy commands format version: 3.56)` while they exist, and is
     /// expected to drop the parenthetical once they are removed.
-    static let legacyCommandsAvailable: Bool = {
+    ///
+    /// Three outcomes, not two: a version string we cannot parse at all is
+    /// `unknown`, which callers must not treat as proof the commands are gone.
+    static let legacyCapability: LegacyCapability = {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = ["xcresulttool", "version"]
@@ -1456,7 +1477,12 @@ struct XCResultToolClient: XCResultToolInvoking {
         errorDrained.wait()
         process.waitUntilExit()
         let text = String(data: data, encoding: .utf8) ?? ""
-        return text.contains("legacy commands format version")
+        guard process.terminationStatus == 0, text.contains("xcresulttool version") else {
+            // Did not look like a version string at all — say so rather than
+            // reporting absence we have not established.
+            return .unknown
+        }
+        return text.contains("legacy commands format version") ? .available : .unavailable
     }()
 }
 ```
@@ -2417,7 +2443,10 @@ final class ModernPayloadStore: PayloadProviding {
             try text.write(to: destination, atomically: true, encoding: .utf8)
             return relativeURL.appendingPathComponent(fileName)
         } catch {
+            // A log we read but could not write is a genuine failure. Without
+            // the fault the report ships without it and still exits 0.
             Logger.warning("Can't write log to \(destination): \(error)")
+            faultCollector.record(.logExportFailed, "log \(reference)")
             return nil
         }
     }
@@ -2709,7 +2738,7 @@ git commit -m "feat: derive attachment type from file extension when no UTI is a
 
 **Interfaces:**
 - Produces: `public enum ResultBackend: String { case auto, legacy, modern }`
-  with `func resolved() -> ResultBackend`, and a new
+  with `func resolve() -> ResultBackend.Resolution`, `LegacyCapability`, and a new
   `Summary.init(..., backend: ResultBackend = .auto)` parameter appended after
   `faultCollector`.
 
@@ -2725,31 +2754,35 @@ import XCTest
 
 final class ResultBackendTests: XCTestCase {
     func testModernAlwaysResolvesToModern() {
-        XCTAssertEqual(ResultBackend.modern.resolved(), .modern)
+        XCTAssertEqual(ResultBackend.modern.resolve(), .use(.modern))
     }
 
-    func testLegacyDemotesWhenTheToolchainDropsIt() {
-        // Conditional rather than absolute: asserting .legacy -> .legacy
-        // outright would start failing the day Apple removes the commands,
-        // which is precisely when this fallback needs to work.
-        if XCResultToolClient.legacyCommandsAvailable {
-            XCTAssertEqual(ResultBackend.legacy.resolved(), .legacy)
-        } else {
-            XCTAssertEqual(ResultBackend.legacy.resolved(), .modern)
+    func testExplicitLegacyIsNeverSilentlySubstituted() {
+        // The hazard this guards: if an explicit `legacy` quietly became
+        // `modern`, a modern-only host would run the modern reader twice and
+        // the differential would report parity against itself.
+        switch XCResultToolClient.legacyCapability {
+        case .available, .unknown:
+            XCTAssertEqual(ResultBackend.legacy.resolve(), .use(.legacy))
+        case .unavailable:
+            XCTAssertEqual(ResultBackend.legacy.resolve(), .legacyUnavailable)
         }
+        // Never modern, on any host.
+        XCTAssertNotEqual(ResultBackend.legacy.resolve(), .use(.modern))
     }
 
     func testAutoNeverResolvesToAuto() {
-        XCTAssertNotEqual(ResultBackend.auto.resolved(), .auto)
+        XCTAssertNotEqual(ResultBackend.auto.resolve(), .use(.auto))
+        XCTAssertNotEqual(ResultBackend.auto.resolve(), .legacyUnavailable)
     }
 
     func testAutoPrefersLegacyWhileTheToolchainOffersIt() {
         // Conditional on the host toolchain rather than asserted outright, so
         // this keeps passing rather than becoming a time bomb after removal.
-        if XCResultToolClient.legacyCommandsAvailable {
-            XCTAssertEqual(ResultBackend.auto.resolved(), .legacy)
+        if XCResultToolClient.legacyCapability == .available {
+            XCTAssertEqual(ResultBackend.auto.resolve(), .use(.legacy))
         } else {
-            XCTAssertEqual(ResultBackend.auto.resolved(), .modern)
+            XCTAssertEqual(ResultBackend.auto.resolve(), .use(.modern))
         }
     }
 
@@ -2795,6 +2828,14 @@ Expected: FAIL — `cannot find 'ResultBackend' in scope`.
 
 import Foundation
 
+/// Whether this toolchain still offers the `--legacy` commands.
+public enum LegacyCapability {
+    case available
+    case unavailable
+    /// The version string did not parse. Not proof of absence.
+    case unknown
+}
+
 /// Which reader parses result bundles.
 public enum ResultBackend: String, CaseIterable {
     /// Prefer `legacy` while the toolchain still offers the legacy commands.
@@ -2802,27 +2843,36 @@ public enum ResultBackend: String, CaseIterable {
     case legacy
     case modern
 
-    /// Never returns `.auto`.
+    /// Outcome of resolving a request against the toolchain's capability.
+    public enum Resolution: Equatable {
+        case use(ResultBackend)
+        /// An explicit `legacy` request the toolchain cannot honour.
+        case legacyUnavailable
+    }
+
+    /// Only `auto` ever substitutes.
     ///
-    /// `.legacy` is honoured only when the toolchain still offers the legacy
-    /// commands. An explicit `--result-reader legacy` on a toolchain without
-    /// them demotes to `.modern` rather than failing every read: the spec's
-    /// rule is that a legacy command failing degrades to working, not broken.
-    public func resolved() -> ResultBackend {
-        switch self {
-        case .modern:
-            return .modern
-        case .legacy, .auto:
-            guard XCResultToolClient.legacyCommandsAvailable else {
-                if self == .legacy {
-                    Logger.warning(
-                        "This toolchain has no legacy xcresulttool commands; "
-                            + "falling back to the modern reader."
-                    )
-                }
-                return .modern
-            }
-            return .legacy
+    /// An explicit `--result-reader legacy` that cannot be honoured is an
+    /// error, never a silent downgrade. Substituting would let a modern-only
+    /// host run the modern reader twice and report the differential as
+    /// passing — comparing a backend against itself and calling it parity.
+    ///
+    /// `unknown` (an unparseable version string) is not proof of absence:
+    /// `auto` degrades to `.modern` because working beats broken, while an
+    /// explicit `legacy` attempts legacy anyway and lets any resulting command
+    /// failure surface as a fault rather than as a capability signal.
+    public func resolve() -> Resolution {
+        switch (self, XCResultToolClient.legacyCapability) {
+        case (.modern, _):
+            return .use(.modern)
+        case (.legacy, .available), (.legacy, .unknown):
+            return .use(.legacy)
+        case (.legacy, .unavailable):
+            return .legacyUnavailable
+        case (.auto, .available):
+            return .use(.legacy)
+        case (.auto, .unknown), (.auto, .unavailable):
+            return .use(.modern)
         }
     }
 }
@@ -2831,7 +2881,14 @@ public enum ResultBackend: String, CaseIterable {
 In `Summary.init`, build the reader and payload provider per backend:
 
 ```swift
-let resolved = backend.resolved()
+// An explicit `legacy` the toolchain cannot honour is an error, not a
+// substitution — see ResultBackend.resolve().
+guard case let .use(resolved) = backend.resolve() else {
+    throw ValidationError(
+        "--result-reader legacy was requested, but this toolchain no longer "
+            + "provides the legacy xcresulttool commands."
+    )
+}
 let client = XCResultToolClient(bundleURL: url)
 let reader: ResultReader
 let payloads: PayloadProviding
@@ -3137,11 +3194,26 @@ final class DifferentialTests: XCTestCase {
         )
     }
 
+    /// Skips unless *both* backends can actually run, and proves it rather
+    /// than assuming it.
+    ///
+    /// Requesting `.legacy` on a modern-only host must not quietly hand back a
+    /// modern reader: the differential would then compare the modern backend
+    /// against itself and report parity. `resolve()` returns
+    /// `.legacyUnavailable` instead of substituting, and this asserts on that.
     private func requireBothBackends() throws {
-        guard XCResultToolClient.legacyCommandsAvailable else {
+        switch ResultBackend.legacy.resolve() {
+        case .legacyUnavailable:
             throw XCTSkip(
                 "Toolchain has no legacy commands; the differential cannot run. "
                     + "Delete LegacyResultReader and this test together."
+            )
+        case let .use(backend):
+            XCTAssertEqual(
+                backend, .legacy,
+                "Requested the legacy reader and resolved to \(backend). A "
+                    + "substituted backend would make every comparison below "
+                    + "a modern-vs-modern tautology."
             )
         }
     }
@@ -3451,12 +3523,36 @@ final class JsonReportTests: XCTestCase {
         )
     }
 
-    func testShapeIsIdenticalAcrossBackends() throws {
-        guard XCResultToolClient.legacyCommandsAvailable else {
+    /// Schema identity, not value identity — the spec permits four value
+    /// differences and forbids the rest.
+    func testSchemaIsIdenticalAcrossBackends() throws {
+        guard ResultBackend.legacy.resolve() == .use(.legacy) else {
             throw XCTSkip("Needs both backends")
         }
+        let legacy = try json(.legacy)
+        let modern = try json(.modern)
+
+        // Compare the full key structure, not just the top level: a nested
+        // field present on one backend and absent on the other is exactly the
+        // divergence this is meant to catch, and top-level keys never see it.
+        func keyPaths(_ any: Any, prefix: String = "") -> Set<String> {
+            switch any {
+            case let dict as [String: Any]:
+                return dict.reduce(into: Set<String>()) { acc, pair in
+                    acc.insert(prefix + pair.key)
+                    acc.formUnion(keyPaths(pair.value, prefix: prefix + pair.key + "."))
+                }
+            case let array as [Any]:
+                return array.reduce(into: Set<String>()) { acc, element in
+                    acc.formUnion(keyPaths(element, prefix: prefix))
+                }
+            default:
+                return []
+            }
+        }
+        XCTAssertEqual(keyPaths(legacy), keyPaths(modern))
         XCTAssertEqual(
-            Set((try json(.legacy)).keys), Set((try json(.modern)).keys)
+            legacy["schemaVersion"] as? String, modern["schemaVersion"] as? String
         )
     }
 }
@@ -3619,10 +3715,10 @@ step (Task 5 step 1) is a mechanical substitution table with all nine
 signatures spelled out.
 
 **Type consistency.** `normalizeIdentifiers(_:)` (Tasks 1, 12; Task 2 uses none);
-`ResultBackend.resolved()` (Tasks 11, 12, 13); `ParsedIteration.iterationNumber`
+`ResultBackend.resolve()` (Tasks 11, 12, 13); `ParsedIteration.iterationNumber`
 (Tasks 3, 4, 8, 5); `ParsedAttachment.filenameExtension` (Tasks 3, 8, 10);
 `ModernPayloadStore.exportedFileName(uuid:)` (Tasks 8, 9);
-`XCResultToolClient.legacyCommandsAvailable` (Tasks 6, 11, 12, 14). All
+`XCResultToolClient.legacyCapability` (Tasks 6, 11, 12, 14). All
 consistent.
 
 **Non-vacuity.** Four assertions here would pass trivially on empty input, so
