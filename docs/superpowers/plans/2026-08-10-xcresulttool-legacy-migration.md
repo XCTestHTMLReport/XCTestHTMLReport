@@ -41,6 +41,11 @@ issue), `xcrun xcresulttool`.
   provide is **never** a fault.
 - Do not make performance claims. If one is unavoidable, it requires a
   same-runner interleaved A/B, never a cross-run CI wall-clock comparison.
+- Verification steps in this plan pipe into `tail` to trim output, which makes
+  the pipeline report `tail`'s exit status rather than the build's. Run
+  `set -o pipefail` in your shell before working through the plan, or read the
+  printed result rather than trusting `$?`. A silent pass from a failed
+  `swift build` is worse than noisy output.
 
 ---
 
@@ -229,22 +234,38 @@ final class BaselineCaptureTests: XCTestCase {
             atPath: dir, withIntermediateDirectories: true
         )
 
-        for resource in ["TestResults", "SanityResults", "RetryResults"] {
-            guard let url = Bundle.testBundle.url(
-                forResource: resource, withExtension: "xcresult"
-            ) else {
-                continue
-            }
+        let resources = ["TestResults", "SanityResults", "RetryResults"]
+        for resource in resources {
+            // Deliberately not `continue`: a skipped fixture would produce a
+            // partial baseline, and Task 5's `diff -r` reports two partial
+            // directories as identical. Fail here instead.
+            let url = try XCTUnwrap(
+                Bundle.testBundle.url(forResource: resource, withExtension: "xcresult"),
+                "Fixture \(resource).xcresult is missing — run ./prepareTestResults.sh"
+            )
             let html = Summary(
                 resultPaths: [url.path],
                 renderingMode: .linking,
                 downsizeImagesEnabled: false,
                 downsizeScaleFactor: 0.5
             ).generatedHtmlReport()
+            let path = "\(dir)/\(resource).html"
             try normalizeReport(html).write(
-                toFile: "\(dir)/\(resource).html", atomically: true, encoding: .utf8
+                toFile: path, atomically: true, encoding: .utf8
             )
+            let written = try XCTUnwrap(
+                FileManager.default.contents(atPath: path)
+            )
+            XCTAssertFalse(written.isEmpty, "\(resource) captured an empty baseline")
         }
+
+        let captured = try FileManager.default
+            .contentsOfDirectory(atPath: dir)
+            .filter { $0.hasSuffix(".html") }
+        XCTAssertEqual(
+            Set(captured), Set(resources.map { "\($0).html" }),
+            "Baseline must contain exactly one file per fixture"
+        )
     }
 }
 ```
@@ -826,7 +847,9 @@ legacy backend still hits it.
 swift build 2>&1 | tail -20 && swift test 2>&1 | tail -15
 ```
 
-Expected: builds clean; 23 tests, 1 skipped, 0 failures. `Models/*` and
+Expected: builds clean, and **every test passes with zero failures**. The
+count is above the original 23 by this point — Tasks 1, 2, and 4 each added
+tests — so check for `0 failures`, not for a specific total. `Models/*` and
 `Protocols/EmittableOutput.swift` no longer import XCResultKit:
 
 ```bash
@@ -1094,7 +1117,7 @@ final class TestResultsSchemaTests: XCTestCase {
         let decoded = try JSONDecoder().decode(
             TestResultsTests.self, from: Data(json.utf8)
         )
-        let testCase = try XCTUnwrap(decoded.testNodes.first?.children?.first)
+        let testCase = try XCTUnwrap(decoded.testNodes?.first?.children?.first)
         XCTAssertEqual(testCase.nodeType, "Test Case")
         XCTAssertEqual(testCase.children?.count, 2)
         XCTAssertEqual(testCase.children?.map(\.nodeIdentifier), ["1", "2"])
@@ -1111,7 +1134,7 @@ final class TestResultsSchemaTests: XCTestCase {
         """
         let decoded = try JSONDecoder().decode(TestActivities.self, from: Data(json.utf8))
         let attachment = try XCTUnwrap(
-            decoded.testRuns.first?.activities?.first?.attachments?.first
+            decoded.testRuns?.first?.activities?.first?.attachments?.first
         )
         XCTAssertEqual(attachment.uuid, "4DB9AD3F-E485-4F77-9771-8FAC7270E261")
         XCTAssertEqual(attachment.name, "Screen Recording.mp4")
@@ -1166,7 +1189,10 @@ struct TestResultsSummary: Decodable {
 
 struct TestResultsTests: Decodable {
     let devices: [TestResultsDevice]?
-    let testNodes: [TestNode]
+    // Optional with an empty default: xcresulttool omits collection keys
+    // rather than emitting empty arrays, and a bundle with no tests must
+    // decode to an empty result rather than throwing keyNotFound.
+    let testNodes: [TestNode]?
 }
 
 /// One node of the test tree. `nodeType` is the discriminator:
@@ -1186,7 +1212,9 @@ struct TestNode: Decodable {
 struct TestActivities: Decodable {
     let testIdentifier: String?
     let testName: String?
-    let testRuns: [TestRun]
+    /// Optional for the same reason as `TestResultsTests.testNodes`: an
+    /// omitted key must decode, not throw.
+    let testRuns: [TestRun]?
 
     struct TestRun: Decodable {
         let device: TestResultsDevice?
@@ -1270,8 +1298,19 @@ The parity-critical task. Two rules from the spec are load-bearing here.
 
 **Interfaces:**
 - Consumes: `XCResultToolClient` (Task 6), schema (Task 7), `ParsedResult` (Task 3).
-- Produces: `ModernResultReader(client:payloadStore:)` conforming to `ResultReader`.
-  Task 9 supplies `payloadStore`; until then pass `nil`.
+- Produces: `ModernResultReader(client:payloadStore:faultCollector:)` conforming
+  to `ResultReader`. Task 9 supplies `payloadStore`; until then pass `nil`.
+
+**Prerequisite — add the fault kind.** `activities(for:)` records
+`.missingActivities`, which does not exist yet. Add it to `Fault.Kind` in
+`Classes/Helpers/FaultCollector.swift`, alongside the existing cases:
+
+```swift
+/// The activity tree for a test could not be read, so the test appears in
+/// the report with no activities. A genuine read failure, distinct from a
+/// backend that structurally cannot provide a field.
+case missingActivities
+```
 
 **Rule 1 — status mapping.** `Passed`→`Success`, `Failed`→`Failure`,
 `Skipped`→`Skipped`, `Expected Failure`→`Expected Failure`. The last one maps
@@ -1301,7 +1340,9 @@ final class ModernResultReaderTests: XCTestCase {
             Bundle.testBundle.url(forResource: resource, withExtension: "xcresult")
         )
         let reader = ModernResultReader(
-            client: XCResultToolClient(bundleURL: url), payloadStore: nil
+            client: XCResultToolClient(bundleURL: url),
+            payloadStore: nil,
+            faultCollector: FaultCollector()
         )
         return try XCTUnwrap(reader.read())
     }
@@ -1402,6 +1443,7 @@ import Foundation
 struct ModernResultReader: ResultReader {
     let client: XCResultToolClient
     let payloadStore: ModernPayloadStore?
+    let faultCollector: FaultCollector
 
     func read() -> ParsedResult? {
         do {
@@ -1415,7 +1457,7 @@ struct ModernResultReader: ResultReader {
                 modelName: device?.modelName ?? "",
                 operatingSystemVersion: device?.osVersion ?? ""
             )
-            let testables = tests.testNodes
+            let testables = (tests.testNodes ?? [])
                 .flatMap { $0.children ?? [] }
                 .filter { Self.bundleNodeTypes.contains($0.nodeType ?? "") }
                 .map { bundle in
@@ -1515,13 +1557,17 @@ struct ModernResultReader: ResultReader {
                 ["get", "test-results", "activities", "--test-id", identifier],
                 as: TestActivities.self
             )
+            let runs = document.testRuns ?? []
             let run = iteration.map { index in
-                document.testRuns.indices.contains(index)
-                    ? document.testRuns[index] : nil
-            } ?? document.testRuns.first
+                runs.indices.contains(index) ? runs[index] : nil
+            } ?? runs.first
             return (run??.activities ?? []).map(parseActivity)
         } catch {
+            // A failed activities query is a genuine read failure, not a
+            // format limitation: the test renders with no activities at all.
+            // Without a fault the CLI would exit 0 on a visibly gutted report.
             Logger.warning("Can't read activities for \(identifier): \(error)")
+            faultCollector.record(.missingActivities, identifier)
             return []
         }
     }
@@ -1640,7 +1686,7 @@ final class ModernPayloadStoreTests: XCTestCase {
                       as: TestActivities.self)
         )
         let uuid = try XCTUnwrap(
-            url.testRuns.first?.activities?
+            url.testRuns?.first?.activities?
                 .compactMap { $0.attachments?.first?.uuid }.first
         )
         let name = try XCTUnwrap(store.exportedFileName(uuid: uuid))
@@ -1656,7 +1702,7 @@ final class ModernPayloadStoreTests: XCTestCase {
             as: TestActivities.self
         )
         let uuid = try XCTUnwrap(
-            document.testRuns.first?.activities?
+            document.testRuns?.first?.activities?
                 .compactMap { $0.attachments?.first?.uuid }.first
         )
         let relative = try XCTUnwrap(
@@ -1713,6 +1759,15 @@ final class ModernPayloadStore: PayloadProviding {
     private var fileNamesByUUID: [String: String] = [:]
     private var exportAttempted = false
 
+    // `export attachments` writes a full copy of every attachment, including
+    // screen recordings. Without this the temp directory outlives the process
+    // and each run leaks tens of megabytes into NSTemporaryDirectory().
+    deinit {
+        if let directory = exportDirectory {
+            try? FileManager.default.removeItem(at: directory)
+        }
+    }
+
     init(client: XCResultToolClient, bundleURL: URL, faultCollector: FaultCollector) {
         self.client = client
         self.bundleURL = bundleURL
@@ -1751,7 +1806,15 @@ final class ModernPayloadStore: PayloadProviding {
             faultCollector.record(.payloadExportFailed, "attachment \(reference)")
             return nil
         }
-        return try? Data(contentsOf: source)
+        do {
+            return try Data(contentsOf: source)
+        } catch {
+            // An exported file we cannot read is a real failure, not a format
+            // limitation, so it earns a fault rather than a silent nil.
+            Logger.warning("Can't read exported attachment \(source): \(error)")
+            faultCollector.record(.payloadExportFailed, "attachment \(reference)")
+            return nil
+        }
     }
 
     func exportLogs(reference: String) -> URL? {
@@ -2120,7 +2183,9 @@ case .modern:
     let store = ModernPayloadStore(
         client: client, bundleURL: url, faultCollector: faultCollector
     )
-    reader = ModernResultReader(client: client, payloadStore: store)
+    reader = ModernResultReader(
+        client: client, payloadStore: store, faultCollector: faultCollector
+    )
     payloads = store
 }
 ```
@@ -2200,36 +2265,45 @@ the diff to a declared list.
 
 ```json
 {
-  "comment": "Each entry names one field the modern xcresulttool format does not provide, and the HTML substring whose appearance or disappearance that causes. Adding an entry means accepting a permanent difference between the two backends; it is a design decision, not a way to quiet a failing test.",
+  "comment": "Each entry names one field the modern xcresulttool format does not provide, and the masking rule that removes its effect from a rendered report. The differential test masks BOTH renders with every rule here and then requires them to be byte-identical: after the declared losses are removed, nothing else may differ. Adding an entry means accepting a permanent difference between the backends — a design decision, not a way to quiet a failing test.",
   "knownLosses": [
     {
+      "rule": "activityTypeClasses",
       "field": "activity activityType",
-      "effect": "Activity CSS classes (activity-internal, activity-user-created, activity-skipped-test, activity-delete-attachment) are absent on the modern backend; only assertion-failure styling survives, via isAssociatedWithFailure.",
-      "markers": ["activity-internal", "activity-user-created", "activity-skipped-test", "activity-delete-attachment"]
+      "effect": "Activity CSS classes are absent on the modern backend; only assertion-failure styling survives, via isAssociatedWithFailure. Rendered into `<div class=\"activity [[ACTIVITY_TYPE_CLASS]] ...\">`."
     },
     {
+      "rule": "durations",
       "field": "activity finish time",
-      "effect": "Per-activity durations render as 0s on the modern backend, which reports only a start time.",
-      "markers": []
+      "effect": "Per-activity durations render as 0s on the modern backend, which reports only a start time. Rendered as the bare `(0.00s)` suffix in `[[TITLE]] ([[TIME]])`, with no distinguishing element."
     },
     {
+      "rule": "attachmentDisplayNames",
       "field": "attachment user-supplied name",
-      "effect": "Attachment display names fall back to the type-derived label (Screenshot, Video, File) on the modern backend.",
-      "markers": []
+      "effect": "Attachment display names fall back to the type-derived label (Screenshot, Video, File) on the modern backend, because the new format exposes only the generated filename."
     },
     {
+      "rule": "failureTitlePrefix",
       "field": "failure file and line",
-      "effect": "Failure activity titles are the pre-joined message rather than '<issueType> at <file>:<line>:<message>'.",
-      "markers": []
+      "effect": "Failure activity titles are the pre-joined message rather than '<issueType> at <file>:<line>:<message>'."
     },
     {
+      "rule": "wrapperGroups",
       "field": "test tree wrapper groups",
-      "effect": "The modern tree omits the legacy 'Selected tests' / 'All tests' and '<target>.xctest' wrapper levels.",
-      "markers": ["Selected tests", "All tests", ".xctest"]
+      "effect": "The modern tree omits the legacy 'Selected tests' / 'All tests' and '<target>.xctest' wrapper levels."
     }
   ]
 }
 ```
+
+**Why masking rather than per-line markers.** The first draft of this plan
+matched differing lines against literal marker strings. That does not work:
+checked against `HTMLTemplates.swift`, activity durations render as a bare
+`([[TIME]])` suffix and attachment names as bare text, neither carrying a class
+to key on — only the activity type classes and the wrapper group names are
+matchable literals. Masking inverts the test into the stronger form anyway:
+instead of "every difference resembles something we declared", it asserts
+"after removing exactly what we declared, there is no difference at all."
 
 - [ ] **Step 2: Register the resource**
 
@@ -2239,7 +2313,105 @@ In `Package.swift`, add to the test target's `resources` array:
 .process("Resources/differential-allowlist.json"),
 ```
 
-- [ ] **Step 3: Write the differential test**
+- [ ] **Step 3: Write the known-loss masker**
+
+`Tests/XCTestHTMLReportTests/KnownLossMasker.swift`:
+
+```swift
+//
+//  KnownLossMasker.swift
+//
+//  Removes exactly the differences declared in differential-allowlist.json
+//  from a rendered report, so the differential test can assert that what
+//  remains is identical across backends.
+//
+//  Each rule here corresponds 1:1 to an allow-list entry, by name. Adding a
+//  rule without adding the entry (or vice versa) fails
+//  testEveryAllowListRuleIsImplemented.
+//
+
+import Foundation
+
+enum KnownLossMasker {
+    static let implementedRules: Set<String> = [
+        "activityTypeClasses",
+        "durations",
+        "attachmentDisplayNames",
+        "failureTitlePrefix",
+        "wrapperGroups",
+    ]
+
+    static func mask(_ html: String, rules: [String]) -> String {
+        var masked = html
+        for rule in rules {
+            masked = apply(rule, to: masked)
+        }
+        // Collapse whitespace-only differences left behind by the removals.
+        return masked
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+
+    private static func apply(_ rule: String, to html: String) -> String {
+        switch rule {
+        case "activityTypeClasses":
+            // `<div class="activity activity-user-created no-drop-down">`
+            return replace(html, #"activity-(internal|user-created|skipped-test|delete-attachment|assertion-failure)"#, with: "")
+        case "durations":
+            // Bare `(1.23s)` / `(0.00s)` suffixes from `[[TITLE]] ([[TIME]])`.
+            return replace(html, #"\(\d+\.\d+s\)"#, with: "(DURATION)")
+        case "attachmentDisplayNames":
+            // The `[[NAME]]` line inside `<p class="attachment list-item">`.
+            return replace(
+                html,
+                #"(<p class="attachment[^"]*">\n)[^\n<]+\n"#,
+                with: "$1ATTACHMENT_NAME\n"
+            )
+        case "failureTitlePrefix":
+            // `Assertion Failure at File.swift:76:` prefixed onto the message.
+            return replace(html, #"[A-Za-z ]+ at [^\s:]+:\d+:"#, with: "")
+        case "wrapperGroups":
+            // Legacy-only `Selected tests` / `All tests` / `<target>.xctest`
+            // group headings, and the div nesting they introduce.
+            return html
+                .split(separator: "\n")
+                .filter { line in
+                    !line.contains("Selected tests")
+                        && !line.contains("All tests")
+                        && !line.contains(".xctest")
+                }
+                .joined(separator: "\n")
+        default:
+            return html
+        }
+    }
+
+    private static func replace(
+        _ text: String, _ pattern: String, with template: String
+    ) -> String {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return text
+        }
+        return regex.stringByReplacingMatches(
+            in: text,
+            range: NSRange(text.startIndex..., in: text),
+            withTemplate: template
+        )
+    }
+}
+```
+
+The `wrapperGroups` rule drops whole lines, which also drops the `<div>` nesting
+those groups open. That makes the masked comparison insensitive to indentation
+depth in the test tree — acceptable, because the tree's *content* is asserted
+exactly by `testStatusesAndCountsMatchAcrossBackends`, and its shape is the
+declared difference. If Step 5 shows this rule swallowing more than the wrapper
+lines, tighten it to match the group `<div>` and its matching close rather than
+loosening the assertions it protects.
+
+- [ ] **Step 4: Write the differential test**
 
 ```swift
 //
@@ -2258,9 +2430,9 @@ final class DifferentialTests: XCTestCase {
 
     private struct AllowList: Decodable {
         struct Loss: Decodable {
+            let rule: String
             let field: String
             let effect: String
-            let markers: [String]
         }
 
         let knownLosses: [Loss]
@@ -2341,58 +2513,102 @@ final class DifferentialTests: XCTestCase {
         }
     }
 
-    /// Every allow-list marker that claims to disappear must actually be
-    /// present on legacy and absent on modern. An entry that no longer
-    /// describes reality fails, so the list cannot rot into a rug.
-    func testAllowListEntriesStillDescribeRealDifferences() throws {
-        try requireBothBackends()
-        let list = try allowList()
-        let legacy = normalizeReport(
-            try summary("TestResults", .legacy).generatedHtmlReport()
-        )
-        let modern = normalizeReport(
-            try summary("TestResults", .modern).generatedHtmlReport()
-        )
+    /// Every rule named in the allow-list must be implemented by the masker.
+    /// A rule with no implementation would silently mask nothing, leaving the
+    /// difference it claims to cover to fail somewhere confusing instead.
+    func testEveryAllowListRuleIsImplemented() throws {
+        for loss in try allowList().knownLosses {
+            XCTAssertTrue(
+                KnownLossMasker.implementedRules.contains(loss.rule),
+                "Allow-list rule '\(loss.rule)' (\(loss.field)) has no masking "
+                    + "implementation in KnownLossMasker."
+            )
+        }
+    }
 
-        for loss in list.knownLosses {
-            for marker in loss.markers {
+    /// The assertion the whole exercise exists for: mask exactly the declared
+    /// losses out of both renders, and require what remains to be identical.
+    ///
+    /// This is the strong form. Checking only that declared markers appear and
+    /// disappear would prove nothing about the lines nobody declared, and an
+    /// undeclared regression would sail straight through.
+    func testMaskedRendersAreIdenticalAcrossBackends() throws {
+        try requireBothBackends()
+        let rules = try allowList().knownLosses.map(\.rule)
+
+        for fixture in Self.fixtures {
+            let legacySummary = try summary(fixture, .legacy)
+            let legacy = KnownLossMasker.mask(
+                normalizeReport(legacySummary.generatedHtmlReport()), rules: rules
+            )
+            let modern = KnownLossMasker.mask(
+                normalizeReport(try summary(fixture, .modern).generatedHtmlReport()),
+                rules: rules
+            )
+
+            // Non-vacuity: the mask must not have erased the content being
+            // compared. Without this, a mask broad enough to delete everything
+            // would make the comparison below pass on any two inputs.
+            for title in legacySummary.runs.flatMap(\.allTests).map(\.title) {
                 XCTAssertTrue(
-                    legacy.contains(marker),
-                    "Allow-list entry '\(loss.field)' claims marker '\(marker)' "
-                        + "exists on legacy, but it does not. Entry is stale."
-                )
-                XCTAssertFalse(
-                    modern.contains(marker),
-                    "Allow-list entry '\(loss.field)' claims marker '\(marker)' "
-                        + "is absent on modern, but it is present. Entry is stale."
+                    legacy.contains(title),
+                    "\(fixture): masking removed test '\(title)' from the "
+                        + "comparison. The mask is too broad."
                 )
             }
+
+            guard legacy != modern else {
+                continue
+            }
+            let legacyLines = legacy.split(separator: "\n").map(String.init)
+            let modernLines = modern.split(separator: "\n").map(String.init)
+            let differing = Set(legacyLines).symmetricDifference(Set(modernLines))
+            XCTFail(
+                """
+                \(fixture): \(differing.count) line(s) differ after masking the \
+                declared losses. Each is either a parity bug in the modern \
+                reader, or an undeclared format loss that needs an allow-list \
+                entry with a written justification. First 5:
+                \(differing.sorted().prefix(5).joined(separator: "\n"))
+                """
+            )
         }
     }
 
     func testAttachmentPayloadsAreByteIdenticalAcrossBackends() throws {
         try requireBothBackends()
 
-        func payloads(_ summary: Summary) -> Set<Data> {
-            Set(summary.allAttachments.compactMap { attachment in
+        // Keyed by filename and counted, not collected into a Set: a Set
+        // collapses duplicates, so a backend that dropped one of two identical
+        // screen recordings would still compare equal.
+        func payloads(_ summary: Summary) -> [String: [Data]] {
+            var byName: [String: [Data]] = [:]
+            for attachment in summary.allAttachments {
                 guard case let .data(data) = attachment.content else {
-                    return nil
+                    continue
                 }
-                return data
-            })
+                byName[attachment.filename, default: []].append(data)
+            }
+            return byName.mapValues { $0.sorted { $0.count < $1.count } }
         }
 
         for fixture in Self.fixtures {
             // Rendered inline so the bytes are in hand rather than on disk.
             let legacy = try summaryInline(fixture, .legacy)
             let modern = try summaryInline(fixture, .modern)
+            let legacyPayloads = payloads(legacy)
             XCTAssertFalse(
-                payloads(legacy).isEmpty,
+                legacyPayloads.isEmpty,
                 "\(fixture): no attachment bytes to compare — the assertion "
                     + "below would pass vacuously"
             )
             XCTAssertEqual(
-                payloads(legacy), payloads(modern),
+                legacyPayloads.mapValues(\.count),
+                payloads(modern).mapValues(\.count),
+                "\(fixture): attachment counts differ between backends"
+            )
+            XCTAssertEqual(
+                legacyPayloads, payloads(modern),
                 "\(fixture): attachment bytes differ between backends"
             )
         }
@@ -2413,7 +2629,7 @@ final class DifferentialTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 4: Run and expect real failures**
+- [ ] **Step 5: Run and expect real failures**
 
 ```bash
 swift test --filter DifferentialTests
@@ -2425,7 +2641,7 @@ format loss (add an allow-list entry with a written justification). Work
 through them one at a time. Do not add a marker to the allow-list without
 being able to state which field of the new format is missing.
 
-- [ ] **Step 5: Re-run until green, then run everything**
+- [ ] **Step 6: Re-run until green, then run everything**
 
 ```bash
 swift test 2>&1 | tail -5
@@ -2433,7 +2649,7 @@ swift test 2>&1 | tail -5
 
 Expected: the full suite green, 30+ tests.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 swiftformat . && git add -A
@@ -2698,10 +2914,28 @@ signatures spelled out.
 `XCResultToolClient.legacyCommandsAvailable` (Tasks 6, 11, 12, 14). All
 consistent.
 
-**Non-vacuity.** Two assertions in this plan would pass trivially if their
-input were empty, so each is paired with a guard: Task 1 asserts the raw
-renders *do* differ before asserting the normalized ones match, and Task 12
-asserts attachment bytes exist before comparing them. Verified that all three
-fixtures carry attachments under `export attachments` — `TestResults` 9,
-`RetryResults` 3, `SanityResults` 1 — so the Task 12 guard passes on real data
-rather than merely being defensive.
+**Non-vacuity.** Four assertions here would pass trivially on empty input, so
+each carries a guard:
+
+- Task 1 asserts the raw renders *do* differ before asserting the normalized
+  ones match.
+- Task 2 requires all three fixtures and non-empty output, so Task 5's
+  `diff -r` cannot compare two partial directories and call them identical.
+- Task 12 asserts attachment bytes exist before comparing them, and compares
+  them keyed by filename with counts rather than as a `Set<Data>`, which would
+  collapse duplicates.
+- Task 12's masked comparison asserts every test title survives masking, so a
+  mask broad enough to erase the content cannot make the comparison pass.
+
+Verified that all three fixtures carry attachments under `export attachments` —
+`TestResults` 9, `RetryResults` 3, `SanityResults` 1 — so the Task 12 guard
+passes on real data rather than merely being defensive.
+
+**On the differential's design.** The first draft matched differing lines
+against literal marker strings. Checked against `HTMLTemplates.swift`, that does
+not work: activity durations render as a bare `(0.00s)` suffix and attachment
+names as bare text, with no class to key on. It was replaced with masking —
+strip exactly the declared losses from both renders, then require byte
+equality — which is both implementable and a strictly stronger claim. Each
+masking rule maps 1:1 to an allow-list entry, and a rule named in the JSON with
+no implementation fails `testEveryAllowListRuleIsImplemented`.
