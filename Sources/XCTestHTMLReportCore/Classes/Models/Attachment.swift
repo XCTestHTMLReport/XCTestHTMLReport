@@ -166,6 +166,21 @@ struct Attachment: HTML {
         self.content = content
     }
 
+    /// Whether this attachment represents a failure to resolve its payload.
+    ///
+    /// An attachment with no `payloadRef` has nothing to resolve: its content
+    /// is `.none` by construction, which is not degradation (#387). Only a
+    /// payload that existed and produced no content is a genuine failure.
+    var failedToResolve: Bool {
+        guard payloadId != nil else {
+            return false
+        }
+        guard case .none = content else {
+            return false
+        }
+        return true
+    }
+
     /// How this attachment is named in a `Fault` detail.
     ///
     /// `filename` is empty for nameless attachments, which would otherwise
