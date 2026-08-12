@@ -106,27 +106,6 @@ public struct ParsedActivity {
     /// Start only. Modern publishes no finish time, so per-activity duration
     /// is not representable — and a fabricated `(0.00s)` is worse than none.
     public let start: Date?
-
-    // MARK: Transitional fields — deleted in Task 5b
-
-    // The three fields below exist solely so Task 5a can meet its
-    // byte-identical gate: the refactor onto ParsedResult must not change a
-    // single rendered byte, and today's report still renders activity type
-    // CSS classes, per-activity durations, and backend-supplied element ids.
-    // Task 5b applies the model decisions that remove all three renderings
-    // and deletes these fields with them. They are not backend-neutral and
-    // must not survive into the modern reader's era.
-
-    /// The raw legacy `activityType` constant. Feeds `ActivityType` in the
-    /// renderer until Task 5b deletes that enum (decision 2).
-    public let transitionalActivityType: String?
-    /// Legacy `finish` time. Feeds the rendered `(1.23s)` duration until
-    /// Task 5b empties it (decision 1).
-    public let transitionalFinish: Date?
-    /// Backend-supplied activity uuid. Feeds the rendered element id until
-    /// Task 5b mints ids from `IdentifierPath` instead.
-    public let transitionalUUID: String
-
     public let attachments: [ParsedAttachment]
     public let subActivities: [ParsedActivity]
 }

@@ -123,22 +123,15 @@ struct LegacyResultReader: ResultReader {
             combined = activities
         } else {
             let failures = summary.failureSummaries.map(parseFailure)
-            // This sort is not cosmetic: it interleaves assertion-failure rows
-            // among the activities so a failure renders *where it occurred*
-            // rather than after everything else. Dropping it — rather than
-            // re-keying it — would silently append every failure row at the
-            // end of the test.
-            //
-            // Keyed on the transitional `finish` until Task 5b, because that
-            // is today's key and Task 5a's gate is byte-identity. Decision 1
-            // re-keys this to `start` when `finish` leaves the port — and that
-            // demonstrably repositions a failure row whose timestamp falls
-            // inside an activity's start/finish span (RetryResults,
-            // `testRetryOnFailure()`), which is why the re-key is enumerated
-            // in Task 5b's gate rather than smuggled through this refactor.
+            // Ordered by `start`, which replaced `finish` as the ordering key
+            // under decision 1 — the modern format publishes no finish, so
+            // `start` is the only key both backends share. This sort is not
+            // cosmetic: it interleaves assertion-failure rows among the
+            // activities so a failure renders *where it occurred* rather than
+            // after everything else. Dropping it — rather than re-keying it —
+            // would silently append every failure row at the end of the test.
             combined = (activities + failures).sorted {
-                ($0.transitionalFinish?.timeIntervalSince1970 ?? 0)
-                    < ($1.transitionalFinish?.timeIntervalSince1970 ?? 0)
+                ($0.start ?? .distantPast) < ($1.start ?? .distantPast)
             }
         }
 
@@ -172,15 +165,10 @@ struct LegacyResultReader: ResultReader {
             // `activityType` is read only to derive this flag; the taxonomy
             // itself is out of the port (answer 2). `finish` is dropped
             // likewise (answer 1) — legacy has it, but keeping it would mean
-            // the two backends disagree on every activity's duration. Both
-            // ride along in the transitional fields until Task 5b applies
-            // those decisions to the renderer.
+            // the two backends disagree on every activity's duration.
             isFailure: summary.activityType
                 == "com.apple.dt.xctest.activity-type.testAssertionFailure",
             start: summary.start,
-            transitionalActivityType: summary.activityType,
-            transitionalFinish: summary.finish,
-            transitionalUUID: summary.uuid,
             attachments: summary.attachments.map(parseAttachment),
             subActivities: summary.subactivities.map(parseActivity)
         )
@@ -194,10 +182,6 @@ struct LegacyResultReader: ResultReader {
             title: "\(issueType) at \(file):\(summary.lineNumber):\(message)",
             isFailure: true,
             start: summary.timestamp,
-            transitionalActivityType:
-            "com.apple.dt.xctest.activity-type.testAssertionFailure",
-            transitionalFinish: summary.timestamp,
-            transitionalUUID: summary.uuid,
             attachments: summary.attachments.map(parseAttachment),
             subActivities: []
         )

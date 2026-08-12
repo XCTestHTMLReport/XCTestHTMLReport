@@ -8,50 +8,20 @@
 
 import Foundation
 
-enum ActivityType: String {
-    case unknwown = ""
-    case intern = "com.apple.dt.xctest.activity-type.internal"
-    case deleteAttachment = "com.apple.dt.xctest.activity-type.deletedAttachment"
-    case assertionFailure = "com.apple.dt.xctest.activity-type.testAssertionFailure"
-    case userCreated = "com.apple.dt.xctest.activity-type.userCreated"
-    case attachementContainer = "com.apple.dt.xctest.activity-type.attachmentContainer"
-    case skippedTest = "com.apple.dt.xctest.activity-type.skippedTest"
-
-    var cssClass: String {
-        switch self {
-        case .intern:
-            return "activity-internal"
-        case .deleteAttachment:
-            return "activity-delete-attachment"
-        case .assertionFailure:
-            return "activity-assertion-failure"
-        case .userCreated:
-            return "activity-user-created"
-        case .skippedTest:
-            return "activity-skipped-test"
-        default:
-            return ""
-        }
-    }
-}
-
 struct Activity: HTML {
+    /// Path-derived, like every other element id (#430). An activity uuid
+    /// would have been a field only the legacy backend could populate; a path
+    /// digest is backend-neutral and keeps renders byte-reproducible.
     let uuid: String
     let padding: Int
     let attachments: [Attachment]
-    let startTime: TimeInterval?
-    let finishTime: TimeInterval?
-    var totalTime: TimeInterval {
-        if let start = startTime, let finish = finishTime {
-            return finish - start
-        }
-
-        return 0.0
-    }
 
     var title: String
     var subActivities: [Activity]
-    var type: ActivityType?
+    /// All that survives of the legacy activity taxonomy — see "Deciding the
+    /// model before the port", answer 2.
+    let isFailure: Bool
+
     var hasGlobalAttachment: Bool {
         let hasDirectAttachment = !attachments.isEmpty
         let subActivitesHaveAttachments = subActivities
@@ -64,7 +34,7 @@ struct Activity: HTML {
     }
 
     var failingActivity: Activity? {
-        type == .assertionFailure ? self : nil
+        isFailure ? self : nil
     }
 
     var failingActivityRecursive: Activity? {
@@ -72,34 +42,25 @@ struct Activity: HTML {
     }
 
     var cssClasses: String {
-        var cls = ""
-        if let type = type {
-            cls += type.cssClass
-
-            if type == .userCreated, hasFailingSubActivities {
-                cls += " activity-assertion-failure"
-            }
-        }
-
-        return cls
+        isFailure || hasFailingSubActivities ? "activity-assertion-failure" : ""
     }
 
     init(
         activity: ParsedActivity,
+        identifierPath: IdentifierPath,
         file: PayloadProviding,
         padding: Int = 0,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
-        uuid = activity.transitionalUUID
-        startTime = activity.start?.timeIntervalSince1970 ?? 0
-        finishTime = activity.transitionalFinish?.timeIntervalSince1970 ?? 0
+        uuid = identifierPath.identifier
         title = activity.title
-        type = activity.transitionalActivityType.flatMap(ActivityType.init(rawValue:))
-        subActivities = activity.subActivities.map {
+        isFailure = activity.isFailure
+        subActivities = activity.subActivities.enumerated().map { index, sub in
             Activity(
-                activity: $0,
+                activity: sub,
+                identifierPath: identifierPath.appending("activity\(index)"),
                 file: file,
                 padding: padding + 10,
                 renderingMode: renderingMode,
@@ -133,7 +94,11 @@ struct Activity: HTML {
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
             "PADDING": (subActivities.isEmpty && attachments.isEmpty) ? String(padding + 18) :
                 String(padding),
-            "TIME": totalTime.formattedSeconds,
+            // Empty rather than a duration: the port carries no finish time
+            // (decision 1), and a fabricated `(0.00s)` would be worse than the
+            // stray `()` this leaves. Removing the placeholder itself is the
+            // redesign's call — the templates are frozen for this work.
+            "TIME": "",
             "ACTIVITY_TYPE_CLASS": cssClasses,
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && attachments.isEmpty) ?
                 "no-drop-down" : "",

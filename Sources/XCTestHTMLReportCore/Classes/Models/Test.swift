@@ -271,7 +271,7 @@ struct TestCase: Test {
         iterations = testCase.iterations.enumerated().map { index, iteration in
             Iteration(
                 iteration: iteration,
-                uuid: path.appending("iteration\(index)").identifier,
+                identifierPath: path.appending("iteration\(index)"),
                 title: testCase.name,
                 identifier: testCase.identifier,
                 file: file,

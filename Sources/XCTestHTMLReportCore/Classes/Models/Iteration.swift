@@ -8,8 +8,9 @@
 import Foundation
 
 struct Iteration: Test {
-    /// Assigned by the owning `TestCase`, which is the only place that knows
-    /// this iteration's final position among its siblings.
+    /// Derived from the path assigned by the owning `TestCase`, which is the
+    /// only place that knows this iteration's final position among its
+    /// siblings.
     let uuid: String
 
     let title: String
@@ -27,7 +28,7 @@ struct Iteration: Test {
 
     init(
         iteration: ParsedIteration,
-        uuid: String,
+        identifierPath: IdentifierPath,
         title: String,
         identifier: String,
         file: PayloadProviding,
@@ -35,7 +36,7 @@ struct Iteration: Test {
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
-        self.uuid = uuid
+        uuid = identifierPath.identifier
         self.title = title
         self.identifier = identifier
         status = Status(iteration.status)
@@ -47,11 +48,12 @@ struct Iteration: Test {
         // failure-summary initializer defaulted its padding to 0 where
         // activity summaries were given 20 — and that rendered fact survives
         // the port.
-        activities = iteration.activities.map {
+        activities = iteration.activities.enumerated().map { index, activity in
             Activity(
-                activity: $0,
+                activity: activity,
+                identifierPath: identifierPath.appending("activity\(index)"),
                 file: file,
-                padding: $0.isFailure ? 0 : 20,
+                padding: activity.isFailure ? 0 : 20,
                 renderingMode: renderingMode,
                 downsizeImagesEnabled: downsizeImagesEnabled,
                 downsizeScaleFactor: downsizeScaleFactor
