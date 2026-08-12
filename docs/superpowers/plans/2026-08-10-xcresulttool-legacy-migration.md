@@ -68,7 +68,7 @@ issue), `xcrun xcresulttool`.
 | `Classes/ResultReading/ParsedResult.swift` | Backend-neutral model. Plain value types, no I/O. |
 | `Classes/ResultReading/ResultReader.swift` | `ResultReader` protocol + `PayloadProviding` protocol. |
 | `Classes/ResultReading/ResultBackend.swift` | Backend enum, toolchain capability detection, override plumbing. |
-| `Classes/ResultReading/Legacy/LegacyResultReader.swift` | XCResultKit → `ParsedResult`. The only file importing XCResultKit after Task 5. |
+| `Classes/ResultReading/Legacy/LegacyResultReader.swift` | XCResultKit → `ParsedResult`. The only file importing XCResultKit after Task 5a. |
 | `Classes/ResultReading/Modern/XCResultToolClient.swift` | Subprocess execution, schema-version pinning, JSON decode. |
 | `Classes/ResultReading/Modern/TestResultsSchema.swift` | `Codable` structs mirroring the new format. |
 | `Classes/ResultReading/Modern/ModernResultReader.swift` | New format → `ParsedResult`. |
@@ -97,7 +97,7 @@ different treatment:
 
 | Comparison | Where | Identifiers |
 | --- | --- | --- |
-| Same backend, two renders | Task 2 baseline, Task 5 refactor gate | **identical** — compare raw, no normalization |
+| Same backend, two renders | Task 2 baseline, Task 5a refactor gate | **identical** — compare raw, no normalization |
 | Legacy vs modern | Task 12 differential | **differ** — normalize first |
 
 The second case survives #430 because identifiers are a digest of each element's
@@ -141,7 +141,12 @@ Append to the existing `ReproducibilityTests.swift` rather than creating it:
     /// normalizer that matched nothing would make the Task 12 differential
     /// compare raw identifiers and fail on every run.
     func testNormalizerActuallyMatchesARenderedIdentifier() throws {
-        let html = try render("SanityResults")
+        // `renderReport(arguments:)` is #430's helper: it runs the CLI out of
+        // process and returns `Data`. There is no in-process `render(_:)`.
+        let html = String(
+            decoding: try renderReport(arguments: [try XCTUnwrap(sanityResultsUrl).path]),
+            as: UTF8.self
+        )
         XCTAssertNotEqual(
             normalizeIdentifiers(html), html,
             "Expected at least one IdentifierPath digest in the rendered report"
@@ -219,13 +224,13 @@ git commit -m "test: normalize IdentifierPath digests for cross-backend diffing"
 
 ## Task 2: Capture the pre-refactor baseline
 
-Fixtures are regenerated per run, so no golden can be checked in. The Task 5
+Fixtures are regenerated per run, so no golden can be checked in. The Task 5a
 refactor is instead guarded by capturing a render **now** and diffing after,
 within one fixture generation.
 
 **Capture raw, not normalized.** After #430 two renders on one backend are
 byte-identical, so the baseline needs no normalization — and applying Task 1's
-normalizer here would actively weaken the gate. Task 5 moves the renderer onto
+normalizer here would actively weaken the gate. Task 5a moves the renderer onto
 `ParsedResult`; if that refactor perturbed the tree structure, every affected
 element's `IdentifierPath` digest would change, and a normalized baseline would
 report success anyway. The identifiers are signal here, not noise.
@@ -236,7 +241,7 @@ report success anyway. The identifiers are signal here, not noise.
 **Interfaces:**
 - Consumes: nothing. (Task 1's normalizer is for Task 12 only.)
 - Produces: a test that writes renders when `XCHR_BASELINE_DIR` is set, and
-  skips otherwise. Used manually in Task 5, then kept for any future rendering
+  skips otherwise. Used manually in Tasks 5a and 5b, then kept for any future rendering
   change.
 
 - [ ] **Step 1: Write the capture test**
@@ -270,7 +275,7 @@ final class BaselineCaptureTests: XCTestCase {
         let resources = ["TestResults", "SanityResults", "RetryResults"]
         for resource in resources {
             // Deliberately not `continue`: a skipped fixture would produce a
-            // partial baseline, and Task 5's `diff -r` reports two partial
+            // partial baseline, and Task 5a's `diff -r` reports two partial
             // directories as identical. Fail here instead.
             let url = try XCTUnwrap(
                 Bundle.testBundle.url(forResource: resource, withExtension: "xcresult"),
@@ -319,7 +324,7 @@ ls -la /tmp/xchr-baseline
 ```
 
 Expected: three non-empty `.html` files. **Do not regenerate fixtures again
-until Task 5 is verified** — a new fixture generation invalidates this baseline.
+until Task 5a is verified** — a new fixture generation invalidates this baseline.
 
 - [ ] **Step 4: Commit**
 
@@ -371,9 +376,9 @@ Recommended answers below. Each is a default to edit, not a conclusion.
 
 | # | Question | Recommendation |
 | --- | --- | --- |
-| 1 | Per-activity durations? | **No.** Drop `ParsedActivity.finish`. |
+| 1 | Per-activity durations? | **No.** Drop `ParsedActivity.finish`; order activities by `start`. |
 | 2 | The five activity-type visual states? | **No.** Drop `ParsedActivity.activityType`; keep `isFailure`. |
-| 3 | `ObjectClass` in the new model? | **No.** Delete the type in Task 5. |
+| 3 | `ObjectClass` in the new model? | **Replace, not delete.** Neutral node-kind enum that still emits `test-summary` / `test-summary-group`. |
 | 4 | Attachment UTI as its own field? | **No.** Keep `filenameExtension` only; derive type from it on both backends. |
 | 5 | Status as a legacy raw string? | **No.** Neutral enum; both readers map into it. |
 | 6 | Swift Testing `Arguments`? | **Yes, now.** It is a tree reshape, expensive later. |
@@ -381,11 +386,38 @@ Recommended answers below. Each is a default to edit, not a conclusion.
 | 8 | Test-case duration sums repetitions? | **Yes**, keep today's behaviour. |
 
 **1 — Per-activity durations.** The modern format publishes `startTime` only, so
-the honest render is no duration at all rather than `(0.00s)`. Dropping `finish`
-from the port deletes the `durations` allow-list entry outright: with no field,
-there is no divergence to mask. The alternative — inferring duration from the
-next sibling's `startTime` — is already out of scope in the spec, and would put
-a fabricated number in front of users.
+the honest render is no duration at all rather than `(0.00s)`. The alternative —
+inferring duration from the next sibling's `startTime` — is already out of scope
+in the spec, and would put a fabricated number in front of users.
+
+Two things this decision does **not** licence, both corrected after review:
+
+*`start` is the replacement ordering key, and must be named as one.* Task 4
+merges `activitySummaries` with `failureSummaries` and sorts the result by
+`finish`, which is what makes an assertion-failure row render *where it
+occurred* rather than after every other activity. Deleting the field without
+naming a replacement silently drops that invariant and appends all failures at
+the end. Sort by `start`, in both readers.
+
+*It does not void the `durations` allow-list entry.* The original claim — no
+field, no divergence — was false, because the surviving divergence is in
+**group** durations and has nothing to do with `finish`. `durationInSeconds` is
+`null` on every `Test Suite`, `Test Plan`, `UI test bundle` and `Unit test
+bundle` node in all three fixtures, while legacy's `ActionTestSummaryGroup`
+reports a real value. Measured on `TestResults`:
+
+| Group | Legacy | Modern |
+| --- | --- | --- |
+| `FirstSuite` | 0.699s | `null` → `0.00s` |
+| `SecondSuite` | 0.126s | `null` → `0.00s` |
+| `ThirdSuite` | 0.132s | `null` → `0.00s` |
+| `SampleAppUnitTests` | 0.213s | `null` → `0.00s` |
+
+These are real suite names, so `wrapperGroups` — which drops only lines
+containing `Selected tests`, `All tests` or `.xctest` — does not mask them. Swift
+Testing test *cases* diverge the same way: `durationInSeconds` is `null` for all
+three `SwiftTestingSuite` cases on modern. The entry stays, with a justification
+naming group durations rather than activity durations.
 
 **2 — Activity types.** Of the five constants, `attachmentContainer` already
 renders no CSS class, and `assertionFailure` is fully covered by `isFailure`,
@@ -398,9 +430,60 @@ this task exists to catch. Drop it, delete the `activityTypeClasses` allow-list
 entry, and let the redesign decide what visual weight user-authored steps get
 from data that will actually exist.
 
-**3 — `ObjectClass`.** Legacy Xcode internals in a CSS class name. It has no
-modern equivalent and no reason to acquire one. Task 5 deletes it rather than
-threading it through the port.
+**3 — `ObjectClass`.** The original answer was *delete*, on the reasoning that
+`IDESchemeActionTestSummaryGroup` is a legacy Xcode internal leaking into a CSS
+class name. The premise was right; the conclusion was wrong, because **the
+rendered class names are load-bearing** and deleting the type empties
+`ITEM_CLASS`, rendering `<div class=" failed">` on every row.
+
+What breaks, verified against `HTMLTemplates.swift`:
+
+- `showElementsWithSelector('.run.active .test-summary.succeeded')` and its
+  `.skipped` / `.failed` / `.mixed` siblings — the "show only failures" filter
+  matches nothing, so filtering hides every row
+- `document.querySelectorAll('.run.active .test-summary-group')` and the
+  `classList.contains('test-summary-group')` filter beneath it — group
+  expand/collapse stops working
+- the stylesheet itself: `.test-summary p`, `.test-summary-group > p`,
+  `.test-summary.no-drop-down .test-icon`, and the `.test-summary.<status>
+  .test-result-icon` rules
+- four test call sites — `CoreTests.swift:122`
+  (`document.select("div.test-summary")`), and `ReproducibilityTests.swift`
+  lines 138, 174 and 175
+
+Deleting it also contradicts the constraint this plan already carries: templates
+are frozen for the whole of this work, and emptying a class the templates and
+their JavaScript select on is a markup change by another route.
+
+**Corrected answer: replace, do not delete.** The raw Xcode identifiers go; the
+rendered CSS contract stays until the redesign replaces it. Introduce a neutral
+node-kind enum in the *renderer* — not in the port, which needs no such field
+since `ParsedNode` already distinguishes a group from a case:
+
+```swift
+/// What kind of node a row represents, and the CSS class the report's own
+/// stylesheet and JavaScript select on.
+///
+/// Replaces `ObjectClass`, whose raw values were Xcode's internal class names
+/// (`IDESchemeActionTestSummaryGroup`). The identifiers were legacy; the class
+/// names are the report's own contract, and the filter and collapse scripts
+/// both depend on them.
+enum NodeKind {
+    case testCase
+    case group
+
+    var cssClass: String {
+        switch self {
+        case .testCase: return "test-summary"
+        case .group: return "test-summary-group"
+        }
+    }
+}
+```
+
+`Test.objectClass` becomes `Test.nodeKind`; `TestGroup` is `.group`, `TestCase`
+and `Iteration` are `.testCase`. `ObjectClass` and its
+`IDESchemeActionTest*` raw values are deleted.
 
 **4 — Attachment typing.** `uniformTypeIdentifier` exists on legacy and not on
 modern, and `AttachmentType` needs only enough to pick a template and a MIME
@@ -438,9 +521,19 @@ node's own value is simply unused.
 
 - [x] **Step 1: Decide**
 
-All eight recommendations applied as written. The table above is the record of
-what was decided; the spec holds the same answers with rationale, and is what
-Tasks 3 and 12 are read against.
+Six recommendations applied as written; **two were corrected after review** and
+their reasoning paragraphs rewritten, since a changed answer sitting under stale
+reasoning is worse than no change:
+
+- **Decision 3** became *replace, not delete*. The class names it emits are
+  selected on by the report's own filter and collapse JavaScript, by the
+  stylesheet, and by four test call sites.
+- **Decision 1** still removes the field, but `start` is now named as the
+  replacement ordering key, and the `durations` allow-list entry is **restored**
+  — the divergence it covers is group durations, which the original
+  justification misattributed to `finish`.
+
+Answers 2, 4, 5, 6, 7 and 8 stand unchanged.
 
 - [x] **Step 2: Record the decisions in the spec**
 
@@ -461,20 +554,23 @@ constraints found while applying them and worth reading before Task 3:
       `arguments: [String]` added; header comment rewritten, since "optional
       because the modern format lacks them" stopped being the reason.
 - [x] Task 4 (legacy reader): maps into `ParsedStatus`, stops reading
-      `activityType` and `finish`, and derives `filenameExtension` from its
-      UTI via `filenameExtension(forUTI:filename:)`.
+      `activityType` and `finish`, sorts the merged activity/failure list by
+      **`start`**, and derives `filenameExtension` from its UTI.
 - [x] Tasks 8–10 (modern reader): mirror status mapping, `Arguments` parsing,
       and extension-based typing. **Task 10 reframed** — attachment typing is
       no longer a modern-only workaround but how both backends type.
-- [x] Task 5: deletes `ObjectClass` and `ActivityType`, and mints
-      `Activity.uuid` from `IdentifierPath` rather than `UUID()`, which the
-      pre-#430 text would have done and which would have broken
-      `ReproducibilityTests`.
-- [x] Task 12: allow-list down from five entries to three;
-      `activityTypeClasses` and `durations` deleted along with their masking
-      rules, because with no field in the port there is no divergence left.
+- [x] Task 5: **split** into 5a (pure move onto `ParsedResult`, byte-identical)
+      and 5b (apply the model decisions, with an enumerated diff), replaces
+      `ObjectClass` with `NodeKind` rather than deleting it, deletes
+      `ActivityType`, and mints `Activity.uuid` from `IdentifierPath` rather
+      than `UUID()` — which the pre-#430 text would have done and which would
+      have broken `ReproducibilityTests`.
+- [x] Task 12: allow-list down from five entries to **four**.
+      `activityTypeClasses` is deleted; `durations` is **retained** with a
+      corrected justification naming group durations.
 - [x] Spec's "not a superset" table: voided rows now read **dropped** (a
-      decision) rather than **lost** (an asymmetry).
+      decision) rather than **lost** (an asymmetry), with the duration row
+      split into the activity part (dropped) and the group part (still lost).
 
 - [x] **Step 4: Commit**
 
@@ -499,7 +595,7 @@ decision was skipped, not that the model needs an optional.
 **Interfaces:**
 - Consumes: nothing.
 - Produces: the types below. Task 4 populates them from XCResultKit; Tasks 8–10
-  populate them from `xcresulttool`; Task 5 renders from them.
+  populate them from `xcresulttool`; Tasks 5a/5b render from them.
 
 - [ ] **Step 1: Write the model**
 
@@ -847,7 +943,17 @@ struct LegacyResultReader: ResultReader {
         guard let record = file.getInvocationRecord() else {
             return nil
         }
-        return ParsedResult(runs: record.actions.compactMap(parseRun))
+        let runs = record.actions.compactMap(parseRun)
+        // Same rule as the modern reader: a decodable document that yields no
+        // runs is a failed read, not an empty result. Returning
+        // `ParsedResult(runs: [])` would satisfy `Summary.init`'s `guard let`,
+        // record no fault, and let `--lenient` write an empty report and exit
+        // 0. Decoding succeeding is not evidence the bundle had content.
+        guard !runs.isEmpty else {
+            Logger.warning("No runs parsed from \(file.url.lastPathComponent)")
+            return nil
+        }
+        return ParsedResult(runs: runs)
     }
 
     private func parseRun(_ action: ActionRecord) -> ParsedRun? {
@@ -936,8 +1042,14 @@ struct LegacyResultReader: ResultReader {
             combined = activities
         } else {
             let failures = summary.failureSummaries.map(parseFailure)
+            // Ordered by `start`, which replaces `finish` as the ordering key
+            // under decision 1. This sort is not cosmetic: it interleaves
+            // assertion-failure rows among the activities so a failure renders
+            // *where it occurred* rather than after everything else. Dropping
+            // it — rather than re-keying it — would silently append every
+            // failure row at the end of the test.
             combined = (activities + failures).sorted {
-                ($0.finish ?? .distantPast) < ($1.finish ?? .distantPast)
+                ($0.start ?? .distantPast) < ($1.start ?? .distantPast)
             }
         }
 
@@ -1058,10 +1170,16 @@ git commit -m "feat: add LegacyResultReader translating XCResultKit to ParsedRes
 
 ---
 
-## Task 5: Move the renderer onto `ParsedResult`
+## Task 5a: Move the renderer onto `ParsedResult` (no behaviour change)
 
-The largest task and the one with no behavior change. Guarded by the Task 2
-baseline.
+The largest task in the migration, and deliberately the one with **no
+observable output change**. Guarded by the Task 2 baseline.
+
+An earlier revision folded the model decisions into this task and then demanded
+a byte-identical diff, which could never pass: the task mandated the very
+changes the gate forbade. In practice such a gate gets waived, and the largest
+refactor in the migration ships with no behaviour check at all. Everything that
+changes output now lives in Task 5b.
 
 **Files:**
 - Modify: `Classes/Models/Summary.swift`, `Run.swift`, `TestSummary.swift`,
@@ -1080,115 +1198,80 @@ Mechanical, one file at a time. The substitutions:
 
 | Model | Was | Becomes |
 | --- | --- | --- |
-| `Run` | `init?(action: ActionRecord, ...)` | `init?(run: ParsedRun, ...)` |
-| `TestSummary` | `init(summary: ActionTestableSummary, ...)` | `init(testable: ParsedTestable, ...)` |
-| `TestGroup` | `init(group: ActionTestSummaryGroup, ...)` | `init(group: ParsedGroup, ...)` |
-| `TestCase` | `init(metadata: ActionTestMetadata, ...)` | `init(testCase: ParsedTestCase, ...)` |
+| `Run` | `init?(action: ActionRecord, identifierPath:, ...)` | `init?(run: ParsedRun, identifierPath:, ...)` |
+| `TestSummary` | `init(summary: ActionTestableSummary, identifierPath:, ...)` | `init(testable: ParsedTestable, identifierPath:, ...)` |
+| `TestGroup` | `init(group: ActionTestSummaryGroup, identifierPath:, ...)` | `init(group: ParsedGroup, identifierPath:, ...)` |
+| `TestCase` | `init(metadata: ActionTestMetadata, identifierPath:, ...)` | `init(testCase: ParsedTestCase, identifierPath:, ...)` |
 | `Iteration` | `init(metadata: ActionTestMetadata, ...)` | `init(iteration: ParsedIteration, ...)` |
 | `Activity` | two inits (`summary:`, `failureSummary:`) | one `init(activity: ParsedActivity, ...)` |
 | `Attachment` | `init(attachment: ActionTestAttachment, ...)` | `init(attachment: ParsedAttachment, ...)` |
-| `RunDestination` | `init(record: ActionRunDestinationRecord)` | `init(destination: ParsedDestination)` |
-| `TargetDevice` | `init(record: ActionDeviceRecord)` | `init(destination: ParsedDestination)` |
+| `RunDestination` | `init(record: ActionRunDestinationRecord, identifierPath:)` | `init(destination: ParsedDestination, identifierPath:)` |
+| `TargetDevice` | `init(record: ActionDeviceRecord, identifierPath:)` | `init(destination: ParsedDestination, identifierPath:)` |
+
+**Every `identifierPath:` argument stays.** #430 derives element ids from the
+path, and `ReproducibilityTests` asserts both that renders are byte-identical
+and that ids stay unique when one bundle appears twice in a report. Dropping
+these arguments is not a simplification; it is a regression with a test already
+written for it.
 
 Four behaviors move out of the models and must **not** be reimplemented there:
 
 1. `TestGroup.init`'s `Set<TestCase>` repetition merge — now in the reader.
    `TestGroup` builds `TestCase`s directly from `ParsedGroup.children`.
 2. `TestCase: Hashable` existed only for that merge. Delete the conformance.
-3. `Iteration.init`'s failure-summary interleaving — now in the reader.
-   `Iteration` maps `ParsedIteration.activities` one-to-one.
+3. `Iteration.init`'s failure-summary interleaving — now in the reader, keyed
+   on `start`. `Iteration` maps `ParsedIteration.activities` one-to-one.
 4. `Activity`'s two initializers collapse to one; `ParsedActivity.title` is
    already the formatted failure title for failure-derived activities.
 
-**`Activity.uuid` must come from `IdentifierPath`, not `UUID()`.** It reads
-`ActionTestActivitySummary.uuid` today — an XCResultKit field, so the port
-cannot supply it, and the modern format has no activity identifier at all.
-Minting a fresh `UUID().uuidString` would compile and would silently undo #430:
-`ReproducibilityTests.testRenderingTheSameBundleTwiceProducesIdenticalBytes`
-asserts byte-identical renders of one bundle, and a random id per render breaks
-that on the first run.
-
-Give `Activity` an `identifierPath` and mint from it, exactly as `TestGroup`,
-`TestCase`, and `Iteration` already do post-#430:
+**`ObjectClass` becomes `NodeKind`, and the emitted CSS classes do not change.**
+This is a rename, not a behaviour change, which is why it belongs in this task
+rather than 5b. Decision 3 was corrected from *delete* to *replace* precisely
+because the class names are load-bearing — see Task 2.5. The raw
+`IDESchemeActionTest*` values go; `test-summary` and `test-summary-group` stay
+exactly as rendered today:
 
 ```swift
-// Activity.init(activity:identifierPath:...)
-uuid = identifierPath.identifier
-// ...and for each child, distinguishing siblings by index:
-subActivities = activity.subActivities.enumerated().map { index, sub in
-    Activity(
-        activity: sub,
-        identifierPath: identifierPath.appending("activity\(index)"),
-        ...
-    )
+enum NodeKind {
+    case testCase
+    case group
+
+    var cssClass: String {
+        switch self {
+        case .testCase: return "test-summary"
+        case .group: return "test-summary-group"
+        }
+    }
 }
 ```
 
-This also satisfies the Task 2.5 rule: a synthesized path-derived id is
-backend-neutral, where an activity uuid would have been a field only the legacy
-backend could populate.
-
-**`Activity.type` and `ActivityType` are deleted** (answer 2). The port carries
-no `activityType`, so `cssClasses` reduces to the failure case:
-
-```swift
-var cssClasses: String {
-    isFailure || hasFailingSubActivities ? "activity-assertion-failure" : ""
-}
-```
-
-**`Activity.totalTime` goes with `finish`** (answer 1). `ObjectClass` is
-**deleted outright** (answer 3) — its raw values are Xcode's own internal class
-names (`IDESchemeActionTestSummaryGroup`), it has no modern equivalent, and
-threading it through would carry a legacy implementation detail into a
-backend-neutral model. `Test.objectClass` leaves the `Test` protocol too.
-
-**Neither removal touches the templates.** Supply empty strings for the
-placeholders they fed and leave `HTMLTemplates.swift` alone:
-
-```swift
-"TIME": "",          // was totalTime.formattedSeconds
-"ITEM_CLASS": "",    // was objectClass.cssClass
-```
-
-This is deliberate, and it has a visible cost worth stating rather than
-discovering during implementation. `HTMLTemplates.activity` interpolates
-`[[TITLE]] ([[TIME]])`, so an empty `TIME` renders `Some activity ()` — a
-stray empty paren on every activity row.
-
-**This is a scope decision, not a technical obstacle.** `HTMLTemplates.swift`
-is hand-maintained and could simply be edited: its `autogenerated by
-createTemplates.sh` header is stale, that script was deleted in #295, and #349
-already hand-edited the file. The Global Constraints nonetheless say no task in
-this plan changes report markup, and that guard is worth keeping — the redesign
-workstream owns the templates, and it must first settle which of
-`HTMLTemplates.swift` and the stale `Sources/XCTestHTMLReportCore/HTML/*.html`
-copy is the source of truth. Making a drive-by markup edit here would prejudge
-that question in a migration PR.
-
-So: the port drops the fields, both backends agree by construction, the
-allow-list entries are genuinely void, and the cosmetic cleanup rides with the
-redesign. `(0.00s)` on every activity would have been worse — that is a
-fabricated number, where `()` is merely untidy.
-
-Log this as a follow-up issue rather than leaving it implicit: *remove the
-`TIME` and `ITEM_CLASS` placeholders once the template source of truth is
-settled.*
-
-`Iteration.repetitionPolicy` was `ActionTestRepetitionPolicySummary?`; it
-becomes `Int?` from `ParsedIteration.iterationNumber`, and the HTML
-`"Iteration \(repetitionPolicy?.iteration ?? 0)"` becomes
-`"Iteration \(iterationNumber ?? 0)"`.
+`Test.objectClass` becomes `Test.nodeKind`; `TestGroup` is `.group`, `TestCase`
+and `Iteration` are `.testCase`. `ITEM_CLASS` keeps receiving the same strings.
 
 `Status` comes from `ParsedStatus` rather than a raw string:
 `.passed → .success`, `.failed → .failure`, `.skipped → .skipped`,
 `.expectedFailure` and `.unknown → .unknown`. That last mapping preserves
 today's behaviour exactly — see the spec's status table.
 
+`Iteration.repetitionPolicy` was `ActionTestRepetitionPolicySummary?`; it
+becomes `Int?` from `ParsedIteration.iterationNumber`, and the HTML
+`"Iteration \(repetitionPolicy?.iteration ?? 0)"` becomes
+`"Iteration \(iterationNumber ?? 0)"`.
+
+**`Activity.uuid` keeps reading its backend-supplied value in this task.** It
+becomes path-derived in 5b, because that changes the rendered ids and therefore
+the bytes. Carry it through `ParsedActivity` unchanged here rather than
+switching sources mid-refactor.
+
 - [ ] **Step 2: Rewire `Summary.init` through the reader**
 
+Preserving the `resultIndex` / `actionIndex` seeding exactly — #430 depends on
+it, and without it two runs with identical device, target and suite names
+digest identically, so `xchtmlreport a.xcresult b.xcresult` emits duplicate
+`id="device_<digest>"` and `selectDevice` switches to the wrong run:
+
 ```swift
-for resultPath in resultPaths {
+for (resultIndex, resultPath) in resultPaths.enumerated() {
     Logger.step("Parsing \(resultPath)")
     let url = URL(fileURLWithPath: resultPath)
     let resultFile = ResultFile(url: url, faultCollector: faultCollector)
@@ -1198,26 +1281,98 @@ for resultPath in resultPaths {
         faultCollector.record(.missingInvocationRecord, resultPath)
         continue
     }
-    runs.append(contentsOf: parsed.runs.compactMap {
+    let resultRuns = parsed.runs.enumerated().compactMap { actionIndex, run in
         Run(
-            run: $0,
+            run: run,
+            identifierPath: IdentifierPath.root
+                .appending("bundle\(resultIndex)")
+                .appending("action\(actionIndex)"),
             file: resultFile,
             renderingMode: renderingMode,
             downsizeImagesEnabled: downsizeImagesEnabled,
             downsizeScaleFactor: downsizeScaleFactor
         )
-    })
+    }
+    runs.append(contentsOf: resultRuns)
 }
 ```
 
+`ReproducibilityTests.testIdentifiersStayUniqueWhenOneBundleAppearsTwiceInAReport`
+is the regression test for exactly this; it must stay green.
+
 - [ ] **Step 3: Make `ResultFile` a `PayloadProviding` conformer**
 
-Rename its methods to the protocol's names (`exportPayload(reference:fileName:)`,
-`exportPayloadData(reference:)`, `exportLogs(reference:)`,
-`exportLogsData(reference:)`). Delete `getInvocationRecord()`,
-`getTestPlanRunSummaries(id:)`, `getActionTestSummary(id:)` — the reader owns
-those now — and delete **`getCodeCoverage()`**, which is defined and never
-called anywhere in the target. Keep `exportJson()` until Task 15.
+The protocol needs **every member the call sites use**, not just the four
+primitives. Three more live in `extension ResultFile` today and are reached
+through the `file` property from the models:
+
+- `exportPayloadContent(id:renderingMode:fileName:)` — `Attachment.swift:140`
+- `exportLogsContent(id:renderingMode:)` — `Run.swift:84`
+- `url` — `Attachment.swift:152`, the `-z` downsize path added by #428
+
+Leaving them off and keeping `ResultFile` at those sites to get a build is
+**worse than not compiling**: XCResultKit would then be asked to resolve modern
+uuid references, export nothing, and screenshots and videos would vanish from
+every modern report while `.payloadExportFailed` faults drove exit 3.
+
+Put `url` on the protocol and the two content helpers in a protocol extension,
+so both providers inherit them:
+
+```swift
+protocol PayloadProviding {
+    /// The bundle directory. Attachment downsizing reconstructs absolute paths
+    /// from it (`Attachment.swift`), so it cannot be provider-private.
+    var url: URL { get }
+
+    func exportPayload(reference: String, fileName: String?) -> URL?
+    func exportPayloadData(reference: String) -> Data?
+    func exportLogs(reference: String) -> URL?
+    func exportLogsData(reference: String) -> Data?
+}
+
+extension PayloadProviding {
+    func exportPayloadContent(
+        reference: String,
+        renderingMode: Summary.RenderingMode,
+        fileName: String?
+    ) -> RenderingContent {
+        switch renderingMode {
+        case .inline:
+            return exportPayloadData(reference: reference)
+                .map(RenderingContent.data) ?? .none
+        case .linking:
+            return exportPayload(reference: reference, fileName: fileName)
+                .map(RenderingContent.url) ?? .none
+        }
+    }
+
+    func exportLogsContent(
+        reference: String,
+        renderingMode: Summary.RenderingMode
+    ) -> RenderingContent {
+        switch renderingMode {
+        case .inline:
+            return exportLogsData(reference: reference)
+                .map(RenderingContent.data) ?? .none
+        case .linking:
+            return exportLogs(reference: reference).map(RenderingContent.url) ?? .none
+        }
+    }
+}
+```
+
+Rename the four primitives to the protocol's names
+(`exportPayload(reference:fileName:)`, `exportPayloadData(reference:)`,
+`exportLogs(reference:)`, `exportLogsData(reference:)`).
+
+**Keep `getInvocationRecord()`, `getTestPlanRunSummaries(id:)` and
+`getActionTestSummary(id:)`.** An earlier revision deleted them as "the reader
+owns those now", but `LegacyResultReader` reaches them *through* its `file`
+property and would stop compiling. They are legacy-only accessors on the
+legacy-only provider, and they leave with the whole file when XCResultKit goes.
+
+Delete only **`getCodeCoverage()`**, which is defined and never called anywhere
+in the target. Keep `exportJson()` until Task 14.
 
 Keep the per-id `payloadLockTable` and both `NSLock` comment blocks verbatim.
 They document a real race in XCResultKit's shared-temp-path export, and the
@@ -1244,13 +1399,13 @@ destination cannot be written, on each backend.
 - [ ] **Step 4: Build and run the full suite**
 
 ```bash
+set -o pipefail
 swift build 2>&1 | tail -20 && swift test 2>&1 | tail -15
 ```
 
-Expected: builds clean, and **every test passes with zero failures**. The
-count is above the original 23 by this point — Tasks 1, 2, and 4 each added
-tests — so check for `0 failures`, not for a specific total. `Models/*` and
-`Protocols/EmittableOutput.swift` no longer import XCResultKit:
+Expected: builds clean, and **every test passes with zero failures**. Check for
+`0 failures` rather than a specific total — earlier tasks added tests. `Models/*`
+and `Protocols/EmittableOutput.swift` no longer import XCResultKit:
 
 ```bash
 grep -rln "import XCResultKit" Sources/ | grep -v ResultReading/Legacy
@@ -1266,9 +1421,10 @@ diff -r /tmp/xchr-baseline /tmp/xchr-after && echo "IDENTICAL — refactor is be
 ```
 
 Expected: `IDENTICAL`. **Any difference is a regression in this task, not an
-acceptable change.** Investigate before proceeding; the whole point of Task 2
-was to make this checkable. If fixtures were regenerated since Task 2, the
-baseline is void — redo Task 2 step 3 from the pre-refactor commit.
+acceptable change** — and unlike the earlier revision of this plan, that is now
+a satisfiable requirement, because every mandated output change moved to 5b.
+If fixtures were regenerated since Task 2, the baseline is void — redo Task 2
+step 3 from the pre-refactor commit.
 
 - [ ] **Step 6: Commit**
 
@@ -1278,6 +1434,119 @@ git commit -m "refactor: render from ParsedResult instead of XCResultKit types
 
 Verified behaviour-preserving: normalized renders of all three fixtures are
 byte-identical before and after, against one fixture generation."
+```
+
+---
+
+## Task 5b: Apply the model decisions to the renderer
+
+Everything from Task 2.5 that **changes rendered output**. Separated from 5a so
+that each has a gate it can actually meet: 5a proves byte-identity, 5b enumerates
+its diff and requires every line of it to be one of the changes below.
+
+**Files:**
+- Modify: `Classes/Models/Activity.swift`, `Iteration.swift`, `Test.swift`
+
+**Interfaces:**
+- Consumes: Task 5a.
+- Produces: the rendered output both backends converge on.
+
+- [ ] **Step 1: Delete `ActivityType` (decision 2)**
+
+The port carries no `activityType`, so `cssClasses` reduces to the failure case:
+
+```swift
+var cssClasses: String {
+    isFailure || hasFailingSubActivities ? "activity-assertion-failure" : ""
+}
+```
+
+`ActivityType` and its five raw values are deleted. Unlike `ObjectClass`, no
+JavaScript or stylesheet rule selects on `activity-internal`,
+`activity-user-created`, `activity-skipped-test` or
+`activity-delete-attachment` — confirm with a grep over `HTMLTemplates.swift`
+before deleting, and if any turns out to be load-bearing, stop and reopen
+decision 2 rather than working around it.
+
+- [ ] **Step 2: Empty the activity duration (decision 1)**
+
+`Activity.totalTime` goes with `finish`. Supply an empty string for the
+placeholder rather than editing the template:
+
+```swift
+"TIME": "",   // was totalTime.formattedSeconds
+```
+
+`HTMLTemplates.activity` interpolates `[[TITLE]] ([[TIME]])`, so this renders
+`Some activity ()` — a stray empty paren on every activity row.
+
+This is a scope decision, not a technical obstacle. `HTMLTemplates.swift` is
+hand-maintained and could be edited: its `autogenerated by createTemplates.sh`
+header is stale, that script was deleted in #295, and #349 already hand-edited
+the file. The Global Constraints nonetheless freeze report markup for this
+work, and that guard is worth keeping — the redesign owns the templates and
+must first settle which of `HTMLTemplates.swift` and the stale
+`Sources/XCTestHTMLReportCore/HTML/*.html` copy is the source of truth. A
+drive-by markup edit here would prejudge that in a migration PR.
+
+`(0.00s)` on every activity would have been worse: that is a fabricated number,
+where `()` is merely untidy. Log a follow-up issue — *remove the `TIME`
+placeholder once the template source of truth is settled.*
+
+- [ ] **Step 3: Move `Activity.uuid` onto `IdentifierPath`**
+
+It reads `ActionTestActivitySummary.uuid` today — an XCResultKit field the port
+cannot supply, and one the modern format has no equivalent for. Minting a fresh
+`UUID().uuidString` would compile and silently undo #430, whose
+`ReproducibilityTests.testRenderingTheSameBundleTwiceProducesIdenticalBytes`
+asserts byte-identical renders.
+
+Give `Activity` an `identifierPath` and mint from it, as `TestGroup`,
+`TestCase` and `Iteration` already do:
+
+```swift
+uuid = identifierPath.identifier
+subActivities = activity.subActivities.enumerated().map { index, sub in
+    Activity(
+        activity: sub,
+        identifierPath: identifierPath.appending("activity\(index)"),
+        ...
+    )
+}
+```
+
+A path-derived id is also backend-neutral, where an activity uuid would have
+been a field only the legacy backend could populate.
+
+- [ ] **Step 4: Enumerate the diff**
+
+```bash
+XCHR_BASELINE_DIR=/tmp/xchr-5b swift test --filter BaselineCaptureTests
+diff -r /tmp/xchr-after /tmp/xchr-5b > /tmp/xchr-5b.diff; wc -l /tmp/xchr-5b.diff
+```
+
+Every differing line must be one of exactly three shapes. Check them, do not
+skim:
+
+1. an activity `class="activity …"` losing `activity-internal`,
+   `activity-user-created`, `activity-skipped-test` or
+   `activity-delete-attachment`
+2. an activity row losing its `(1.23s)` and rendering `()`
+3. an activity element id changing from an XCResultKit uuid to a path digest
+
+Anything else — a test row, a group heading, a status class, an attachment —
+is a regression from Step 1 or 3, not an accepted change. `swift test` must
+also stay green: `ReproducibilityTests` and `CoreTests` both select on classes
+this task deliberately leaves alone.
+
+- [ ] **Step 5: Commit**
+
+```bash
+swiftformat . && git add -A
+git commit -m "feat!: apply the Task 2.5 model decisions to the renderer
+
+Activity types and per-activity durations leave the report; activity element
+ids become path-derived. Diff against the 5a baseline enumerated and reviewed."
 ```
 
 ---
@@ -1467,7 +1736,12 @@ struct XCResultToolClient: XCResultToolInvoking {
         do {
             try process.run()
         } catch {
-            return false
+            // `.unknown`, not `.unavailable`. A transient failure to spawn
+            // `xcrun` is not evidence that the legacy commands are gone, and
+            // reporting absence here would silently skip `DifferentialTests` —
+            // the migration's only proof — on a machine where both backends
+            // actually work.
+            return .unknown
         }
         // Drain stderr too. An undrained pipe that fills blocks the child in
         // write() forever, and this probe runs before anything else works.
@@ -1963,26 +2237,31 @@ struct ModernResultReader: ResultReader {
             let tests = try client.json(
                 ["get", "test-results", "tests"], as: TestResultsTests.self
             )
-            let testables = (tests.testNodes ?? [])
-                .flatMap { $0.children ?? [] }
-                .filter { Self.bundleNodeTypes.contains($0.nodeType ?? "") }
-                .map { bundle in
-                    ParsedTestable(
-                        targetName: bundle.name ?? "",
-                        groups: (bundle.children ?? []).map(parseGroup)
-                    )
-                }
 
-            // One run per destination, matching legacy's one-run-per-ActionRecord.
-            // Collapsing to `devices.first` would silently drop every extra
-            // destination in a multi-simulator test plan — and because the
-            // fixture suite runs on a single simulator, nothing here would
-            // catch it. `testRunCountsMatchAcrossBackends` is the guard.
+            // A decodable document that yields no destinations is a failed
+            // read, not an empty result. Returning `ParsedResult(runs: [])`
+            // here would satisfy `Summary.init`'s `guard let`, record no
+            // fault, and let `--result-reader modern --lenient` write an empty
+            // report and exit 0 — where legacy's equivalent failure records
+            // `.missingInvocationRecord` and reaches exit 3. Returning nil
+            // routes it to the same fault.
+            //
+            // The general rule, which every reader follows: a structurally
+            // empty but successfully decoded read is a failure. Decoding
+            // succeeding is not evidence that the bundle had content.
             let devices = tests.devices ?? []
             guard !devices.isEmpty else {
                 Logger.warning("No destinations reported for \(client.bundleDescription)")
-                return ParsedResult(runs: [])
+                return nil
             }
+
+            // One run per destination, matching legacy's one-run-per-ActionRecord.
+            //
+            // Each run carries only the tests that ran on *its* device. Handing
+            // every run the same `testables` array lists every test under every
+            // run and doubles the header totals on a two-destination bundle —
+            // and `testStatusesAndCountsMatchAcrossBackends` compares
+            // `runs.count`, not per-run content, so it would still pass.
             return ParsedResult(runs: devices.map { device in
                 ParsedRun(
                     destination: ParsedDestination(
@@ -1992,7 +2271,7 @@ struct ModernResultReader: ResultReader {
                         operatingSystemVersion: device.osVersion ?? ""
                     ),
                     logReference: "action",
-                    testables: testables
+                    testables: testables(on: device, from: tests)
                 )
             })
         } catch {
@@ -2005,6 +2284,33 @@ struct ModernResultReader: ResultReader {
         "UI test bundle", "Unit test bundle",
     ]
 
+    /// The test tree as it ran on one destination.
+    ///
+    /// With a single destination — every fixture in this suite — this is the
+    /// whole tree. With several, the tree must be filtered to the device,
+    /// because `ParsedRun` is per-destination and duplicating the full tree
+    /// under each run doubles every header total.
+    ///
+    /// `Device` is itself a `TestNodeType`, so a multi-destination document
+    /// nests device nodes inside the tree. **Verify the shape against a real
+    /// two-destination bundle before implementing this** — no fixture here
+    /// produces one, and the single-destination case (no `Device` nodes,
+    /// return the tree as-is) is the only shape confirmed on Xcode 26.2.
+    private func testables(
+        on device: TestResultsDevice,
+        from tests: TestResultsTests
+    ) -> [ParsedTestable] {
+        (tests.testNodes ?? [])
+            .flatMap { $0.children ?? [] }
+            .filter { Self.bundleNodeTypes.contains($0.nodeType ?? "") }
+            .map { bundle in
+                ParsedTestable(
+                    targetName: bundle.name ?? "",
+                    groups: (bundle.children ?? []).map(parseGroup)
+                )
+            }
+    }
+
     private func parseGroup(_ node: TestNode) -> ParsedGroup {
         let children: [ParsedNode] = (node.children ?? []).compactMap { child in
             switch child.nodeType {
@@ -2016,6 +2322,13 @@ struct ModernResultReader: ResultReader {
         return ParsedGroup(
             name: node.name ?? "---group-name-not-found---",
             identifier: node.nodeIdentifier ?? node.name ?? "---group-identifier-not-found---",
+            // `durationInSeconds` is null on every Test Suite, Test Plan and
+            // *test bundle node in all three fixtures, so this is always 0 for
+            // groups while legacy reports a real value. Not a bug to fix here —
+            // the format does not carry it — but it is why `durations` is an
+            // allow-list entry. Do not synthesise a sum of children: that would
+            // be a fabricated number, and it would make the two backends agree
+            // by inventing data rather than by sharing it.
             duration: node.durationInSeconds ?? 0,
             children: children
         )
@@ -2030,9 +2343,44 @@ struct ModernResultReader: ResultReader {
     /// `"<issueType> at <file>:<line>:<message>"`.
     ///
     /// Skipped tests use the same node (`"Test skipped - Test skipped"`).
-    private func failureActivities(_ node: TestNode) -> [ParsedActivity] {
-        (node.children ?? [])
+    /// Failure rows from the `tests` document, **minus any the activities
+    /// document already supplied**.
+    ///
+    /// Both documents describe the same failure. On `FirstSuite/testTwo()` the
+    /// activities document carries `"XCTAssertTrue failed - Test failed"` with
+    /// `isAssociatedWithFailure: true`, and the tests document carries
+    /// `"FirstSuite.swift:86: XCTAssertTrue failed - Test failed"`. Appending
+    /// both unconditionally renders **two failure rows for every failing
+    /// test** — and the extra row is not something `failureTitlePrefix` can
+    /// mask, because it is a whole element rather than a prefix.
+    ///
+    /// Task 4 carries an explicit anti-double-count guard for the legacy
+    /// equivalent (`if activities.contains(where: hasFailure)`); this is its
+    /// counterpart. Matching is on the message tail, since the tests document
+    /// prefixes `<file>:<line>: ` and the activities document does not.
+    private func failureActivities(
+        _ node: TestNode,
+        existing: [ParsedActivity]
+    ) -> [ParsedActivity] {
+        func tail(_ text: String) -> String {
+            // Strip a leading `<file>.swift:<line>: ` if present.
+            guard let range = text.range(
+                of: #"^[\w.+-]+:\d+:\s*"#, options: .regularExpression
+            ) else {
+                return text
+            }
+            return String(text[range.upperBound...])
+        }
+        func alreadyPresent(_ activities: [ParsedActivity], _ needle: String) -> Bool {
+            activities.contains { activity in
+                (activity.isFailure && tail(activity.title) == needle)
+                    || alreadyPresent(activity.subActivities, needle)
+            }
+        }
+
+        return (node.children ?? [])
             .filter { $0.nodeType == "Failure Message" }
+            .filter { !alreadyPresent(existing, tail($0.name ?? "")) }
             .map { message in
                 ParsedActivity(
                     title: message.name ?? "",
@@ -2052,12 +2400,12 @@ struct ModernResultReader: ResultReader {
         if repetitions.isEmpty {
             // Activities first, then the failure messages, matching the
             // legacy reader's ordering of activitySummaries + failureSummaries.
+            let base = activities(for: identifier, iteration: nil)
             iterations = [ParsedIteration(
                 iterationNumber: nil,
                 status: Self.status(node.result),
                 duration: node.durationInSeconds ?? 0,
-                activities: activities(for: identifier, iteration: nil)
-                    + failureActivities(node)
+                activities: base + failureActivities(node, existing: base)
             )]
         } else {
             // The parent node's own `result` summarises the retries and is not
@@ -2069,8 +2417,10 @@ struct ModernResultReader: ResultReader {
                         ?? (index + 1),
                     status: Self.status(repetition.result),
                     duration: repetition.durationInSeconds ?? 0,
-                    activities: activities(for: identifier, iteration: index)
-                        + failureActivities(repetition)
+                    activities: {
+                        let base = activities(for: identifier, iteration: index)
+                        return base + failureActivities(repetition, existing: base)
+                    }()
                 )
             }
         }
@@ -2132,10 +2482,14 @@ struct ModernResultReader: ResultReader {
                 as: TestActivities.self
             )
             let runs = document.testRuns ?? []
-            let run = iteration.map { index in
-                runs.indices.contains(index) ? runs[index] : nil
-            } ?? runs.first
-            return (run??.activities ?? []).map(parseActivity)
+            // Flattened deliberately: `iteration.map { ... }` already yields
+            // `TestRun?`, so `?? runs.first` produces `TestRun?`, not
+            // `TestRun??`. Double-chaining here fails to compile with
+            // "cannot use optional chaining on non-optional value".
+            let run: TestRun? = iteration
+                .flatMap { index in runs.indices.contains(index) ? runs[index] : nil }
+                ?? runs.first
+            return (run?.activities ?? []).map(parseActivity)
         } catch {
             // A failed activities query is a genuine read failure, not a
             // format limitation: the test renders with no activities at all.
@@ -2882,17 +3236,42 @@ public enum ResultBackend: String, CaseIterable {
 }
 ```
 
-In `Summary.init`, build the reader and payload provider per backend:
+**Where the "explicit legacy is an error" rule is enforced.** `Summary.init` is
+a non-throwing `public init` in a target that does not depend on ArgumentParser,
+so it cannot raise `ValidationError`, and adding `throws` would break every
+existing call site — none of which use `try`. The rule is enforced in two
+places instead:
+
+*In the CLI*, which owns the user-facing error. ArgumentParser's `validate()`
+is already throwing and already lives in the executable target:
 
 ```swift
-// An explicit `legacy` the toolchain cannot honour is an error, not a
-// substitution — see ResultBackend.resolve().
-guard case let .use(resolved) = backend.resolve() else {
+// XCTestHtmlReport.validate()
+if case .legacyUnavailable = summaryOptions.resultReader.resolve() {
     throw ValidationError(
         "--result-reader legacy was requested, but this toolchain no longer "
             + "provides the legacy xcresulttool commands."
     )
 }
+```
+
+*In `Summary.init`*, as defence in depth for library consumers who never touch
+the CLI. It cannot throw, so it records a fault — which reaches exit 3 through
+the existing path, and is therefore still not a silent substitution:
+
+```swift
+let resolved: ResultBackend
+switch backend.resolve() {
+case let .use(concrete):
+    resolved = concrete
+case .legacyUnavailable:
+    faultCollector.record(
+        .legacyReaderUnavailable,
+        "legacy reader requested but unavailable on this toolchain"
+    )
+    resolved = .modern
+}
+
 let client = XCResultToolClient(bundleURL: url)
 let reader: ResultReader
 let payloads: PayloadProviding
@@ -2911,9 +3290,23 @@ case .modern:
 }
 ```
 
+`resolve()` never returns `.use(.auto)`, so the `.auto` arm above is
+unreachable; keep it only because `ResultBackend` is the parameter type and
+Swift requires exhaustiveness.
+
+Add the fault kind alongside the others in `FaultCollector.swift`:
+
+```swift
+/// An explicit `legacy` reader was requested on a toolchain that no longer
+/// provides the legacy commands. The report was produced with the modern
+/// reader instead, which is a different reader than the caller asked for.
+case legacyReaderUnavailable
+```
+
 `Run`, `Activity`, and `Attachment` take `PayloadProviding` instead of
 `ResultFile`. `Run.file` stays a `ResultFile` because `removeUnattachedFiles`
-reads `run.file.url`.
+reads `run.file.url` — and `url` is on the `PayloadProviding` protocol too
+(Task 5a step 3), so the modern provider satisfies the same call.
 
 Add the CLI flag in `SummaryOptions`:
 
@@ -3008,6 +3401,11 @@ the diff to a declared list.
   "comment": "Each entry names one field the modern xcresulttool format does not provide, and the masking rule that removes its effect from a rendered report. The differential test masks BOTH renders with every rule here and then requires them to be byte-identical: after the declared losses are removed, nothing else may differ. Adding an entry means accepting a permanent difference between the backends — a design decision, not a way to quiet a failing test. Task 2.5 voided two earlier entries (activityTypeClasses, durations) by removing the fields from the port instead of masking the divergence; prefer that route to adding an entry here.",
   "knownLosses": [
     {
+      "rule": "durations",
+      "field": "group and suite duration",
+      "effect": "GROUP durations, not activity ones. durationInSeconds is null on every Test Suite, Test Plan, UI test bundle and Unit test bundle node in all three fixtures, so modern renders (0.00s) where legacy reports a real value -- FirstSuite 0.699s, SecondSuite 0.126s, ThirdSuite 0.132s, SampleAppUnitTests 0.213s. Swift Testing test cases are null the same way. These are real suite names, so wrapperGroups does not mask them. Unrelated to ParsedActivity.finish: an earlier revision deleted this entry believing removing that field removed all duration divergence."
+    },
+    {
       "rule": "attachmentDisplayNames",
       "field": "attachment user-supplied name",
       "effect": "Attachment display names fall back to the type-derived label (Screenshot, Video, File) on the modern backend, because the new format exposes only the generated filename."
@@ -3026,14 +3424,23 @@ the diff to a declared list.
 }
 ```
 
-**What the Task 2.5 decisions removed from here.** `activityTypeClasses` and
-`durations` are gone. Neither was masked away — the underlying fields left the
-port, so the legacy backend stopped rendering them too and the two agree with
-no rule at all. That is the direction to push every remaining entry: a
-divergence deleted from the model beats a divergence hidden by a mask, because
-the masked region is exactly where a regression can hide.
+**What the Task 2.5 decisions removed from here.** `activityTypeClasses` is
+gone — not masked away, but deleted, because the underlying field left the port
+and the legacy backend stopped rendering it too. That is the direction to push
+every remaining entry: a divergence deleted from the model beats a divergence
+hidden by a mask, because the masked region is exactly where a regression can
+hide.
 
-Of the three left, `attachmentDisplayNames` and `failureTitlePrefix` are
+`durations` was deleted alongside it in an earlier revision and has been
+**restored**. The premise — no `finish` field, no duration divergence — was
+false. Group durations diverge for an unrelated reason: `durationInSeconds` is
+`null` on every suite, plan and bundle node in all three fixtures, so modern
+renders `(0.00s)` where legacy reports a real value. Worth keeping as a
+cautionary example: deleting an allow-list entry is only progress when the
+divergence it covered is actually gone, and "the field is gone" is not the same
+claim.
+
+Of the four, `attachmentDisplayNames`, `failureTitlePrefix` and `durations` are
 genuine format asymmetries with no modern source. `wrapperGroups` is a
 deliberate render difference (the flat tree, per the spec).
 
@@ -3074,12 +3481,16 @@ In `Package.swift`, add to the test target's `resources` array:
 import Foundation
 
 enum KnownLossMasker {
-    // Three, not five. `activityTypeClasses` and `durations` were removed by
-    // the Task 2.5 decisions: with no `activityType` or `finish` in the port,
-    // both backends render the same thing and there is nothing to mask. An
-    // unmasked diff proves more than a masked one, so removing rules here is
-    // progress, not scope creep.
+    // Four, not five. `activityTypeClasses` was removed by decision 2: with no
+    // `activityType` in the port, both backends render the same thing and there
+    // is nothing to mask.
+    //
+    // `durations` stays. An earlier revision deleted it too, on the premise
+    // that removing `ParsedActivity.finish` removed all duration divergence.
+    // That was wrong — the surviving divergence is in group durations, which
+    // `finish` never fed.
     static let implementedRules: Set<String> = [
+        "durations",
         "attachmentDisplayNames",
         "failureTitlePrefix",
         "wrapperGroups",
@@ -3100,6 +3511,19 @@ enum KnownLossMasker {
 
     private static func apply(_ rule: String, to html: String) -> String {
         switch rule {
+        case "durations":
+            // Bare `(1.23s)` / `(0.00s)` suffixes from `[[TITLE]] ([[DURATION]])`.
+            //
+            // Deliberately over-broad, and that costs coverage. The divergence
+            // is in group headings and Swift Testing cases, but the rendered
+            // form is identical for every row and the duration sits on a
+            // different line from the `test-summary-group` class, so it cannot
+            // be scoped by line. Normalising all of them therefore also hides
+            // any regression in *XCTest* case durations, which do agree.
+            //
+            // `testXCTestCaseDurationsAgreeAcrossBackends` restores exactly
+            // that coverage. Do not delete one without the other.
+            return replace(html, #"\(\d+\.\d+s\)"#, with: "(DURATION)")
         case "attachmentDisplayNames":
             // The `[[NAME]]` line inside `<p class="attachment list-item">`.
             return replace(
@@ -3108,8 +3532,17 @@ enum KnownLossMasker {
                 with: "$1ATTACHMENT_NAME\n"
             )
         case "failureTitlePrefix":
-            // `Assertion Failure at File.swift:76:` prefixed onto the message.
-            return replace(html, #"[A-Za-z ]+ at [^\s:]+:\d+:"#, with: "")
+            // Two shapes, not one. Verified on `TestResults`:
+            //   legacy  "Assertion Failure at FirstSuite.swift:86:XCTAssertTrue failed - Test failed"
+            //   modern  "FirstSuite.swift:86: XCTAssertTrue failed - Test failed"
+            // An earlier revision stripped only the legacy form, so modern's
+            // own `<file>:<line>: ` prefix survived and every failing test
+            // still differed after masking — the entry's justification claimed
+            // a convergence the rule did not deliver.
+            let legacyStripped = replace(
+                html, #"[A-Za-z ]+ at [^\s:]+:\d+:\s*"#, with: ""
+            )
+            return replace(legacyStripped, #"[\w.+-]+\.swift:\d+:\s*"#, with: "")
         case "wrapperGroups":
             // Legacy-only `Selected tests` / `All tests` / `<target>.xctest`
             // group headings, and the div nesting they introduce.
@@ -3333,6 +3766,43 @@ final class DifferentialTests: XCTestCase {
                 \(differing.sorted().prefix(5).joined(separator: "\n"))
                 """
             )
+        }
+    }
+
+    /// Restores the coverage the `durations` mask gives up.
+    ///
+    /// That rule normalises every `(1.23s)` in the report, because the
+    /// divergent ones cannot be scoped by line. This asserts directly on the
+    /// model that the durations which *should* agree do — XCTest test cases,
+    /// as against groups and Swift Testing cases, which the format leaves null
+    /// on modern.
+    func testXCTestCaseDurationsAgreeAcrossBackends() throws {
+        try requireBothBackends()
+        for fixture in Self.fixtures {
+            let legacy = try summary(fixture, .legacy)
+            let modern = try summary(fixture, .modern)
+
+            func durations(_ summary: Summary) -> [String: TimeInterval] {
+                Dictionary(
+                    summary.runs.flatMap(\.allTests)
+                        // Swift Testing cases report no duration on modern.
+                        .filter { !$0.identifier.hasPrefix("SwiftTestingSuite/") }
+                        .map { ($0.identifier, $0.duration) },
+                    uniquingKeysWith: { first, _ in first }
+                )
+            }
+            let legacyDurations = durations(legacy)
+            XCTAssertFalse(
+                legacyDurations.isEmpty,
+                "\(fixture): no XCTest cases to compare — assertion would be vacuous"
+            )
+            for (identifier, legacyValue) in legacyDurations {
+                let modernValue = try XCTUnwrap(durations(modern)[identifier])
+                XCTAssertEqual(
+                    legacyValue, modernValue, accuracy: 0.0005,
+                    "\(fixture): \(identifier) duration differs between backends"
+                )
+            }
         }
     }
 
@@ -3711,11 +4181,11 @@ fault trap → Tasks 5, 11 (step 4 explicitly). Backend selection → Task 11.
 Status mapping → Task 8. Iterations/`.mixed` → Tasks 4, 8, 12. Failure location
 → Tasks 4, 8, allow-list. Attachments and the uuid join → Tasks 9, 10.
 Tree shape → Task 8, allow-list. `--json` → Task 14. Reproducibility → Task 1.
-Differential → Task 12. CI → Task 13. Dead `getCodeCoverage()` → Task 5 step 3.
+Differential → Task 12. CI → Task 13. Dead `getCodeCoverage()` → Task 5a step 3.
 Phase 6 → Follow-up. No spec section is unimplemented.
 
 **Placeholders.** None. Every code step carries the code; the one prose-only
-step (Task 5 step 1) is a mechanical substitution table with all nine
+step (Task 5a step 1) is a mechanical substitution table with all nine
 signatures spelled out.
 
 **Type consistency.** `normalizeIdentifiers(_:)` (Tasks 1, 12; Task 2 uses none);
@@ -3730,7 +4200,7 @@ each carries a guard:
 
 - Task 1 asserts the raw renders *do* differ before asserting the normalized
   ones match.
-- Task 2 requires all three fixtures and non-empty output, so Task 5's
+- Task 2 requires all three fixtures and non-empty output, so Task 5a's
   `diff -r` cannot compare two partial directories and call them identical.
 - Task 12 asserts attachment bytes exist before comparing them, and compares
   them keyed by filename with counts rather than as a `Set<Data>`, which would

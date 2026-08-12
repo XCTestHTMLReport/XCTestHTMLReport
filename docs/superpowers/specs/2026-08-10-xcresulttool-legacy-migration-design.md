@@ -61,7 +61,8 @@ asymmetries the differential still has to mask.
 | Legacy | New format | Verdict |
 | --- | --- | --- |
 | activity `activityType` (5 constants driving CSS classes) | absent; only `isAssociatedWithFailure: Bool` | **dropped** (answer 2) — out of the port |
-| activity `start` **and** `finish` | `startTime` only | **dropped** (answer 1) — `finish` out of the port; no duration beats a fabricated one |
+| activity `start` **and** `finish` | `startTime` only | **dropped** (answer 1) — `finish` out of the port; `start` becomes the ordering key |
+| group / suite `duration` | `durationInSeconds` is `null` on every suite, plan and bundle node | **lost** — unrelated to `finish`; masked by the `durations` allow-list entry |
 | activity `uuid` | absent | synthesized locally (already how the HTML uses it) |
 | attachment `name` (user-supplied, e.g. `"HTML"`) | `name` holds the legacy *filename* | **lost** — present only in a sibling child-activity title |
 | attachment `filename` | `name` | maps, renamed |
@@ -77,7 +78,7 @@ asymmetries the differential still has to mask.
 Consequence: byte-identical output across the two backends is not achievable.
 The bar is a *declared and reviewed* diff, asserted in CI, not an empty one —
 though the model decisions shrink what has to be declared from five entries to
-three, which makes the remaining diff a stronger proof than a larger masked one.
+four, which makes the remaining diff a stronger proof than a larger masked one.
 
 ### Tree shape
 
@@ -156,7 +157,16 @@ This is the only shape in which dual-path does not duplicate the renderer.
 `read()` returns an optional rather than throwing, mirroring the existing
 `getInvocationRecord()` contract that `Summary.init` already guards with a
 `.missingInvocationRecord` fault. A nil read is therefore reported, not
-swallowed. Failures *below* the top level are the ones that need care: a failed
+swallowed.
+
+**A structurally empty but successfully decoded read is a failure, in every
+reader.** Decoding succeeding is not evidence that the bundle had content: a
+`ParsedResult` with no runs satisfies `Summary.init`'s `guard let`, records no
+fault, and lets `--lenient` write an empty report and exit 0. Both readers must
+return nil instead — the modern one when `devices` is empty, the legacy one
+when no `ActionRecord` parses — so both reach `.missingInvocationRecord` and
+exit 3. Stated as a rule rather than fixed case by case, because it is the
+shape of the bug rather than one instance of it. Failures *below* the top level are the ones that need care: a failed
 activities query returns an empty list, which without a fault would render a
 visibly gutted report and still exit 0. That path records
 `.missingActivities`.
@@ -270,9 +280,9 @@ Task 12 are read against this record rather than against the plan.
 
 | # | Question | Answer | Rationale |
 | --- | --- | --- | --- |
-| 1 | Per-activity durations? | **No** — drop `ParsedActivity.finish` | Modern publishes `startTime` only; no duration beats a fabricated `(0.00s)`. Voids the `durations` allow-list entry. |
+| 1 | Per-activity durations? | **No** — drop `ParsedActivity.finish`, order by `start` | Modern publishes `startTime` only; no duration beats a fabricated `(0.00s)`. `start` replaces `finish` as the key ordering the merged activity/failure list, so failure rows keep rendering where they occurred. Does **not** void the `durations` allow-list entry — group durations diverge for an unrelated reason. |
 | 2 | The five activity-type states? | **No** — drop `ParsedActivity.activityType`, keep `isFailure` | The one genuinely useful state (`userCreated`) has no modern source at any fidelity, and a field only one backend can populate is the anti-pattern this exercise exists to catch. Voids `activityTypeClasses`. |
-| 3 | `ObjectClass` in the model? | **No** — Task 5 deletes the type | `IDESchemeActionTestSummaryGroup` is an Xcode internal class name rendered into a CSS class. No modern equivalent and no reason to acquire one. |
+| 3 | `ObjectClass` in the model? | **Replace, not delete** — a neutral `NodeKind` in the renderer | The raw values are Xcode internals and go. The *class names they emit* stay: `test-summary` and `test-summary-group` are selected on by the report's filter and collapse JavaScript, by the stylesheet, and by four test call sites. The port needs no field — `ParsedNode` already distinguishes group from case. |
 | 4 | Attachment UTI as its own field? | **No** — `filenameExtension` only, both backends | `AttachmentType` needs only enough to pick a template and a MIME type. Legacy maps its UTI down to an extension, and attachment typing becomes identical rather than allow-listed. |
 | 5 | Status as a legacy raw string? | **No** — neutral enum, both readers map into it | `statusRawValue: String` would make the modern reader emit legacy spellings it never saw. Fabricating legacy shape is the line this exercise draws. |
 | 6 | Swift Testing `Arguments`? | **Yes, now** — `ParsedTestCase.arguments: [String]` | The only addition that is *inside* the tree; adding the slot later means reshaping the port. Empty on legacy and for non-parameterized tests. |
@@ -281,18 +291,23 @@ Task 12 are read against this record rather than against the plan.
 
 Net effect on the port: three fields removed (`finish`, `activityType`,
 `uniformTypeIdentifier`), one field added (`arguments`), one field retyped
-(`statusRawValue` → enum), one existing type deleted (`ObjectClass`).
+(`statusRawValue` → enum), one existing type replaced (`ObjectClass` → a
+renderer-side `NodeKind` that preserves the emitted CSS classes).
 
 Net effect on the differential: the allow-list drops from five entries to
-three. Naming them, since this record is what Task 12 is read against —
-`activityTypeClasses` and `durations` are **deleted**, because with no field in
-the port there is no divergence to mask:
+**four**. Naming them, since this record is what Task 12 is read against —
+`activityTypeClasses` is **deleted**, because with no `activityType` in the port
+there is no divergence to mask. `durations` is **retained**: an earlier revision
+deleted it on the false premise that removing `finish` removed all duration
+divergence, when the surviving divergence is in group durations and unrelated to
+that field.
 
 | Rule | What still differs | Exercised by |
 | --- | --- | --- |
 | `attachmentDisplayNames` | Modern exposes only the generated filename, so display names fall back to the type-derived label (`Screenshot`, `Video`, `File`). No modern source for the user-supplied name. | `TestResults` — `FirstSuite/testWithSpecialChars()` and `testAttachHtmlData()` both set `XCTAttachment.name` |
 | `failureTitlePrefix` | Legacy renders `<issueType> at <file>:<line>:<message>`; modern's `Failure Message` node gives `<file>:<line>: <message>` pre-joined, with no `issueType`. | `TestResults` — every failing case; `RetryResults` — `testJustFail()` |
 | `wrapperGroups` | Modern omits the legacy `Selected tests` / `All tests` and `<target>.xctest` levels. A deliberate render difference, not a format loss. | `TestResults` — both bundles; `SanityResults` |
+| `durations` | **Group** durations, not activity ones. `durationInSeconds` is `null` on every `Test Suite`, `Test Plan` and `*test bundle` node in all three fixtures, so modern renders `(0.00s)` where legacy reports a real value — `FirstSuite` 0.699s, `SecondSuite` 0.126s, `ThirdSuite` 0.132s, `SampleAppUnitTests` 0.213s. Swift Testing test *cases* are `null` the same way. These are real suite names, so `wrapperGroups` does not mask them. | all three fixtures |
 
 Everything outside these three must be byte-identical after masking. An
 addition to this table is a design decision requiring a written justification,
@@ -417,17 +432,18 @@ backends emit the same field names, nesting, enum encoding, and
 `schemaVersion`; every key present on one is present on the other.
 
 Permitted value differences fall into **two distinct classes**, and conflating
-them would smuggle a fourth entry into a three-entry allow-list.
+them would smuggle an extra entry into the allow-list.
 
-*Class 1 — the three differential allow-list rules.* These are render-level
-differences the masker already declares, and they surface in `--json` for the
-same reason they surface in HTML:
+*Class 1 — the four differential allow-list rules.* These are render-level
+differences the masker already declares. Three of them surface in `--json` for
+the same reason they surface in HTML; one does not:
 
 | Rule | In `--json` |
 | --- | --- |
 | `attachmentDisplayNames` | `attachment.name` populated on legacy, `null` on modern |
 | `failureTitlePrefix` | failure titles carry the legacy `<issueType>` prefix |
 | `wrapperGroups` | legacy group nesting has the wrapper levels |
+| `durations` | `group.duration` real on legacy, `0` on modern for every suite and bundle |
 
 *Class 2 — a model-level capability difference, not an allow-list entry.*
 `testCase.arguments` is populated on modern for parameterized Swift Testing
@@ -563,14 +579,22 @@ Each phase leaves `main` shippable and green.
    Satisfied; branch from a `main` at or after that commit.
 0b. **Settle the information model** before `ParsedResult` is written. See
    "Deciding the model before the port" below.
-1. **Extract the port.** Introduce `ParsedResult` and `LegacyResultReader`;
+1a. **Extract the port.** Introduce `ParsedResult` and `LegacyResultReader`;
    move the models onto `ParsedResult`. XCResultKit still present, still the
-   only backend. Pure refactor — all 23 tests green, output byte-identical
-   with **no** normalization applied, which #430 makes achievable and which is a
+   only backend. Pure refactor — every test green, output byte-identical with
+   **no** normalization applied, which #430 makes achievable and which is a
    stronger gate than the normalized comparison originally planned here: a
    refactor that perturbed the tree would move `IdentifierPath` digests, and
    normalizing would hide it. This is the largest phase and carries no
    behavioural risk, so it lands first and alone.
+1b. **Apply the model decisions to the renderer.** Deleting `ActivityType`,
+   emptying the activity duration, and moving `Activity.uuid` onto
+   `IdentifierPath` all change rendered output, so they cannot sit inside a
+   phase gated on byte-identity. An earlier revision put them in phase 1 and
+   then demanded that gate anyway — an unsatisfiable pairing that in practice
+   gets waived, leaving the migration's largest refactor with no behaviour
+   check at all. This phase carries its own gate: an enumerated diff against
+   phase 1a, every line of which must be one of the three mandated changes.
 2. **Add the modern reader.** `XCResultToolClient`, schema structs,
    `ModernResultReader`. Reachable only through the explicit override.
 3. **Differential harness.** The allow-list and `DifferentialTests`. This is
