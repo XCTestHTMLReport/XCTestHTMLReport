@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XCResultKit
 
 public struct Summary {
     let runs: [Run]
@@ -40,7 +39,7 @@ public struct Summary {
             let url = URL(fileURLWithPath: resultPath)
             let resultFile = ResultFile(url: url, faultCollector: faultCollector)
             resultFiles.append(resultFile)
-            guard let invocationRecord = resultFile.getInvocationRecord() else {
+            guard let parsed = LegacyResultReader(file: resultFile).read() else {
                 Logger.warning("Can't find invocation record for : \(resultPath)")
                 faultCollector.record(.missingInvocationRecord, resultPath)
                 // Previously `break`, which silently abandoned every remaining
@@ -51,10 +50,10 @@ public struct Summary {
             // argument list rather than from its path, so moving a bundle
             // between directories still renders the same report. See
             // `IdentifierPath`.
-            let resultRuns = invocationRecord.actions.enumerated()
-                .compactMap { actionIndex, action in
+            let resultRuns = parsed.runs.enumerated()
+                .compactMap { actionIndex, run in
                     Run(
-                        action: action,
+                        run: run,
                         identifierPath: IdentifierPath.root
                             .appending("bundle\(resultIndex)")
                             .appending("action\(actionIndex)"),

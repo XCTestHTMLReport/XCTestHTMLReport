@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XCResultKit
 
 enum Status: String {
     case unknown = ""
@@ -15,6 +14,23 @@ enum Status: String {
     case success = "Success"
     case skipped = "Skipped"
     case mixed = "Mixed"
+
+    init(_ parsed: ParsedStatus) {
+        switch parsed {
+        case .passed:
+            self = .success
+        case .failed:
+            self = .failure
+        case .skipped:
+            self = .skipped
+        case .expectedFailure, .unknown:
+            // `Status` has no case for an expected failure, so it has always
+            // rendered as `.unknown` (`Status(rawValue: "Expected Failure")`
+            // is nil). Both readers preserve that; giving it its own status is
+            // explicitly out of scope — see the spec's status table.
+            self = .unknown
+        }
+    }
 
     var cssClass: String {
         switch self {
@@ -32,23 +48,21 @@ enum Status: String {
     }
 }
 
-/// Will be deprecated as each case is now a unique object
-enum ObjectClass: String {
-    case unknwown = ""
-    case testableSummary = "IDESchemeActionTestableSummary"
-    case testSummary = "IDESchemeActionTestSummary"
-    case testSummaryGroup = "IDESchemeActionTestSummaryGroup"
+/// What kind of node a row represents, and the CSS class the report's own
+/// stylesheet and JavaScript select on.
+///
+/// Replaces `ObjectClass`, whose raw values were Xcode's internal class names
+/// (`IDESchemeActionTestSummaryGroup`). The identifiers were legacy; the class
+/// names are the report's own contract, and the filter and collapse scripts
+/// both depend on them.
+enum NodeKind {
+    case testCase
+    case group
 
     var cssClass: String {
         switch self {
-        case .testSummary:
-            return "test-summary"
-        case .testSummaryGroup:
-            return "test-summary-group"
-        case .testableSummary:
-            return "testable-summary"
-        default:
-            return ""
+        case .testCase: return "test-summary"
+        case .group: return "test-summary-group"
         }
     }
 }
@@ -58,7 +72,7 @@ public struct TestGroup: Test {
     let uuid: String
     let title: String
     let identifier: String
-    let objectClass: ObjectClass = .testSummaryGroup
+    let nodeKind: NodeKind = .group
     let duration: TimeInterval
     var status: Status {
         if subTests.allSatisfy({ $0.status == .success }) {
@@ -88,45 +102,53 @@ public struct TestGroup: Test {
     }
 
     init(
-        group: ActionTestSummaryGroup,
+        group: ParsedGroup,
         identifierPath: IdentifierPath,
-        resultFile: ResultFile,
+        file: PayloadProviding,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
-        title = group.name ?? "---group-name-not-found---"
-        identifier = group.identifier ?? "---group-identifier-not-found---"
+        title = group.name
+        identifier = group.identifier
         duration = group.duration
         uuid = identifierPath.appending(identifier).identifier
 
         Logger.substep("Initializing TestGroup \(identifier)")
 
-        if !group.subtests.isEmpty {
+        let caseChildren: [ParsedTestCase] = group.children.compactMap {
+            if case let .testCase(testCase) = $0 {
+                return testCase
+            }
+            return nil
+        }
+        let groupChildren: [ParsedGroup] = group.children.compactMap {
+            if case let .group(subGroup) = $0 {
+                return subGroup
+            }
+            return nil
+        }
+
+        if !caseChildren.isEmpty {
             let operationQueue = OperationQueue()
             operationQueue.maxConcurrentOperationCount = ProcessInfo.processInfo.processorCount * 2
             let queue = DispatchQueue(label: "com.xchtmlreport.subtest.lock")
-            var subTestSet: Set<TestCase> = []
+            // Keyed by source position: built concurrently, so the order they
+            // land in is whatever order the operations finished in.
+            var builtCases = [Int: TestCase]()
 
-            for (sourceIndex, metadata) in group.subtests.enumerated() {
+            for (index, parsedCase) in caseChildren.enumerated() {
                 let operation = BlockOperation {
                     let newTest = TestCase(
-                        metadata: metadata,
-                        sourceIndex: sourceIndex,
+                        testCase: parsedCase,
                         identifierPath: identifierPath,
-                        resultFile: resultFile,
+                        file: file,
                         renderingMode: renderingMode,
                         downsizeImagesEnabled: downsizeImagesEnabled,
                         downsizeScaleFactor: downsizeScaleFactor
                     )
                     queue.sync {
-                        guard let index = subTestSet.firstIndex(of: newTest) else {
-                            subTestSet.insert(newTest)
-                            return
-                        }
-                        var existingTest = subTestSet[index]
-                        existingTest.merge(newTest)
-                        subTestSet.update(with: existingTest)
+                        builtCases[index] = newTest
                     }
                 }
                 operationQueue.addOperation(operation)
@@ -134,19 +156,18 @@ public struct TestGroup: Test {
 
             operationQueue.waitUntilAllOperationsAreFinished()
 
-            // `Set` iteration order is seeded per process, so this sort has to
-            // be a total order or the rendered order changes between runs. Test
-            // identifiers are unique here — they are the set's own dedupe key —
-            // which makes them a sufficient tiebreaker for equal titles.
-            subTests += subTestSet
+            // Identifiers are unique among a group's cases — the reader merges
+            // repetitions on exactly that key — which makes them a sufficient
+            // tiebreaker for equal titles, keeping this sort a total order.
+            subTests += builtCases.values
                 .sorted(by: { ($0.title, $0.identifier) < ($1.title, $1.identifier) })
         }
 
-        if !group.subtestGroups.isEmpty {
-            subTests += group.subtestGroups.enumerated().map { index, subGroup in TestGroup(
+        if !groupChildren.isEmpty {
+            subTests += groupChildren.enumerated().map { index, subGroup in TestGroup(
                 group: subGroup,
                 identifierPath: identifierPath.appending("group\(index)"),
-                resultFile: resultFile,
+                file: file,
                 renderingMode: renderingMode,
                 downsizeImagesEnabled: downsizeImagesEnabled,
                 downsizeScaleFactor: downsizeScaleFactor
@@ -162,7 +183,7 @@ extension TestGroup {
             "TITLE": title,
             "DURATION": duration.formattedSeconds,
             "ICON_CLASS": status.cssClass,
-            "ITEM_CLASS": objectClass.cssClass,
+            "ITEM_CLASS": nodeKind.cssClass,
             "SUB_TESTS": subTests.reduce("") { $0 + $1.html },
         ]
     }
@@ -189,12 +210,7 @@ struct TestCase: Test {
     let title: String
     let identifier: String
 
-    /// Where this test case sits in the report, kept so that iteration
-    /// identifiers can be reassigned once iterations from a repeated run have
-    /// been merged in and re-sorted.
-    private let identifierPath: IdentifierPath
-
-    var objectClass: ObjectClass = .testSummary
+    let nodeKind: NodeKind = .testCase
     var duration: TimeInterval {
         iterations.reduce(0) { $0 + $1.duration }
     }
@@ -228,65 +244,41 @@ struct TestCase: Test {
         }
     }
 
-    /// This should be the only mutable property
-    var iterations: [Iteration]
+    let iterations: [Iteration]
 
     init(
-        metadata: ActionTestMetadata,
-        sourceIndex: Int,
+        testCase: ParsedTestCase,
         identifierPath: IdentifierPath,
-        resultFile: ResultFile,
+        file: PayloadProviding,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
-        title = metadata.name ?? ""
-        identifier = metadata.identifier ?? ""
-        // Keyed on the test identifier rather than on position: `TestGroup`
-        // dedupes its cases on exactly that, so it is unique among a group's
-        // cases, and it survives the merging that position would not.
-        self.identifierPath = identifierPath.appending("case").appending(identifier)
-        uuid = self.identifierPath.identifier
+        title = testCase.name
+        identifier = testCase.identifier
+        // Keyed on the test identifier rather than on position: the reader
+        // merges a repeated run's entries on exactly that, so it is unique
+        // among a group's cases, and it survives merging where position would
+        // not.
+        let path = identifierPath.appending("case").appending(testCase.identifier)
+        uuid = path.identifier
 
         Logger.substep("Initializing TestCase \(identifier)")
 
-        iterations = [Iteration(
-            metadata: metadata,
-            sourceIndex: sourceIndex,
-            resultFile: resultFile,
-            renderingMode: renderingMode,
-            downsizeImagesEnabled: downsizeImagesEnabled,
-            downsizeScaleFactor: downsizeScaleFactor
-        )]
-        assignIterationIdentifiers()
-    }
-
-    /// Folds another run of this same test into this one's iterations.
-    ///
-    /// `other` is the same test — callers reach this through the `Set` that
-    /// dedupes on `identifier` — so both sides share an `identifierPath` and
-    /// the merged iterations can simply be renumbered.
-    mutating func merge(_ other: TestCase) {
-        iterations.append(contentsOf: other.iterations)
-        // Repetition numbers are not necessarily distinct (older bundles have
-        // none at all), and the iterations arrive in whatever order the
-        // operations finished in — so break ties on source position to keep
-        // this a total order.
-        iterations.sort(by: {
-            ($0.repetitionPolicy?.iteration ?? 0, $0.sourceIndex) <
-                ($1.repetitionPolicy?.iteration ?? 0, $1.sourceIndex)
-        })
-        assignIterationIdentifiers()
-    }
-
-    /// Numbers the iterations by their rendered position.
-    ///
-    /// Must run again after iterations are merged in from a repeated run:
-    /// merging changes both which iterations are present and their order, and
-    /// each `iterations-<uuid>` element the page toggles has to stay unique.
-    private mutating func assignIterationIdentifiers() {
-        for index in iterations.indices {
-            iterations[index].uuid = identifierPath.appending("iteration\(index)").identifier
+        // The reader already merged repetitions into ordered iterations, so
+        // each iteration's rendered position — and with it the
+        // `iterations-<uuid>` element id the page toggles — is final here.
+        iterations = testCase.iterations.enumerated().map { index, iteration in
+            Iteration(
+                iteration: iteration,
+                uuid: path.appending("iteration\(index)").identifier,
+                title: testCase.name,
+                identifier: testCase.identifier,
+                file: file,
+                renderingMode: renderingMode,
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
+            )
         }
     }
 }
@@ -301,7 +293,7 @@ extension TestCase {
                 "TITLE": title,
                 "DURATION": duration.formattedSeconds,
                 "ICON_CLASS": status.cssClass,
-                "ITEM_CLASS": objectClass.cssClass,
+                "ITEM_CLASS": nodeKind.cssClass,
                 "SCREENSHOT_TAIL": iteration.testScreenshotFlow?.screenshotsTail
                     .accumulateHTMLAsString ?? "",
                 "SCREENSHOT_FLOW": iteration.testScreenshotFlow?.screenshots
@@ -314,7 +306,7 @@ extension TestCase {
                 "TITLE": title,
                 "DURATION": duration.formattedSeconds,
                 "ICON_CLASS": status.cssClass,
-                "ITEM_CLASS": objectClass.cssClass,
+                "ITEM_CLASS": nodeKind.cssClass,
                 "ITERATIONS": iterations.reduce("") { $0 + $1.html },
                 // Sorted because `Dictionary` iteration order is seeded per
                 // process: unsorted, "1 failed, 1 succeeded" renders as
@@ -330,17 +322,6 @@ extension TestCase {
 
     var htmlTemplate: String {
         iterations.count == 1 ? HTMLTemplates.testCase : HTMLTemplates.testCaseWithIterations
-    }
-}
-
-/// Needed to dedupe iterations
-extension TestCase: Hashable {
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(identifier)
-    }
-
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.identifier == rhs.identifier
     }
 }
 

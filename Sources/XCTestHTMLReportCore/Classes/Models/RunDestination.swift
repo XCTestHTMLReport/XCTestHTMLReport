@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XCResultKit
 
 // TODO: Check usages, Status already contains cssClass property
 private extension Status {
@@ -43,11 +42,11 @@ struct RunDestination: HTML {
     let targetDevice: TargetDevice
     let status: Status
 
-    init(record: ActionRunDestinationRecord, identifierPath: IdentifierPath) {
-        Logger.substep("Parsing ActionRunDestinationRecord")
-        name = record.displayName
+    init(destination: ParsedDestination, identifierPath: IdentifierPath) {
+        Logger.substep("Parsing run destination")
+        name = destination.displayName
         targetDevice = TargetDevice(
-            record: record.targetDeviceRecord,
+            destination: destination,
             identifierPath: identifierPath.appending("device")
         )
         status = .unknown // TODO: (Pierre Felgines) 04/10/2019 Find the correct value

@@ -123,14 +123,22 @@ struct LegacyResultReader: ResultReader {
             combined = activities
         } else {
             let failures = summary.failureSummaries.map(parseFailure)
-            // Ordered by `start`, which replaces `finish` as the ordering key
-            // under decision 1. This sort is not cosmetic: it interleaves
-            // assertion-failure rows among the activities so a failure renders
-            // *where it occurred* rather than after everything else. Dropping
-            // it — rather than re-keying it — would silently append every
-            // failure row at the end of the test.
+            // This sort is not cosmetic: it interleaves assertion-failure rows
+            // among the activities so a failure renders *where it occurred*
+            // rather than after everything else. Dropping it — rather than
+            // re-keying it — would silently append every failure row at the
+            // end of the test.
+            //
+            // Keyed on the transitional `finish` until Task 5b, because that
+            // is today's key and Task 5a's gate is byte-identity. Decision 1
+            // re-keys this to `start` when `finish` leaves the port — and that
+            // demonstrably repositions a failure row whose timestamp falls
+            // inside an activity's start/finish span (RetryResults,
+            // `testRetryOnFailure()`), which is why the re-key is enumerated
+            // in Task 5b's gate rather than smuggled through this refactor.
             combined = (activities + failures).sorted {
-                ($0.start ?? .distantPast) < ($1.start ?? .distantPast)
+                ($0.transitionalFinish?.timeIntervalSince1970 ?? 0)
+                    < ($1.transitionalFinish?.timeIntervalSince1970 ?? 0)
             }
         }
 

@@ -13,10 +13,44 @@ protocol ResultReader {
 /// Resolves the opaque payload references in `ParsedAttachment` to bytes, and
 /// the run log reference to text.
 protocol PayloadProviding {
+    /// The bundle directory. Attachment downsizing reconstructs absolute paths
+    /// from it (`Attachment.swift`), so it cannot be provider-private.
+    var url: URL { get }
+
     /// Exports the payload to a file inside the bundle directory and returns a
     /// bundle-relative URL, or `nil` on failure.
     func exportPayload(reference: String, fileName: String?) -> URL?
     func exportPayloadData(reference: String) -> Data?
     func exportLogs(reference: String) -> URL?
     func exportLogsData(reference: String) -> Data?
+}
+
+extension PayloadProviding {
+    func exportPayloadContent(
+        reference: String,
+        renderingMode: Summary.RenderingMode,
+        fileName: String?
+    ) -> RenderingContent {
+        switch renderingMode {
+        case .inline:
+            return exportPayloadData(reference: reference)
+                .map(RenderingContent.data) ?? .none
+        case .linking:
+            return exportPayload(reference: reference, fileName: fileName)
+                .map(RenderingContent.url) ?? .none
+        }
+    }
+
+    func exportLogsContent(
+        reference: String,
+        renderingMode: Summary.RenderingMode
+    ) -> RenderingContent {
+        switch renderingMode {
+        case .inline:
+            return exportLogsData(reference: reference)
+                .map(RenderingContent.data) ?? .none
+        case .linking:
+            return exportLogs(reference: reference).map(RenderingContent.url) ?? .none
+        }
+    }
 }

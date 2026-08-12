@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XCResultKit
 
 struct TargetDevice {
     let identifier: String
@@ -26,11 +25,11 @@ struct TargetDevice {
     let osVersion: String
     let model: String
 
-    init(record: ActionDeviceRecord, identifierPath: IdentifierPath) {
-        Logger.substep("Parsing ActionDeviceRecord")
-        identifier = record.identifier
-        uniqueIdentifier = identifierPath.appending(record.identifier).identifier
-        osVersion = record.operatingSystemVersion
-        model = record.modelName
+    init(destination: ParsedDestination, identifierPath: IdentifierPath) {
+        Logger.substep("Parsing target device")
+        identifier = destination.deviceIdentifier
+        uniqueIdentifier = identifierPath.appending(destination.deviceIdentifier).identifier
+        osVersion = destination.operatingSystemVersion
+        model = destination.modelName
     }
 }

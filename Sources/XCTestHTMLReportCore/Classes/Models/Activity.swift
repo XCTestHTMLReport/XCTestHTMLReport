@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XCResultKit
 
 enum ActivityType: String {
     case unknwown = ""
@@ -86,50 +85,21 @@ struct Activity: HTML {
     }
 
     init(
-        failureSummary: ActionTestFailureSummary,
-        file: ResultFile,
+        activity: ParsedActivity,
+        file: PayloadProviding,
         padding: Int = 0,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
-        uuid = failureSummary.uuid
-        startTime = failureSummary.timestamp?.timeIntervalSince1970 ?? 0
-        finishTime = failureSummary.timestamp?.timeIntervalSince1970 ?? 0
-        let issueType = failureSummary.issueType ?? "Assertion Failure"
-        let message = failureSummary.message ?? "[message not provided]"
-        title =
-            "\(issueType) at \(failureSummary.fileName?.lastPathComponent() ?? ""):\(failureSummary.lineNumber):\(message)"
-        type = .assertionFailure
-        subActivities = []
-        attachments = failureSummary.attachments.map {
-            Attachment(
-                attachment: $0,
-                file: file,
-                padding: padding + 16,
-                renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled,
-                downsizeScaleFactor: downsizeScaleFactor
-            )
-        }
-        self.padding = padding
-    }
-
-    init(
-        summary: ActionTestActivitySummary,
-        file: ResultFile,
-        padding: Int = 0,
-        renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool,
-        downsizeScaleFactor: CGFloat
-    ) {
-        uuid = summary.uuid
-        startTime = summary.start?.timeIntervalSince1970 ?? 0
-        finishTime = summary.finish?.timeIntervalSince1970 ?? 0
-        title = summary.title
-        subActivities = summary.subactivities.map {
+        uuid = activity.transitionalUUID
+        startTime = activity.start?.timeIntervalSince1970 ?? 0
+        finishTime = activity.transitionalFinish?.timeIntervalSince1970 ?? 0
+        title = activity.title
+        type = activity.transitionalActivityType.flatMap(ActivityType.init(rawValue:))
+        subActivities = activity.subActivities.map {
             Activity(
-                summary: $0,
+                activity: $0,
                 file: file,
                 padding: padding + 10,
                 renderingMode: renderingMode,
@@ -137,8 +107,7 @@ struct Activity: HTML {
                 downsizeScaleFactor: downsizeScaleFactor
             )
         }
-        type = ActivityType(rawValue: summary.activityType)
-        attachments = summary.attachments.map { attachment in
+        attachments = activity.attachments.map { attachment in
             autoreleasepool {
                 Attachment(
                     attachment: attachment,
