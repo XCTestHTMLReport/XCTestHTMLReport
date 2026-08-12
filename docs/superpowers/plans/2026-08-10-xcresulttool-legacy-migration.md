@@ -116,7 +116,7 @@ would hide exactly the identifier regressions #430 exists to catch.
 - Produces: `func normalizeIdentifiers(_ html: String) -> String` — replaces
   every `IdentifierPath` digest with the literal `ID`. Used by Task 12 only.
 
-- [ ] **Step 0: Confirm the prerequisite**
+- [x] **Step 0: Confirm the prerequisite**
 
 ```bash
 git log --oneline -1 -- Sources/XCTestHTMLReportCore/Classes/Helpers/IdentifierPath.swift
@@ -127,9 +127,20 @@ Expected: the file exists, and the suite passes. If `IdentifierPath.swift` is
 absent you are on a tree without #430 — stop and rebase. Nothing downstream in
 this plan is trustworthy without it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
-Append to the existing `ReproducibilityTests.swift` rather than creating it:
+Append to the existing `ReproducibilityTests.swift` rather than creating it.
+The second test renders `SanityResults`, and the shipped file only has URL
+helpers for `TestResults` and `RetryResults` — add the missing one beside them
+first:
+
+```swift
+    private var sanityResultsUrl: URL? {
+        Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
+    }
+```
+
+Then the tests themselves:
 
 ```swift
     func testNormalizerReplacesIdentifiersAndNothingElse() {
@@ -143,10 +154,12 @@ Append to the existing `ReproducibilityTests.swift` rather than creating it:
     func testNormalizerActuallyMatchesARenderedIdentifier() throws {
         // `renderReport(arguments:)` is #430's helper: it runs the CLI out of
         // process and returns `Data`. There is no in-process `render(_:)`.
-        let html = String(
-            decoding: try renderReport(arguments: [try XCTUnwrap(sanityResultsUrl).path]),
-            as: UTF8.self
-        )
+        // `String(bytes:encoding:)` rather than `String(decoding:as:)` — the
+        // repo's SwiftLint config flags the non-failable conversion.
+        let html = try XCTUnwrap(String(
+            bytes: renderReport(arguments: [XCTUnwrap(sanityResultsUrl).path]),
+            encoding: .utf8
+        ))
         XCTAssertNotEqual(
             normalizeIdentifiers(html), html,
             "Expected at least one IdentifierPath digest in the rendered report"
@@ -154,7 +167,7 @@ Append to the existing `ReproducibilityTests.swift` rather than creating it:
     }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 swift test --filter ReproducibilityTests
@@ -162,7 +175,7 @@ swift test --filter ReproducibilityTests
 
 Expected: FAIL — `cannot find 'normalizeIdentifiers' in scope`.
 
-- [ ] **Step 3: Implement the normalizer**
+- [x] **Step 3: Implement the normalizer**
 
 `Tests/XCTestHTMLReportTests/ReportNormalizer.swift`:
 
@@ -182,11 +195,17 @@ Expected: FAIL — `cannot find 'normalizeIdentifiers' in scope`.
 
 import Foundation
 
-// `IdentifierPath.identifier` is the first 128 bits of a SHA-256, lowercase hex.
-// Anchored with word boundaries so it cannot bite into a longer hex run.
-private let identifierPattern = try! NSRegularExpression(
-    pattern: "\\b[0-9a-f]{32}\\b"
-)
+/// `IdentifierPath.identifier` is the first 128 bits of a SHA-256, lowercase hex.
+/// Anchored with word boundaries so it cannot bite into a longer hex run.
+///
+/// Not `try!` — the pre-commit SwiftLint gate errors on `force_try`, so the
+/// constant pattern unwraps through a precondition instead.
+private let identifierPattern: NSRegularExpression = {
+    guard let pattern = try? NSRegularExpression(pattern: "\\b[0-9a-f]{32}\\b") else {
+        preconditionFailure("The identifier pattern is a constant and must compile")
+    }
+    return pattern
+}()
 
 /// Replaces every `IdentifierPath` digest with the literal `ID`.
 ///
@@ -202,7 +221,7 @@ func normalizeIdentifiers(_ html: String) -> String {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 swift test --filter ReproducibilityTests

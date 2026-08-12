@@ -19,6 +19,10 @@ final class ReproducibilityTests: XCTestCase {
         Bundle.testBundle.url(forResource: "RetryResults", withExtension: "xcresult")
     }
 
+    private var sanityResultsUrl: URL? {
+        Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
+    }
+
     /// How many times each bundle is rendered. Identifier drift shows up on
     /// every run, but ordering drift is sampled — a rendering that is stable
     /// four runs out of five needs more than one comparison to catch.
@@ -153,6 +157,29 @@ final class ReproducibilityTests: XCTestCase {
                 "Status counts must be in a fixed order, got <\(text)>"
             )
         }
+    }
+
+    // MARK: - Cross-backend normalizer
+
+    func testNormalizerReplacesIdentifiersAndNothingElse() {
+        let input = "id=3f9a1c07b25e48d1a6c3079e5b4d2f88 name=FirstSuite/testTwo()"
+        XCTAssertEqual(normalizeIdentifiers(input), "id=ID name=FirstSuite/testTwo()")
+    }
+
+    /// The digests are the only thing separating two backends' markup, so a
+    /// normalizer that matched nothing would make the Task 12 differential
+    /// compare raw identifiers and fail on every run.
+    func testNormalizerActuallyMatchesARenderedIdentifier() throws {
+        // `renderReport(arguments:)` is #430's helper: it runs the CLI out of
+        // process and returns `Data`. There is no in-process `render(_:)`.
+        let html = try XCTUnwrap(String(
+            bytes: renderReport(arguments: [XCTUnwrap(sanityResultsUrl).path]),
+            encoding: .utf8
+        ))
+        XCTAssertNotEqual(
+            normalizeIdentifiers(html), html,
+            "Expected at least one IdentifierPath digest in the rendered report"
+        )
     }
 }
 
