@@ -1,0 +1,38 @@
+# The single source of truth for the fixtures cache key, shared by test.yml
+# (restore) and toolchain-drift.yml (save). Both workflows must compute the
+# key identically or the drift job's pre-warm (#436) silently stops matching
+# what PR jobs look up; keeping the logic here makes that de-sync structurally
+# impossible.
+#
+# The key captures everything that shapes the fixture bundles: the exact Xcode
+# build, the newest installed iOS simulator runtime (derived by the same
+# scripts/select_simulator.py that prepareTestResults.sh boots, so key and
+# script can never disagree), the script itself, and the sample-app sources.
+# Any toolchain bump — including `latest-stable` moving under us — changes the
+# key and forces regeneration.
+#
+# MUST run on a clean tree, before fixture generation: prepareTestResults.sh
+# creates XCTestHTMLReportSampleApp/.derivedData, and `hashFiles('…/**')`
+# matches dot-directories, so a key computed after generation hashes ~95 MB of
+# build products into itself and can never equal one computed from a clean
+# checkout.
+name: Compute fixture cache key
+description: Compute the shared .xcresult fixture cache key (run before fixture generation)
+outputs:
+  key:
+    description: Cache key for the generated .xcresult fixture bundles
+    value: ${{ steps.compute.outputs.key }}
+runs:
+  using: composite
+  steps:
+    - name: Derive key from toolchain and tree
+      id: compute
+      shell: bash
+      env:
+        # Rendered when this step starts — while the tree is still clean.
+        TREE_HASH: ${{ hashFiles('prepareTestResults.sh', 'scripts/select_simulator.py', 'XCTestHTMLReportSampleApp/**') }}
+      run: |
+        xcode="$(xcodebuild -version | awk 'NR==1 {v=$2} NR==2 {b=$3} END {printf "%s-%s", v, b}')"
+        selection="$(python3 scripts/select_simulator.py)"
+        runtime="$(awk -F'\t' '{printf "%s-%s", $2, $4}' <<<"$selection")"
+        echo "key=fixtures-xcode${xcode}-ios${runtime}-${TREE_HASH}" >> "$GITHUB_OUTPUT"

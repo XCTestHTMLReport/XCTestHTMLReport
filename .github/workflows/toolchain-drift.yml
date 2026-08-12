@@ -1,0 +1,256 @@
+name: Toolchain Drift
+
+# Early warning for Apple toolchain changes (#392). The repo once went ~17
+# months without anyone noticing whether it still worked on current Xcode;
+# during the xcresulttool migration (#391) that blindness is acute, because
+# Apple will remove the `--legacy` commands on their own schedule and the
+# migration's differential test only works while both formats exist.
+#
+# Every signal here runs against the *current* toolchain, so nothing is
+# cache-restored: fixtures are regenerated from scratch on purpose.
+#
+# Scheduled workflows only run from the default branch — this file takes
+# effect once merged to main, and edits on feature branches are exercised
+# only via workflow_dispatch after merge.
+on:
+  schedule:
+    # Twice a week, off the top of the hour (GitHub sheds load at :00).
+    # Modest by design: each run boots a simulator and regenerates all
+    # fixtures, which dominates macOS runner minutes.
+    - cron: '23 7 * * 1,4'
+  workflow_dispatch:
+
+# `issues: write` is what lets a failed run file the drift issue below —
+# the loud signal that does not depend on anyone reading the Actions tab.
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: toolchain-drift
+
+jobs:
+  drift:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Setup Xcode version
+      uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+      with:
+        xcode-version: latest-stable
+
+    # Tolerates a failing `xcresulttool version` on purpose: a missing tool is
+    # a signal for the legacy probe below, not a setup error. The `|| true`
+    # lives inside the pipeline so the tolerance holds even under pipefail —
+    # without it this step only survives because the default shell
+    # (`bash -e {0}`) leaves pipefail off, and adding `shell: bash` (which
+    # GitHub runs with `-o pipefail`) would silently re-break it.
+    - name: Record toolchain
+      id: toolchain
+      run: |
+        xcodebuild -version
+        swift --version
+        xcresulttool_line="$({ xcrun xcresulttool version 2>&1 || true; } | head -n 1)"
+        echo "${xcresulttool_line:-xcresulttool version unavailable}"
+        xcode="$(xcodebuild -version | awk 'NR==1 {v=$2} NR==2 {b=$3} END {printf "%s (%s)", v, b}')"
+        echo "xcode=${xcode}" >> "$GITHUB_OUTPUT"
+        echo "xcresulttool=${xcresulttool_line:-unavailable}" >> "$GITHUB_OUTPUT"
+
+    # `xcrun xcresulttool version` currently prints
+    #   "... (legacy commands format version: 3.56)"
+    # That parenthetical is Apple's own marker for the legacy command surface
+    # that `xcrun xcresulttool get --legacy` depends on. It is expected to
+    # disappear when Apple removes legacy support — the exact event the
+    # migration (#391) is racing. When this step fails, treat it as the alarm.
+    # `!cancelled()`: this probe needs only `xcrun`, and a toolchain broken
+    # enough to hard-fail the record step above (`xcodebuild`/`swift` exiting
+    # non-zero) is exactly when the legacy alarm matters most — it must still
+    # run and reach the report step instead of being skipped with the rest.
+    - name: Check legacy xcresulttool support
+      id: legacy
+      if: ${{ !cancelled() }}
+      continue-on-error: true
+      run: |
+        # `|| true` so that xcresulttool disappearing entirely still reaches
+        # the grep and fires the explicit alarm below rather than a bare error.
+        version_output="$(xcrun xcresulttool version 2>&1 || true)"
+        echo "$version_output"
+        if ! grep -q "legacy commands format version" <<<"$version_output"; then
+          echo "::error::xcresulttool no longer advertises legacy command support — Apple has likely removed the --legacy commands (#391)"
+          exit 1
+        fi
+
+    # The independent signals below all run continue-on-error so one failure
+    # cannot hide another; the report step turns their outcomes into faults.
+    - name: Build
+      id: build
+      continue-on-error: true
+      timeout-minutes: 30
+      run: swift build -v
+
+    # Computed BEFORE generation, not at save time: `hashFiles` inside the
+    # shared action renders when this step executes, while the tree still
+    # matches what test.yml hashes on a clean checkout. Rendering it in the
+    # save step's key would hash the .derivedData that generation leaves in
+    # the sample-app dir, producing a key no test.yml run could ever restore.
+    # continue-on-error: the pre-warm is a side effect — its failure must not
+    # gate any detection signal below.
+    - name: Compute fixture cache key
+      id: fixture-key
+      continue-on-error: true
+      uses: ./.github/actions/fixture-cache-key
+
+    # Deliberately no cache restore: this job exists to prove the current
+    # toolchain can still produce fixtures at all. Fixture generation does not
+    # depend on the package build (it builds the sample app with xcodebuild),
+    # so it runs even when the build step failed.
+    - name: Generate fresh fixtures
+      id: fixtures
+      continue-on-error: true
+      timeout-minutes: 90
+      run: |
+        ./prepareTestResults.sh
+        for bundle in TestResults SanityResults RetryResults; do
+          plist="Tests/XCTestHTMLReportTests/Resources/${bundle}.xcresult/Info.plist"
+          if [ ! -f "$plist" ]; then
+            echo "::error::missing or incomplete fixture: ${bundle}.xcresult"
+            exit 1
+          fi
+        done
+
+    - name: Run test suite
+      id: tests
+      if: steps.fixtures.outcome == 'success'
+      continue-on-error: true
+      timeout-minutes: 45
+      run: swift test -v
+
+    # The issue's core signal: since 3.0 the tool exits non-zero when the
+    # report is degraded (collected faults), so a clean exit against a bundle
+    # produced by this exact toolchain is the whole assertion.
+    - name: Run xchtmlreport against a fresh bundle
+      id: tool
+      if: steps.build.outcome == 'success' && steps.fixtures.outcome == 'success'
+      continue-on-error: true
+      timeout-minutes: 15
+      run: |
+        swift run xchtmlreport \
+          Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult \
+          --output "$RUNNER_TEMP/drift-report"
+
+    # This job regenerated fixtures for the newest toolchain anyway, so save
+    # them under the same key test.yml computes (#436): after a toolchain bump
+    # on the runners, PR jobs start from a warm cache instead of each paying
+    # for regeneration. Saving is a side effect, never an input — nothing in
+    # this workflow restores from the cache. The key was computed by the
+    # shared action before generation, so it matches test.yml's clean-tree
+    # restore key exactly.
+    - name: Save fixtures to cache
+      if: steps.fixture-key.outcome == 'success' && steps.fixtures.outcome == 'success'
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: |
+          Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult
+          Tests/XCTestHTMLReportTests/Resources/SanityResults.xcresult
+          Tests/XCTestHTMLReportTests/Resources/RetryResults.xcresult
+        key: ${{ steps.fixture-key.outputs.key }}
+
+    # Turns step outcomes into a filed issue, so a broken scheduled run cannot
+    # rot unseen in the Actions tab. One open `drift` issue collects repeat
+    # failures as comments; a later green run comments on it too, so the
+    # maintainer can tell a persistent break from a resolved one.
+    # `!cancelled()` rather than `always()`: a manually cancelled run is not
+    # drift and must not file anything.
+    - name: Report drift
+      if: ${{ !cancelled() }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        REPO: ${{ github.repository }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        XCODE: ${{ steps.toolchain.outputs.xcode }}
+        XCRESULTTOOL: ${{ steps.toolchain.outputs.xcresulttool }}
+        LEGACY: ${{ steps.legacy.outcome }}
+        BUILD: ${{ steps.build.outcome }}
+        FIXTURES: ${{ steps.fixtures.outcome }}
+        TESTS: ${{ steps.tests.outcome }}
+        TOOL: ${{ steps.tool.outcome }}
+      run: |
+        faults=()
+        if [ "$LEGACY" = "failure" ]; then
+          faults+=("**Legacy \`xcresulttool\` marker vanished.** \`xcrun xcresulttool version\` no longer reports a \`legacy commands format version\`, meaning Apple has likely removed the \`--legacy\` command surface. The #391 migration loses its differential baseline the moment this toolchain reaches users — treat as urgent.")
+        elif [ "$LEGACY" != "success" ]; then
+          # The probe runs under `!cancelled()`, so this should be impossible;
+          # if it happens anyway, say so rather than reporting only a generic
+          # setup fault while the one alarm that matters went unevaluated.
+          faults+=("Legacy \`xcresulttool\` probe did not run (outcome: ${LEGACY:-unknown}) — the legacy alarm was NOT evaluated this run; see the run log.")
+        fi
+        if [ "$BUILD" = "failure" ]; then
+          faults+=("\`swift build\` failed on this toolchain.")
+        fi
+        if [ "$FIXTURES" = "failure" ]; then
+          faults+=("Fixture generation (\`prepareTestResults.sh\`) failed on this toolchain.")
+        elif [ "$FIXTURES" = "skipped" ]; then
+          faults+=("Run aborted before fixture generation — a setup step failed; see the run log.")
+        fi
+        if [ "$TESTS" = "failure" ]; then
+          faults+=("\`swift test\` failed against freshly generated fixtures.")
+        fi
+        if [ "$TOOL" = "failure" ]; then
+          faults+=("\`xchtmlreport\` exited non-zero against a fresh \`.xcresult\` — since 3.0 that means the report degraded (collected faults).")
+        fi
+
+        {
+          echo "### Toolchain"
+          echo "- Xcode: ${XCODE}"
+          echo "- xcresulttool: \`${XCRESULTTOOL}\`"
+          echo
+          echo "### Step outcomes"
+          echo "| Step | Outcome |"
+          echo "| --- | --- |"
+          echo "| legacy xcresulttool marker | ${LEGACY} |"
+          echo "| swift build | ${BUILD} |"
+          echo "| fixture generation | ${FIXTURES} |"
+          echo "| swift test | ${TESTS} |"
+          echo "| xchtmlreport clean exit | ${TOOL} |"
+        } > "$RUNNER_TEMP/summary.md"
+        cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+        open_issue="$(gh issue list --repo "$REPO" --label drift --state open \
+          --json number --jq '.[0].number // empty')"
+
+        if [ "${#faults[@]}" -eq 0 ]; then
+          echo "No drift detected."
+          if [ -n "$open_issue" ]; then
+            gh issue comment "$open_issue" --repo "$REPO" \
+              --body "Latest scheduled drift run passed on Xcode ${XCODE} — this may be resolved. (${RUN_URL})"
+          fi
+          exit 0
+        fi
+
+        {
+          echo "A scheduled [toolchain drift run](${RUN_URL}) failed against the newest Xcode available on the runners. Each item below is an independent failure signal."
+          echo
+          for fault in "${faults[@]}"; do
+            echo "- ${fault}"
+          done
+          echo
+          cat "$RUNNER_TEMP/summary.md"
+          echo
+          echo "_Filed automatically by the \`toolchain-drift\` workflow (#392). While this issue stays open, later failing runs append comments here instead of filing duplicates._"
+        } > "$RUNNER_TEMP/issue.md"
+
+        if [ -n "$open_issue" ]; then
+          gh issue comment "$open_issue" --repo "$REPO" --body-file "$RUNNER_TEMP/issue.md"
+        else
+          gh label create drift --repo "$REPO" --force \
+            --description "Toolchain drift detected by scheduled CI" --color D93F0B
+          gh issue create --repo "$REPO" --label drift \
+            --title "Toolchain drift detected (Xcode ${XCODE})" \
+            --body-file "$RUNNER_TEMP/issue.md"
+        fi
+
+        # The issue is the durable signal; the red run is the ambient one.
+        exit 1
