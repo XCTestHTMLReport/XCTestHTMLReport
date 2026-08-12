@@ -42,15 +42,18 @@ jobs:
       with:
         xcode-version: latest-stable
 
-    # Tolerates a failing `xcresulttool version` on purpose: if this step
-    # hard-failed, the legacy probe below would be skipped and the filed issue
-    # would show a generic setup failure instead of the one alarm that matters.
+    # Tolerates a failing `xcresulttool version` on purpose: a missing tool is
+    # a signal for the legacy probe below, not a setup error. The `|| true`
+    # lives inside the pipeline so the tolerance holds even under pipefail —
+    # without it this step only survives because the default shell
+    # (`bash -e {0}`) leaves pipefail off, and adding `shell: bash` (which
+    # GitHub runs with `-o pipefail`) would silently re-break it.
     - name: Record toolchain
       id: toolchain
       run: |
         xcodebuild -version
         swift --version
-        xcresulttool_line="$(xcrun xcresulttool version 2>&1 | head -n 1)"
+        xcresulttool_line="$({ xcrun xcresulttool version 2>&1 || true; } | head -n 1)"
         echo "${xcresulttool_line:-xcresulttool version unavailable}"
         xcode="$(xcodebuild -version | awk 'NR==1 {v=$2} NR==2 {b=$3} END {printf "%s (%s)", v, b}')"
         echo "xcode=${xcode}" >> "$GITHUB_OUTPUT"
@@ -62,8 +65,13 @@ jobs:
     # that `xcrun xcresulttool get --legacy` depends on. It is expected to
     # disappear when Apple removes legacy support — the exact event the
     # migration (#391) is racing. When this step fails, treat it as the alarm.
+    # `!cancelled()`: this probe needs only `xcrun`, and a toolchain broken
+    # enough to hard-fail the record step above (`xcodebuild`/`swift` exiting
+    # non-zero) is exactly when the legacy alarm matters most — it must still
+    # run and reach the report step instead of being skipped with the rest.
     - name: Check legacy xcresulttool support
       id: legacy
+      if: ${{ !cancelled() }}
       continue-on-error: true
       run: |
         # `|| true` so that xcresulttool disappearing entirely still reaches
@@ -82,6 +90,18 @@ jobs:
       continue-on-error: true
       timeout-minutes: 30
       run: swift build -v
+
+    # Computed BEFORE generation, not at save time: `hashFiles` inside the
+    # shared action renders when this step executes, while the tree still
+    # matches what test.yml hashes on a clean checkout. Rendering it in the
+    # save step's key would hash the .derivedData that generation leaves in
+    # the sample-app dir, producing a key no test.yml run could ever restore.
+    # continue-on-error: the pre-warm is a side effect — its failure must not
+    # gate any detection signal below.
+    - name: Compute fixture cache key
+      id: fixture-key
+      continue-on-error: true
+      uses: ./.github/actions/fixture-cache-key
 
     # Deliberately no cache restore: this job exists to prove the current
     # toolchain can still produce fixtures at all. Fixture generation does not
@@ -125,25 +145,18 @@ jobs:
     # them under the same key test.yml computes (#436): after a toolchain bump
     # on the runners, PR jobs start from a warm cache instead of each paying
     # for regeneration. Saving is a side effect, never an input — nothing in
-    # this workflow restores from the cache.
-    - name: Compute fixture cache key
-      id: fixture-key
-      if: steps.fixtures.outcome == 'success'
-      run: |
-        xcode="$(xcodebuild -version | awk 'NR==1 {v=$2} NR==2 {b=$3} END {printf "%s-%s", v, b}')"
-        selection="$(python3 scripts/select_simulator.py)"
-        runtime="$(awk -F'\t' '{printf "%s-%s", $2, $4}' <<<"$selection")"
-        echo "toolchain=xcode${xcode}-ios${runtime}" >> "$GITHUB_OUTPUT"
-
+    # this workflow restores from the cache. The key was computed by the
+    # shared action before generation, so it matches test.yml's clean-tree
+    # restore key exactly.
     - name: Save fixtures to cache
-      if: steps.fixtures.outcome == 'success'
+      if: steps.fixture-key.outcome == 'success' && steps.fixtures.outcome == 'success'
       uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: |
           Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult
           Tests/XCTestHTMLReportTests/Resources/SanityResults.xcresult
           Tests/XCTestHTMLReportTests/Resources/RetryResults.xcresult
-        key: fixtures-${{ steps.fixture-key.outputs.toolchain }}-${{ hashFiles('prepareTestResults.sh', 'scripts/select_simulator.py', 'XCTestHTMLReportSampleApp/**') }}
+        key: ${{ steps.fixture-key.outputs.key }}
 
     # Turns step outcomes into a filed issue, so a broken scheduled run cannot
     # rot unseen in the Actions tab. One open `drift` issue collects repeat
@@ -168,6 +181,11 @@ jobs:
         faults=()
         if [ "$LEGACY" = "failure" ]; then
           faults+=("**Legacy \`xcresulttool\` marker vanished.** \`xcrun xcresulttool version\` no longer reports a \`legacy commands format version\`, meaning Apple has likely removed the \`--legacy\` command surface. The #391 migration loses its differential baseline the moment this toolchain reaches users — treat as urgent.")
+        elif [ "$LEGACY" != "success" ]; then
+          # The probe runs under `!cancelled()`, so this should be impossible;
+          # if it happens anyway, say so rather than reporting only a generic
+          # setup fault while the one alarm that matters went unevaluated.
+          faults+=("Legacy \`xcresulttool\` probe did not run (outcome: ${LEGACY:-unknown}) — the legacy alarm was NOT evaluated this run; see the run log.")
         fi
         if [ "$BUILD" = "failure" ]; then
           faults+=("\`swift build\` failed on this toolchain.")
