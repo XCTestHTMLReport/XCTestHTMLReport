@@ -7,52 +7,21 @@
 //
 
 import Foundation
-import XCResultKit
-
-enum ActivityType: String {
-    case unknwown = ""
-    case intern = "com.apple.dt.xctest.activity-type.internal"
-    case deleteAttachment = "com.apple.dt.xctest.activity-type.deletedAttachment"
-    case assertionFailure = "com.apple.dt.xctest.activity-type.testAssertionFailure"
-    case userCreated = "com.apple.dt.xctest.activity-type.userCreated"
-    case attachementContainer = "com.apple.dt.xctest.activity-type.attachmentContainer"
-    case skippedTest = "com.apple.dt.xctest.activity-type.skippedTest"
-
-    var cssClass: String {
-        switch self {
-        case .intern:
-            return "activity-internal"
-        case .deleteAttachment:
-            return "activity-delete-attachment"
-        case .assertionFailure:
-            return "activity-assertion-failure"
-        case .userCreated:
-            return "activity-user-created"
-        case .skippedTest:
-            return "activity-skipped-test"
-        default:
-            return ""
-        }
-    }
-}
 
 struct Activity: HTML {
+    /// Path-derived, like every other element id (#430). An activity uuid
+    /// would have been a field only the legacy backend could populate; a path
+    /// digest is backend-neutral and keeps renders byte-reproducible.
     let uuid: String
     let padding: Int
     let attachments: [Attachment]
-    let startTime: TimeInterval?
-    let finishTime: TimeInterval?
-    var totalTime: TimeInterval {
-        if let start = startTime, let finish = finishTime {
-            return finish - start
-        }
-
-        return 0.0
-    }
 
     var title: String
     var subActivities: [Activity]
-    var type: ActivityType?
+    /// All that survives of the legacy activity taxonomy — see "Deciding the
+    /// model before the port", answer 2.
+    let isFailure: Bool
+
     var hasGlobalAttachment: Bool {
         let hasDirectAttachment = !attachments.isEmpty
         let subActivitesHaveAttachments = subActivities
@@ -65,7 +34,7 @@ struct Activity: HTML {
     }
 
     var failingActivity: Activity? {
-        type == .assertionFailure ? self : nil
+        isFailure ? self : nil
     }
 
     var failingActivityRecursive: Activity? {
@@ -73,63 +42,25 @@ struct Activity: HTML {
     }
 
     var cssClasses: String {
-        var cls = ""
-        if let type = type {
-            cls += type.cssClass
-
-            if type == .userCreated, hasFailingSubActivities {
-                cls += " activity-assertion-failure"
-            }
-        }
-
-        return cls
+        isFailure || hasFailingSubActivities ? "activity-assertion-failure" : ""
     }
 
     init(
-        failureSummary: ActionTestFailureSummary,
-        file: ResultFile,
+        activity: ParsedActivity,
+        identifierPath: IdentifierPath,
+        file: PayloadProviding,
         padding: Int = 0,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
-        uuid = failureSummary.uuid
-        startTime = failureSummary.timestamp?.timeIntervalSince1970 ?? 0
-        finishTime = failureSummary.timestamp?.timeIntervalSince1970 ?? 0
-        let issueType = failureSummary.issueType ?? "Assertion Failure"
-        let message = failureSummary.message ?? "[message not provided]"
-        title =
-            "\(issueType) at \(failureSummary.fileName?.lastPathComponent() ?? ""):\(failureSummary.lineNumber):\(message)"
-        type = .assertionFailure
-        subActivities = []
-        attachments = failureSummary.attachments.map {
-            Attachment(
-                attachment: $0,
-                file: file,
-                padding: padding + 16,
-                renderingMode: renderingMode,
-                downsizeImagesEnabled: downsizeImagesEnabled,
-                downsizeScaleFactor: downsizeScaleFactor
-            )
-        }
-        self.padding = padding
-    }
-
-    init(
-        summary: ActionTestActivitySummary,
-        file: ResultFile,
-        padding: Int = 0,
-        renderingMode: Summary.RenderingMode,
-        downsizeImagesEnabled: Bool,
-        downsizeScaleFactor: CGFloat
-    ) {
-        uuid = summary.uuid
-        startTime = summary.start?.timeIntervalSince1970 ?? 0
-        finishTime = summary.finish?.timeIntervalSince1970 ?? 0
-        title = summary.title
-        subActivities = summary.subactivities.map {
+        uuid = identifierPath.identifier
+        title = activity.title
+        isFailure = activity.isFailure
+        subActivities = activity.subActivities.enumerated().map { index, sub in
             Activity(
-                summary: $0,
+                activity: sub,
+                identifierPath: identifierPath.appending("activity\(index)"),
                 file: file,
                 padding: padding + 10,
                 renderingMode: renderingMode,
@@ -137,8 +68,7 @@ struct Activity: HTML {
                 downsizeScaleFactor: downsizeScaleFactor
             )
         }
-        type = ActivityType(rawValue: summary.activityType)
-        attachments = summary.attachments.map { attachment in
+        attachments = activity.attachments.map { attachment in
             autoreleasepool {
                 Attachment(
                     attachment: attachment,
@@ -164,7 +94,11 @@ struct Activity: HTML {
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
             "PADDING": (subActivities.isEmpty && attachments.isEmpty) ? String(padding + 18) :
                 String(padding),
-            "TIME": totalTime.formattedSeconds,
+            // Empty rather than a duration: the port carries no finish time
+            // (decision 1), and a fabricated `(0.00s)` would be worse than the
+            // stray `()` this leaves. Removing the placeholder itself is the
+            // redesign's call — the templates are frozen for this work.
+            "TIME": "",
             "ACTIVITY_TYPE_CLASS": cssClasses,
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && attachments.isEmpty) ?
                 "no-drop-down" : "",

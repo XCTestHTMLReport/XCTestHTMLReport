@@ -242,18 +242,12 @@ private extension Iteration {
 private extension JUnitReport.TestResult {
     init(activity: Activity, indent: Int, isFailureFatal: Bool) {
         title = String(repeating: " ", count: indent * 2) + activity.title
-        switch activity.type {
-        case .assertionFailure:
-            if isFailureFatal {
-                state = .failed
-            } else {
-                state = .systemErr
-            }
-        case .userCreated:
-            state = .systemOut
-        case .skippedTest:
-            state = .skipped
-        case .none, .unknwown, .intern, .deleteAttachment, .attachementContainer:
+        // The failure flag is all that survives of the legacy activity
+        // taxonomy (decision 2): `.systemOut` (user-created) and `.skipped`
+        // (skipped-test) lost their only producers with `ActivityType`.
+        if activity.isFailure {
+            state = isFailureFatal ? .failed : .systemErr
+        } else {
             state = .unknown
         }
     }

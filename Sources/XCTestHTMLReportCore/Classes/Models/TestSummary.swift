@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import XCResultKit
 
 struct TestSummary: HTML {
     let uuid: String
@@ -42,23 +41,23 @@ struct TestSummary: HTML {
     }
 
     init(
-        summary: ActionTestableSummary,
+        testable: ParsedTestable,
         identifierPath: IdentifierPath,
-        file: ResultFile,
+        file: PayloadProviding,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
-        let targetName = summary.targetName ?? ""
+        let targetName = testable.targetName
         let path = identifierPath.appending(targetName)
         uuid = path.identifier
         testName = targetName
         // TODO: Reduce this with iterations & accum with hashmap
-        tests = summary.tests.enumerated().map { index, group in
+        tests = testable.groups.enumerated().map { index, group in
             TestGroup(
                 group: group,
                 identifierPath: path.appending("group\(index)"),
-                resultFile: file,
+                file: file,
                 renderingMode: renderingMode,
                 downsizeImagesEnabled: downsizeImagesEnabled,
                 downsizeScaleFactor: downsizeScaleFactor

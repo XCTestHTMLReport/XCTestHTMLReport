@@ -7,10 +7,9 @@
 //
 
 import Foundation
-import XCResultKit
 
 struct Run: HTML {
-    let file: ResultFile
+    let file: PayloadProviding
     let runDestination: RunDestination
     let testSummaries: [TestSummary]
     let logContent: RenderingContent
@@ -57,36 +56,28 @@ struct Run: HTML {
     }
 
     init?(
-        action: ActionRecord,
+        run: ParsedRun,
         identifierPath: IdentifierPath,
-        file: ResultFile,
+        file: PayloadProviding,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
         self.file = file
         runDestination = RunDestination(
-            record: action.runDestination,
+            destination: run.destination,
             identifierPath: identifierPath
         )
 
-        guard
-            let testReference = action.actionResult.testsRef,
-            let testPlanSummaries = file.getTestPlanRunSummaries(id: testReference.id)
-        else {
-            Logger.warning("Can't find test reference for action \(action.title ?? "")")
-            return nil
-        }
-
         // TODO: (Pierre Felgines) 02/10/2019 Use only emittedOutput from logs objects
         // For now XCResultKit do not handle logs
-        if let logReference = action.actionResult.logRef {
+        if let logReference = run.logReference {
             logContent = file.exportLogsContent(
-                id: logReference.id,
+                reference: logReference,
                 renderingMode: renderingMode
             )
         } else {
-            Logger.warning("Can't find test reference for action \(action.title ?? "")")
+            Logger.warning("Can't find log reference for run \(run.destination.displayName)")
             logContent = .none
         }
 
@@ -100,13 +91,12 @@ struct Run: HTML {
         // they land in is whatever order the operations happened to finish in.
         var summaries = [Int: TestSummary]()
 
-        testPlanSummaries.summaries
-            .flatMap(\.testableSummaries)
+        run.testables
             .enumerated()
-            .forEach { index, testableSummary in
+            .forEach { index, testable in
                 let operation = BlockOperation {
                     let summary = TestSummary(
-                        summary: testableSummary,
+                        testable: testable,
                         identifierPath: identifierPath.appending("target\(index)"),
                         file: file,
                         renderingMode: renderingMode,

@@ -11,7 +11,7 @@ protocol Test: HTML, ContainingAttachment {
     var uuid: String { get }
     var title: String { get }
     var identifier: String { get }
-    var objectClass: ObjectClass { get }
+    var nodeKind: NodeKind { get }
     var status: Status { get }
     var duration: TimeInterval { get }
 }

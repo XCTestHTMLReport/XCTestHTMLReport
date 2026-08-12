@@ -8,7 +8,6 @@
 
 import Foundation
 import UniformTypeIdentifiers
-import XCResultKit
 
 enum AttachmentType: String {
     case unknown = ""
@@ -23,6 +22,27 @@ enum AttachmentType: String {
     case log = "com.apple.log"
     // TODO: Use UTType instead of handling each mime
     case zip = "public.zip-archive"
+
+    /// The port carries a filename extension rather than a UTI (see "Deciding
+    /// the model before the port", answer 4), so both backends type
+    /// attachments from the same fact. `UTType(filenameExtension:)` would be
+    /// the direct route but is macOS 11+ against a 10.15 floor, so the mapping
+    /// is an explicit table like `mimeType`'s fallback below.
+    init?(filenameExtension: String) {
+        switch filenameExtension.lowercased() {
+        case "png": self = .png
+        case "jpg", "jpeg": self = .jpeg
+        case "heic": self = .heic
+        case "gif": self = .gif
+        case "mp4": self = .mp4
+        case "txt": self = .text
+        case "log": self = .log
+        case "html", "htm": self = .html
+        case "zip": self = .zip
+        case "dat": self = .data
+        default: return nil
+        }
+    }
 
     var isImage: Bool {
         [.jpeg, .png, .heic].contains(self)
@@ -123,22 +143,23 @@ struct Attachment: HTML {
     let payloadId: String?
 
     init(
-        attachment: ActionTestAttachment,
-        file: ResultFile,
+        attachment: ParsedAttachment,
+        file: PayloadProviding,
         padding: Int = 0,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
         filename = attachment.filename ?? ""
-        type = AttachmentType(rawValue: attachment.uniformTypeIdentifier) ?? .unknown
+        type = attachment.filenameExtension
+            .flatMap(AttachmentType.init(filenameExtension:)) ?? .unknown
         name = attachment.name.map(AttachmentName.init(rawValue:))
-        payloadId = attachment.payloadRef?.id
+        payloadId = attachment.payloadReference
         self.padding = padding
         var content: RenderingContent = .none
-        if let id = attachment.payloadRef?.id {
+        if let id = attachment.payloadReference {
             content = file.exportPayloadContent(
-                id: id,
+                reference: id,
                 renderingMode: renderingMode,
                 fileName: attachment.filename
             )

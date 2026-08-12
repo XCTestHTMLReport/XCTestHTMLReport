@@ -750,7 +750,16 @@ public struct ParsedAttachment {
 }
 ```
 
-- [ ] **Step 2: Write the reader protocols**
+**Amendment (implementation, 2026-08-12).** `ParsedActivity` carries three
+additional *transitional* fields not shown above — `transitionalActivityType:
+String?`, `transitionalFinish: Date?`, and `transitionalUUID: String` — deleted
+again by Task 5b. Task 5a's gate is byte-identity, and today's report still
+renders activity-type CSS classes, per-activity `(1.23s)` durations, and
+backend-supplied activity element ids; without a slot in the port, 5a cannot
+reproduce a single byte of any of the three. Task 5a's own text already
+required this for the uuid ("carry it through `ParsedActivity` unchanged
+here") — the model snippet above simply had no field to carry it in. The model
+as written above is the **post-5b** shape, and is what ships.
 
 ```swift
 //
@@ -1169,6 +1178,26 @@ struct LegacyResultReader: ResultReader {
 }
 ```
 
+**Amendments (implementation, 2026-08-12).** Two corrections to the snippet
+above, both applied after review against the Task 5a gate:
+
+1. **The interleave sort is keyed on the transitional `finish` until Task 5b,
+   not on `start`.** The snippet sorted by `start` per decision 1 — but
+   start-order and finish-order provably disagree whenever a failure's
+   timestamp falls inside an activity's start/finish span, which
+   `RetryResults` / `testRetryOnFailure()` exercises: the assertion fires
+   *during* the user-created `Retryable Activity`, so finish-sort renders the
+   failure row before that activity and start-sort renders it after. A reorder
+   is not byte-identical, so sorting by `start` here would fail 5a's gate on
+   a change that belongs to 5b. Task 5b performs the re-key when `finish`
+   leaves the port, and its gate enumerates the repositioning as a fourth
+   accepted shape. (Coordinator ruling, 2026-08-12.)
+2. **The iteration sort breaks ties on source position**
+   (`.enumerated()` before sorting, `(iterationNumber ?? 0, offset)` as the
+   key). Repetition numbers can repeat or be absent, and `sorted(by:)` is not
+   stable — this is the same total-order tiebreak the deleted
+   `TestCase.merge` used.
+
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
@@ -1449,6 +1478,26 @@ a satisfiable requirement, because every mandated output change moved to 5b.
 If fixtures were regenerated since Task 2, the baseline is void — redo Task 2
 step 3 from the pre-refactor commit.
 
+**Amendments (implementation, 2026-08-12).** Three corrections found while
+meeting the byte-identity gate:
+
+1. **`ResultFile.swift` moves to `Classes/ResultReading/Legacy/`** (and the
+   XCResultKit-typed `EmittableOutput` extensions move into it, leaving the
+   protocol alone in `Protocols/EmittableOutput.swift`). The file wraps
+   `XCResultFile` and cannot drop its import, and this task's own gate —
+   `grep -rln "import XCResultKit" Sources/ | grep -v ResultReading/Legacy`
+   empty — is satisfiable no other way. The Files list above said "Modify";
+   the correct operation is move-and-modify.
+2. **Failure rows keep their shallower indent.** The deleted
+   `Activity(failureSummary:)` initializer defaulted `padding` to 0 where
+   activity summaries were built with 20, so failure rows have always rendered
+   at `margin-left: 18px` against 38px for activities. `Iteration` preserves
+   that by keying the padding on `ParsedActivity.isFailure`. The "straight
+   one-to-one mapping" described in Step 1 missed this.
+3. **The reader's interleave stays finish-keyed in this task** — see the
+   Task 4 amendment; the re-key to `start` is Task 5b's, where its output
+   change is enumerated.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -1548,7 +1597,7 @@ XCHR_BASELINE_DIR=/tmp/xchr-5b swift test --filter BaselineCaptureTests
 diff -r /tmp/xchr-after /tmp/xchr-5b > /tmp/xchr-5b.diff; wc -l /tmp/xchr-5b.diff
 ```
 
-Every differing line must be one of exactly three shapes. Check them, do not
+Every differing line must be one of exactly four shapes. Check them, do not
 skim:
 
 1. an activity `class="activity …"` losing `activity-internal`,
@@ -1556,11 +1605,36 @@ skim:
    `activity-delete-attachment`
 2. an activity row losing its `(1.23s)` and rendering `()`
 3. an activity element id changing from an XCResultKit uuid to a path digest
+4. a failure row repositioned relative to activities — line content identical,
+   only position changed, and only where the failure's timestamp falls inside
+   an activity's start/finish span. This is the Step 3.5 re-key from `finish`
+   to `start`; every shape-4 hunk must pair a deletion with a
+   content-identical insertion elsewhere (modulo the shape-2/3 changes applied
+   to the same line), verified line by line, not waved through as "the
+   reorder". Exercised by `RetryResults` / `testRetryOnFailure()`, whose
+   assertion fires during the user-created `Retryable Activity`.
 
 Anything else — a test row, a group heading, a status class, an attachment —
 is a regression from Step 1 or 3, not an accepted change. `swift test` must
 also stay green: `ReproducibilityTests` and `CoreTests` both select on classes
 this task deliberately leaves alone.
+
+**Amendments (implementation, 2026-08-12).**
+
+- **Step 3.5 (added, coordinator ruling): re-key the reader's interleave from
+  the transitional `finish` to `start`** while deleting the transitional
+  fields from `ParsedActivity` (see the Task 3 amendment). Shape 4 above is
+  this step's output change. Post-5b both readers key on `start`, so the
+  backends agree by construction and the differential allow-list gains no
+  entry.
+- **`JUnitReport.swift` is also modified** (the Files list above missed it):
+  its activity→result mapping switched on `ActivityType` cases. With the
+  taxonomy out of the port it reduces to the failure flag — `.failed` /
+  `.systemErr` for failure rows exactly as before, `.unknown` for everything
+  else. The `.systemOut` (user-created) and `.skipped` (skipped-test) states
+  lose their only producers; `testRetryFunctionalityJunit`, which pinned
+  those counts, is already skipped for fixture drift (#378) and its
+  expectations will need rewriting when it returns.
 
 - [ ] **Step 5: Commit**
 

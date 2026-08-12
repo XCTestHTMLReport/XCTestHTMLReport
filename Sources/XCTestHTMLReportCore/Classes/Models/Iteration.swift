@@ -6,96 +6,58 @@
 //
 
 import Foundation
-import XCResultKit
 
 struct Iteration: Test {
-    /// Assigned by the owning `TestCase`, which is the only place that knows
-    /// this iteration's final position — see `TestCase.assignIterationIdentifiers()`.
-    var uuid: String = ""
-
-    /// Position of the metadata this was built from within its suite. Only
-    /// used to break ties when ordering iterations: they are built
-    /// concurrently, and repetition numbers can repeat or be absent.
-    let sourceIndex: Int
+    /// Derived from the path assigned by the owning `TestCase`, which is the
+    /// only place that knows this iteration's final position among its
+    /// siblings.
+    let uuid: String
 
     let title: String
     let identifier: String
-    let objectClass: ObjectClass = .testSummary // TODO: Modify html template
+    let nodeKind: NodeKind = .testCase // TODO: Modify html template
     let duration: TimeInterval
     let status: Status
     let activities: [Activity]
-    let repetitionPolicy: ActionTestRepetitionPolicySummary?
+    /// 1-based repetition number, `nil` when the backend reports none.
+    let iterationNumber: Int?
 
     var testScreenshotFlow: TestScreenshotFlow? {
         TestScreenshotFlow(activities: activities)
     }
 
     init(
-        metadata: ActionTestMetadata,
-        sourceIndex: Int,
-        resultFile: ResultFile,
+        iteration: ParsedIteration,
+        identifierPath: IdentifierPath,
+        title: String,
+        identifier: String,
+        file: PayloadProviding,
         renderingMode: Summary.RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat
     ) {
-        self.sourceIndex = sourceIndex
-        title = metadata.name ?? ""
-        identifier = metadata.identifier ?? ""
-        status = Status(rawValue: metadata.testStatus) ?? .unknown
-        duration = metadata.duration ?? 0
-
-        if let id = metadata.summaryRef?.id,
-           let actionTestSummary = resultFile.getActionTestSummary(id: id)
-        {
-            let actionTestActivities = actionTestSummary.activitySummaries.map {
-                Activity(
-                    summary: $0,
-                    file: resultFile,
-                    padding: 20,
-                    renderingMode: renderingMode,
-                    downsizeImagesEnabled: downsizeImagesEnabled,
-                    downsizeScaleFactor: downsizeScaleFactor
-                )
-            }
-
-            // As of xcresulttool 3.39, assertion failures are no longer listed within
-            // ActionTestActivitySummary.
-            // This means that we need to interpolate ActionTestFailureSummaries alongside existing
-            // acitivities.
-            // If ActionTestSummary already contains "failingSubActivities", it means that we're
-            // using xcresulttool < 3.39,
-            // and we shouldn't evaluate ActionTestFailureSummaries to avoid duplicate failure
-            // statements.
-            if actionTestActivities.first(where: { $0.hasFailingSubActivities }) != nil {
-                activities = actionTestActivities
-            } else {
-                let actionTestFailureActivities = actionTestSummary.failureSummaries.map {
-                    Activity(
-                        failureSummary: $0,
-                        file: resultFile,
-                        renderingMode: renderingMode,
-                        downsizeImagesEnabled: downsizeImagesEnabled,
-                        downsizeScaleFactor: downsizeScaleFactor
-                    )
-                }
-
-                // Combine ActionTestActivity and ActionTestFailureActivity arrays together, sorted
-                // by the finishTime
-                // TODO: We may want to insert the failure activity between subactivities
-                activities = (actionTestActivities + actionTestFailureActivities).sorted(by: {
-                    if let finishTime0 = $0.finishTime,
-                       let finishTime1 = $1.finishTime
-                    {
-                        return finishTime0 < finishTime1
-                    }
-                    return true
-                })
-            }
-
-            repetitionPolicy = actionTestSummary.repetitionPolicySummary
-        } else {
-            activities = []
-            repetitionPolicy = nil
+        uuid = identifierPath.identifier
+        self.title = title
+        self.identifier = identifier
+        status = Status(iteration.status)
+        duration = iteration.duration
+        iterationNumber = iteration.iterationNumber
+        // The reader already interleaved failure rows among the activities, so
+        // this is a straight one-to-one mapping. Failure rows render one
+        // indentation level shallower than regular activities — the old
+        // failure-summary initializer defaulted its padding to 0 where
+        // activity summaries were given 20 — and that rendered fact survives
+        // the port.
+        activities = iteration.activities.enumerated().map { index, activity in
+            Activity(
+                activity: activity,
+                identifierPath: identifierPath.appending("activity\(index)"),
+                file: file,
+                padding: activity.isFailure ? 0 : 20,
+                renderingMode: renderingMode,
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
+            )
         }
     }
 }
@@ -104,7 +66,7 @@ extension Iteration {
     var htmlPlaceholderValues: [String: String] {
         [
             "UUID": uuid,
-            "TITLE": "Iteration \(repetitionPolicy?.iteration ?? 0)",
+            "TITLE": "Iteration \(iterationNumber ?? 0)",
             "DURATION": duration.formattedSeconds,
             "ICON_CLASS": status.cssClass,
             "SCREENSHOT_FLOW": testScreenshotFlow?.screenshots.accumulateHTMLAsString ?? "",
