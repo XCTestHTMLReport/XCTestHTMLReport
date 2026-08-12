@@ -231,7 +231,7 @@ Expected: PASS. The pre-existing #430 tests must stay green — if
 `testRenderingTheSameBundleTwiceProducesIdenticalBytes` starts failing, the
 normalizer has been wired into the same-backend path by mistake.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 swiftformat . && git add Tests/XCTestHTMLReportTests/ReportNormalizer.swift \
@@ -263,7 +263,11 @@ report success anyway. The identifiers are signal here, not noise.
   skips otherwise. Used manually in Tasks 5a and 5b, then kept for any future rendering
   change.
 
-- [ ] **Step 1: Write the capture test**
+- [x] **Step 1: Write the capture test**
+
+(The test was originally named `testCaptureNormalizedRenders` — a leftover from
+the pre-#430 revision that normalized. It captures raw bytes, and is named
+`testCaptureRawRenders` accordingly.)
 
 ```swift
 //
@@ -283,7 +287,7 @@ import XCTest
 @testable import XCTestHTMLReportCore
 
 final class BaselineCaptureTests: XCTestCase {
-    func testCaptureNormalizedRenders() throws {
+    func testCaptureRawRenders() throws {
         guard let dir = ProcessInfo.processInfo.environment["XCHR_BASELINE_DIR"] else {
             throw XCTSkip("Set XCHR_BASELINE_DIR to capture baseline renders")
         }
@@ -327,7 +331,7 @@ final class BaselineCaptureTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run it and confirm it skips by default**
+- [x] **Step 2: Run it and confirm it skips by default**
 
 ```bash
 swift test --filter BaselineCaptureTests
@@ -335,7 +339,7 @@ swift test --filter BaselineCaptureTests
 
 Expected: PASS with one skipped test.
 
-- [ ] **Step 3: Capture the actual baseline**
+- [x] **Step 3: Capture the actual baseline**
 
 ```bash
 XCHR_BASELINE_DIR=/tmp/xchr-baseline swift test --filter BaselineCaptureTests
@@ -345,7 +349,7 @@ ls -la /tmp/xchr-baseline
 Expected: three non-empty `.html` files. **Do not regenerate fixtures again
 until Task 5a is verified** — a new fixture generation invalidates this baseline.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 swiftformat . && git add Tests/XCTestHTMLReportTests/BaselineCaptureTests.swift
