@@ -1,5 +1,6 @@
 #!/bin/bash
-# Runs the same checks CI runs, on staged files only.
+# Runs the same checks CI runs: shellcheck, SwiftFormat and SwiftLint over the
+# files you are committing, plus the substrate check over the tree.
 #
 # Not installed automatically — see CONTRIBUTING.md. A repository that silently
 # takes over your git config is worse than one that asks.
@@ -45,6 +46,15 @@ if [[ -n "$swift_staged" ]]; then
     echo "swiftlint not installed; skipping (brew install swiftlint)"
   fi
 fi
+
+# --- substrate -----------------------------------------------------------
+# Unconditional, unlike the sections above: this is a structural check over
+# CLAUDE.md and docs/learnings/ rather than a per-file lint, so there are no
+# staged paths to hand it, and it costs milliseconds. Checking the tree rather
+# than the staged set is the point — an unindexed learning is a problem whether
+# or not it is the file being committed.
+note "substrate"
+"$(git rev-parse --show-toplevel)/Scripts/check-substrate.sh" || fail=1
 
 if [[ $fail -ne 0 ]]; then
   printf '\n\033[31mpre-commit checks failed.\033[0m Fix the above, or commit with --no-verify.\n'

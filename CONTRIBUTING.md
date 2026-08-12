@@ -48,16 +48,21 @@ swift test
 ```
 
 `prepareTestResults.sh` picks the newest available iPhone simulator automatically.
-No credentials or secrets are required — CI runs exactly these two commands, so a
-green run locally means a green run on your pull request.
+No credentials or secrets are required. These two commands reproduce CI's `test`
+job, so a green run locally means that job will be green on your pull request —
+see below for what else CI checks.
 
 Regenerate fixtures after upgrading Xcode; `.xcresult` contents change between
 Xcode versions.
 
+`docs/learnings/` collects traps this project has already paid for — one line
+each in [`docs/learnings/INDEX.md`](docs/learnings/INDEX.md). Worth a minute
+before changing CI, the linters, or the fixtures.
+
 ### Optional: run the checks before committing
 
-CI runs shellcheck, SwiftFormat, and SwiftLint. The same checks can run locally on
-staged files, so you find problems before pushing:
+CI runs shellcheck, SwiftFormat, SwiftLint, and a structural check on `CLAUDE.md`
+and `docs/learnings/`. The same checks can run locally before pushing:
 
 ```bash
 git config core.hooksPath .githooks
@@ -65,8 +70,8 @@ git config core.hooksPath .githooks
 
 That is opt-in on purpose — nothing installs it for you.
 
-The hook only checks files you are actually committing, and skips a tool entirely
-if it is not installed:
+The linters only look at files you are actually committing, and each is skipped
+entirely if it is not installed:
 
 ```bash
 brew install shellcheck swiftformat swiftlint
