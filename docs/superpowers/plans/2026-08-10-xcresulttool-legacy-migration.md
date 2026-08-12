@@ -1589,6 +1589,11 @@ Subprocess plumbing for the modern backend, with the schema version pinned.
   `func run(_ arguments: [String]) throws -> Data`, plus
   `static var legacyCapability: LegacyCapability`. Task 8 depends on the
   protocol to inject a failing client.
+- **Also produces `LegacyCapability`** (amended during implementation): the
+  plan originally defined that enum only in Task 11's `ResultBackend.swift`,
+  but Task 6 cannot compile without it, and the tasks land as separate PRs.
+  It lives in `XCResultToolClient.swift` with exactly the shape Task 11
+  specifies; Task 11 must reuse it rather than redefine it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1924,9 +1929,12 @@ struct TestResultsTests: Decodable {
     let testNodes: [TestNode]?
 }
 
-/// One node of the test tree. `nodeType` is the discriminator:
-/// `Test Plan`, `UI test bundle`, `Unit test bundle`, `Test Suite`,
-/// `Test Case`, `Repetition`, `Failure Message`.
+/// One node of the test tree. `nodeType` is the discriminator; the published
+/// `TestNodeType` enum (schema 0.1.0) lists `Test Plan`, `Unit test bundle`,
+/// `UI test bundle`, `Test Suite`, `Test Case`, `Device`,
+/// `Test Plan Configuration`, `Arguments`, `Repetition`, `Test Case Run`,
+/// `Failure Message`, `Source Code Reference`, `Attachment`, `Expression`,
+/// `Test Value`, `Runtime Warning`.
 struct TestNode: Decodable {
     let name: String?
     let nodeType: String?
@@ -2005,7 +2013,9 @@ struct LogSection: Decodable {
 swift test --filter TestResultsSchemaTests
 ```
 
-Expected: PASS, 2 tests.
+Expected: PASS, 3 tests — implementation added `testDecodesArgumentsNodes`,
+exercising the `Arguments`/`Test Value` node types from the published schema
+(no fixture produces them; see the design doc's answer 6).
 
 - [ ] **Step 5: Commit**
 
@@ -3209,13 +3219,10 @@ Expected: FAIL — `cannot find 'ResultBackend' in scope`.
 
 import Foundation
 
-/// Whether this toolchain still offers the `--legacy` commands.
-public enum LegacyCapability {
-    case available
-    case unavailable
-    /// The version string did not parse. Not proof of absence.
-    case unknown
-}
+// NOTE (amended during Task 6): `LegacyCapability` already exists — Task 6
+// defines it in `XCResultToolClient.swift` with exactly this shape, because
+// the client cannot compile without it and the tasks land as separate PRs.
+// Do not redefine it here; implement only `ResultBackend` below.
 
 /// Which reader parses result bundles.
 public enum ResultBackend: String, CaseIterable {

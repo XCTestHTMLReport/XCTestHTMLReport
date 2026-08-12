@@ -1,6 +1,8 @@
-TestResults*
-RetryResults*
-SanityResults*
+# Generated fixture bundles (prepareTestResults.sh). Anchored to .xcresult so
+# source files sharing the prefix (TestResultsSchema.swift) are not swallowed.
+TestResults*.xcresult
+RetryResults*.xcresult
+SanityResults*.xcresult
 .DS_Store
 /.build
 /XCTestHTMLReportSampleApp/Build
