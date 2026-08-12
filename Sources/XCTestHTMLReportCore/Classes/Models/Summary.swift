@@ -107,7 +107,9 @@ public struct Summary {
     /// Call-site checks catch failures XCResultKit surfaces as `nil`. They do
     /// not catch failures in *nested* decoding, where a parent object still
     /// decodes but a child field comes back empty. The observable symptom is an
-    /// attachment that resolved to no content, so check for that directly.
+    /// attachment whose payload resolved to no content, so check for that
+    /// directly. Attachments that never had a payload are skipped: their
+    /// content is empty by construction, not through degradation (#387).
     ///
     /// Idempotent across sequential calls: repeated calls do not duplicate
     /// faults. Dedup keys on `Attachment.faultDescription`, which assumes
@@ -123,7 +125,7 @@ public struct Summary {
         )
 
         for attachment in allAttachments {
-            guard case .none = attachment.content else {
+            guard attachment.failedToResolve else {
                 continue
             }
             let detail = attachment.faultDescription
