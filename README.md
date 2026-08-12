@@ -1,6 +1,5 @@
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/XCTestHTMLReport/XCTestHTMLReport/ci.yml?style=flat&logo=github)](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/workflows/ci.yml)
 [![Codecov](https://img.shields.io/codecov/c/github/XCTestHTMLReport/XCTestHTMLReport?style=flat&logo=codecov)](https://codecov.io/github/XCTestHTMLReport/XCTestHTMLReport)
-[![Sonar Violations (long format)](https://img.shields.io/sonar/violations/XCTestHTMLReport_XCTestHTMLReport/main?style=flat&logo=sonar&server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/summary/new_code?id=XCTestHTMLReport_XCTestHTMLReport)
 
 
 [![](https://img.shields.io/endpoint?color=blue&style=flat&url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FXCTestHTMLReport%2FXCTestHTMLReport%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/XCTestHTMLReport/XCTestHTMLReport)

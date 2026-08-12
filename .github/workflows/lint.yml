@@ -15,7 +15,7 @@ jobs:
   shell:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
@@ -26,10 +26,28 @@ jobs:
         shellcheck --version
         find . -name '*.sh' -not -path './.build/*' -print0 | xargs -0 -r shellcheck
 
+  actions:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    # The token only feeds zizmor's online audits (known-vulnerable-actions,
+    # stale hash pins); the job never writes. Informational findings are
+    # filtered out so the gate starts green — raise the floor deliberately,
+    # like the SwiftLint config below.
+    - name: zizmor
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        pipx install zizmor==1.29.0
+        zizmor --min-severity low .github/workflows/
+
   swift:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
