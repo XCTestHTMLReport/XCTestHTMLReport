@@ -42,15 +42,19 @@ jobs:
       with:
         xcode-version: latest-stable
 
+    # Tolerates a failing `xcresulttool version` on purpose: if this step
+    # hard-failed, the legacy probe below would be skipped and the filed issue
+    # would show a generic setup failure instead of the one alarm that matters.
     - name: Record toolchain
       id: toolchain
       run: |
         xcodebuild -version
         swift --version
-        xcrun xcresulttool version
+        xcresulttool_line="$(xcrun xcresulttool version 2>&1 | head -n 1)"
+        echo "${xcresulttool_line:-xcresulttool version unavailable}"
         xcode="$(xcodebuild -version | awk 'NR==1 {v=$2} NR==2 {b=$3} END {printf "%s (%s)", v, b}')"
         echo "xcode=${xcode}" >> "$GITHUB_OUTPUT"
-        echo "xcresulttool=$(xcrun xcresulttool version | head -n 1)" >> "$GITHUB_OUTPUT"
+        echo "xcresulttool=${xcresulttool_line:-unavailable}" >> "$GITHUB_OUTPUT"
 
     # `xcrun xcresulttool version` currently prints
     #   "... (legacy commands format version: 3.56)"
@@ -62,7 +66,9 @@ jobs:
       id: legacy
       continue-on-error: true
       run: |
-        version_output="$(xcrun xcresulttool version)"
+        # `|| true` so that xcresulttool disappearing entirely still reaches
+        # the grep and fires the explicit alarm below rather than a bare error.
+        version_output="$(xcrun xcresulttool version 2>&1 || true)"
         echo "$version_output"
         if ! grep -q "legacy commands format version" <<<"$version_output"; then
           echo "::error::xcresulttool no longer advertises legacy command support — Apple has likely removed the --legacy commands (#391)"
