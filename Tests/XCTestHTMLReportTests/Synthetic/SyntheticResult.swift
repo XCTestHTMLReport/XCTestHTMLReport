@@ -57,4 +57,118 @@ enum SyntheticResult {
             )
         }
     }
+
+    static func textAttachment() -> ParsedAttachment {
+        ParsedAttachment(
+            name: "Log",
+            filename: "FileName with DoubleQuote\"SingleQuote'LessThan<GreaterThan>Ampersand&.txt",
+            filenameExtension: "txt",
+            payloadReference: textReference
+        )
+    }
+
+    static func iteration(
+        number: Int?,
+        status: ParsedStatus,
+        activities: [ParsedActivity]
+    ) -> ParsedIteration {
+        ParsedIteration(
+            iterationNumber: number,
+            status: status,
+            duration: 1.5,
+            activities: activities
+        )
+    }
+
+    static func testCase(
+        name: String,
+        iterations: [ParsedIteration]
+    ) -> ParsedTestCase {
+        ParsedTestCase(
+            name: name,
+            identifier: "Synthetic/\(name)",
+            arguments: [],
+            iterations: iterations
+        )
+    }
+
+    static var parsedRun: ParsedRun {
+        let standardActivities = [
+            activity(title: "Start Test", attachments: []),
+            activity(
+                title: "Attachments",
+                attachments: [pngAttachment(), textAttachment()]
+            ),
+            activity(
+                title: "Nested",
+                subActivities: [activity(title: "Inner step")]
+            ),
+        ]
+
+        let failureActivity = ParsedActivity(
+            title: "Synthetic.swift:42: assertion failed",
+            isFailure: true,
+            start: Date(timeIntervalSince1970: 1),
+            attachments: [pngAttachment()],
+            subActivities: []
+        )
+
+        let group = ParsedGroup(
+            name: "SyntheticSuite",
+            identifier: "SyntheticSuite",
+            duration: 6,
+            children: [
+                .testCase(testCase(
+                    name: "testPasses()",
+                    iterations: [iteration(
+                        number: nil,
+                        status: .passed,
+                        activities: standardActivities
+                    )]
+                )),
+                .testCase(testCase(
+                    name: "testFails()",
+                    iterations: [iteration(
+                        number: nil,
+                        status: .failed,
+                        activities: standardActivities + [failureActivity]
+                    )]
+                )),
+                .testCase(testCase(
+                    name: "testSkips()",
+                    iterations: [iteration(number: nil, status: .skipped, activities: [])]
+                )),
+                .testCase(testCase(
+                    name: "testExpectedlyFails()",
+                    iterations: [iteration(
+                        number: nil,
+                        status: .expectedFailure,
+                        activities: [failureActivity]
+                    )]
+                )),
+                .testCase(testCase(
+                    name: "testRetries()",
+                    iterations: [
+                        iteration(number: 1, status: .failed, activities: [failureActivity]),
+                        iteration(number: 2, status: .passed, activities: standardActivities),
+                    ]
+                )),
+            ]
+        )
+
+        return ParsedRun(
+            destination: ParsedDestination(
+                displayName: "Synthetic Device",
+                deviceIdentifier: "00000000-0000-0000-0000-000000000000",
+                modelName: "Synthetic Model",
+                operatingSystemVersion: "1.0"
+            ),
+            logReference: nil,
+            testables: [ParsedTestable(targetName: "SyntheticTests", groups: [group])]
+        )
+    }
+
+    static var parsedResult: ParsedResult {
+        ParsedResult(runs: [parsedRun])
+    }
 }
