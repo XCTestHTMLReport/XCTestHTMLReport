@@ -3327,7 +3327,16 @@ final class ResultBackendTests: XCTestCase {
         let url = try XCTUnwrap(
             Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
         )
-        for backend in [ResultBackend.legacy, .modern] {
+        // Amended during Task 11 (review finding): the loop was unconditional,
+        // which fails by design on a modern-only host — the explicit `legacy`
+        // arm records `legacyReaderUnavailable`. Guard it on capability, the
+        // same anti-time-bomb reasoning the other tests already use; parity
+        // stays fully asserted on every host that has both backends.
+        var backends: [ResultBackend] = [.modern]
+        if XCResultToolClient.legacyCapability == .available {
+            backends.insert(.legacy, at: 0)
+        }
+        for backend in backends {
             let summary = Summary(
                 resultPaths: [url.path],
                 renderingMode: .linking,

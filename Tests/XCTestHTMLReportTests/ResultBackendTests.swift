@@ -43,7 +43,17 @@ final class ResultBackendTests: XCTestCase {
         let url = try XCTUnwrap(
             Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
         )
-        for backend in [ResultBackend.legacy, .modern] {
+        // The legacy arm only where the toolchain can honour it: an explicit
+        // `legacy` on a modern-only host records `legacyReaderUnavailable` by
+        // design, and on an `unknown` host the legacy commands themselves may
+        // fail. Same anti-time-bomb reasoning as
+        // `testAutoPrefersLegacyWhileTheToolchainOffersIt`; parity stays fully
+        // asserted on every host that has both backends.
+        var backends: [ResultBackend] = [.modern]
+        if XCResultToolClient.legacyCapability == .available {
+            backends.insert(.legacy, at: 0)
+        }
+        for backend in backends {
             let summary = Summary(
                 resultPaths: [url.path],
                 renderingMode: .linking,
