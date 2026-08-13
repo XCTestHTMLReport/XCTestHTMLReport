@@ -38,9 +38,11 @@ if [[ -n "$swift_staged" ]]; then
 
   if command -v swiftlint >/dev/null; then
     note "swiftlint"
-    # SwiftLint reads .swiftlint.yml for its own include/exclude rules, so pass
-    # paths explicitly to keep the hook scoped to what is being committed.
-    staged '*.swift' | xargs -0 swiftlint lint --quiet || fail=1
+    # Paths are passed explicitly to keep the hook scoped to what is being
+    # committed. SwiftLint ignores the config's excluded: list for explicit
+    # paths unless told otherwise — --force-exclude keeps exclusions
+    # (e.g. HTMLTemplates.swift) in effect here just as they are in CI.
+    staged '*.swift' | xargs -0 swiftlint lint --quiet --force-exclude || fail=1
   else
     echo "swiftlint not installed; skipping (brew install swiftlint)"
   fi

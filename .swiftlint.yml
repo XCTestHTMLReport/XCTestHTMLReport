@@ -16,8 +16,9 @@ excluded:
   # this because the lint job does not run prepareTestResults.sh, so the
   # directory only exists on machines that generate fixtures.
   - XCTestHTMLReportSampleApp/.derivedData
-  # Generated (carries a DO NOT EDIT header) and almost entirely multiline
-  # string literals holding the emitted HTML. Also excluded from SwiftFormat.
+  # Hand-maintained template source, almost entirely multiline string literals
+  # holding the emitted HTML. Long HTML lines exceed the line_length error
+  # threshold and no formatter can wrap them. Also excluded from SwiftFormat.
   - Sources/XCTestHTMLReportCore/Classes/HTMLTemplates.swift
 
 disabled_rules:
