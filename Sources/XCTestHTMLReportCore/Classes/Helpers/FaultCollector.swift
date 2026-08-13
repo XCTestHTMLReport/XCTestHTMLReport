@@ -31,6 +31,11 @@ public struct Fault: Equatable {
         /// XCResultKit could not produce a log section, or it could not be
         /// written next to the report. The log is missing from the report.
         case logExportFailed
+        /// An explicit `legacy` reader was requested on a toolchain that no
+        /// longer provides the legacy commands. The report was produced with
+        /// the modern reader instead, which is a different reader than the
+        /// caller asked for.
+        case legacyReaderUnavailable
     }
 
     public let kind: Kind

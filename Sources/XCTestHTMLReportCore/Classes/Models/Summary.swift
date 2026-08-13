@@ -28,18 +28,44 @@ public struct Summary {
         renderingMode: RenderingMode,
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat,
-        faultCollector: FaultCollector = FaultCollector()
+        faultCollector: FaultCollector = FaultCollector(),
+        backend: ResultBackend = .auto
     ) {
         var runs: [Run] = []
         var resultFiles: [ResultFile] = []
         self.faultCollector = faultCollector
+
+        // The CLI already rejects an explicit `legacy` the toolchain cannot
+        // honour in `validate()`. This arm is defence in depth for library
+        // consumers who never pass through the CLI: a non-throwing init
+        // cannot raise the error, so it records a fault — which reaches
+        // exit 3 through the existing path, and is therefore still not a
+        // silent substitution.
+        let resolved: ResultBackend
+        switch backend.resolve() {
+        case let .use(concrete):
+            resolved = concrete
+        case .legacyUnavailable:
+            faultCollector.record(
+                .legacyReaderUnavailable,
+                "legacy reader requested but unavailable on this toolchain"
+            )
+            resolved = .modern
+        }
 
         for (resultIndex, resultPath) in resultPaths.enumerated() {
             Logger.step("Parsing \(resultPath)")
             let url = URL(fileURLWithPath: resultPath)
             let resultFile = ResultFile(url: url, faultCollector: faultCollector)
             resultFiles.append(resultFile)
-            guard let parsed = LegacyResultReader(file: resultFile).read() else {
+
+            let (reader, payloads) = Self.makeReader(
+                resolved: resolved,
+                resultFile: resultFile,
+                faultCollector: faultCollector
+            )
+
+            guard let parsed = reader.read() else {
                 Logger.warning("Can't find invocation record for : \(resultPath)")
                 faultCollector.record(.missingInvocationRecord, resultPath)
                 // Previously `break`, which silently abandoned every remaining
@@ -57,7 +83,7 @@ public struct Summary {
                         identifierPath: IdentifierPath.root
                             .appending("bundle\(resultIndex)")
                             .appending("action\(actionIndex)"),
-                        file: resultFile,
+                        file: payloads,
                         renderingMode: renderingMode,
                         downsizeImagesEnabled: downsizeImagesEnabled,
                         downsizeScaleFactor: downsizeScaleFactor
@@ -67,6 +93,30 @@ public struct Summary {
         }
         self.runs = runs
         self.resultFiles = resultFiles
+    }
+
+    /// Reader and payload provider for one bundle on the resolved backend.
+    private static func makeReader(
+        resolved: ResultBackend,
+        resultFile: ResultFile,
+        faultCollector: FaultCollector
+    ) -> (reader: ResultReader, payloads: PayloadProviding) {
+        switch resolved {
+        case .legacy, .auto:
+            // `resolve()` never returns `.use(.auto)`, so the `.auto` arm is
+            // unreachable; it exists because `ResultBackend` is the parameter
+            // type and Swift requires exhaustiveness.
+            return (LegacyResultReader(file: resultFile), resultFile)
+        case .modern:
+            let client = XCResultToolClient(bundleURL: resultFile.url)
+            let store = ModernPayloadStore(
+                client: client, bundleURL: resultFile.url, faultCollector: faultCollector
+            )
+            let reader = ModernResultReader(
+                client: client, payloadStore: store, faultCollector: faultCollector
+            )
+            return (reader, store)
+        }
     }
 
     /// Generate HTML report

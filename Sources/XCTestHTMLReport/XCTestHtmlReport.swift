@@ -79,6 +79,14 @@ struct SummaryOptions: ParsableArguments {
         }
         return .linking
     }
+
+    @Option(
+        name: .long,
+        help: ArgumentHelp(
+            "Which result reader to use: auto, legacy, or modern. Defaults to auto, which prefers the legacy reader while the toolchain still supports it."
+        )
+    )
+    var resultReader: ResultBackend = .auto
 }
 
 @main
@@ -131,7 +139,8 @@ struct XCTestHtmlReport: ParsableCommand {
             renderingMode: summaryOptions.finalRenderingMode,
             downsizeImagesEnabled: summaryOptions.downsizeImages,
             downsizeScaleFactor: summaryOptions.downsizeScaleFactor,
-            faultCollector: faultCollector
+            faultCollector: faultCollector,
+            backend: summaryOptions.resultReader
         )
 
         Logger.step("Building HTML..")
@@ -213,8 +222,19 @@ struct XCTestHtmlReport: ParsableCommand {
                 throw ValidationError("Bundle \(result) not found")
             }
         }
+
+        // An explicit `legacy` request the toolchain cannot honour is an
+        // error, never a silent substitution with the modern reader.
+        if case .legacyUnavailable = summaryOptions.resultReader.resolve() {
+            throw ValidationError(
+                "--result-reader legacy was requested, but this toolchain no longer "
+                    + "provides the legacy xcresulttool commands."
+            )
+        }
     }
 }
+
+extension ResultBackend: ExpressibleByArgument {}
 
 extension Summary.RenderingMode: ExpressibleByArgument {
     public init?(argument: String) {

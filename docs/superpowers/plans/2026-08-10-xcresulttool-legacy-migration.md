@@ -3327,7 +3327,16 @@ final class ResultBackendTests: XCTestCase {
         let url = try XCTUnwrap(
             Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
         )
-        for backend in [ResultBackend.legacy, .modern] {
+        // Amended during Task 11 (review finding): the loop was unconditional,
+        // which fails by design on a modern-only host — the explicit `legacy`
+        // arm records `legacyReaderUnavailable`. Guard it on capability, the
+        // same anti-time-bomb reasoning the other tests already use; parity
+        // stays fully asserted on every host that has both backends.
+        var backends: [ResultBackend] = [.modern]
+        if XCResultToolClient.legacyCapability == .available {
+            backends.insert(.legacy, at: 0)
+        }
+        for backend in backends {
             let summary = Summary(
                 resultPaths: [url.path],
                 renderingMode: .linking,
@@ -3342,6 +3351,55 @@ final class ResultBackendTests: XCTestCase {
             // Format limitations must never be recorded as faults; if they
             // were, every modern run would exit 3.
             XCTAssertEqual(summary.faults, [], "\(backend) reported faults")
+        }
+    }
+
+    // Amended during Task 11: Task 12's differential forces each reader
+    // through the CLI, so the flag has to work from a separate process via
+    // `xchtmlreportCmd`, not only through `Summary.init` in this one.
+    func testResultReaderFlagWorksOutOfProcess() throws {
+        let url = try XCTUnwrap(
+            Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
+        )
+
+        func groupCount(reader: String) throws -> Int {
+            let outputDir = FileManager.default.temporaryDirectory
+                .appendingPathComponent("result-reader-\(reader)-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(
+                at: outputDir, withIntermediateDirectories: true
+            )
+            defer { try? FileManager.default.removeItem(at: outputDir) }
+            let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(args: [
+                url.path, "-o", outputDir.path, "--result-reader", reader,
+            ])
+            let stdErr = maybeStdErr ?? ""
+            XCTAssertEqual(
+                status, 0,
+                "--result-reader \(reader) exited \(status). stderr:\n\(stdErr)"
+            )
+            let combined = (maybeStdOut ?? "") + stdErr
+            XCTAssertFalse(
+                combined.contains("Report is degraded"),
+                "\(reader) run was degraded:\n\(combined)"
+            )
+            let html = try String(
+                contentsOf: outputDir.appendingPathComponent("index.html"),
+                encoding: .utf8
+            )
+            return html.components(separatedBy: "test-summary-group").count - 1
+        }
+
+        let modernGroups = try groupCount(reader: "modern")
+        XCTAssertGreaterThan(modernGroups, 0, "modern rendered no test groups")
+
+        if XCResultToolClient.legacyCapability == .available {
+            // Legacy interposes the wrapper levels the modern tree omits, so
+            // equal counts mean the flag never reached `Summary` and both runs
+            // used one backend.
+            XCTAssertNotEqual(
+                try groupCount(reader: "legacy"), modernGroups,
+                "legacy and modern rendered identical group counts — the flag is not reaching Summary"
+            )
         }
     }
 }
@@ -3522,7 +3580,9 @@ let summary = Summary(
 swift test --filter ResultBackendTests && swift test 2>&1 | tail -5
 ```
 
-Expected: 4 new tests PASS; full suite green.
+Expected: 6 new tests PASS; full suite green. (Amended during Task 11: this
+originally said 4, but the snippet above defines 5 test functions, plus the
+out-of-process CLI test added for Task 12's differential.)
 
 **If `testBothBackendsProduceAReportForTheSameBundle` fails on the faults
 assertion**, the modern backend is recording format limitations as faults. Fix
@@ -3535,6 +3595,9 @@ out as the easiest way to get the migration wrong.
 set -o pipefail
 swift build
 for reader in legacy modern; do
+  # Amended during Task 11: xchtmlreport does not create the output
+  # directory, so without this both runs exit 1 having written nothing.
+  mkdir -p "/tmp/check-$reader"
   .build/debug/xchtmlreport --result-reader "$reader" \
     Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult \
     -o "/tmp/check-$reader" >/dev/null
