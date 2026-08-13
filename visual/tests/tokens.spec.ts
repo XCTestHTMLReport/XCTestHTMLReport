@@ -103,9 +103,19 @@ async function textPairs(page: Page) {
     const effectiveBackground = (element: Element): [number, number, number] => {
       let node: Element | null = element;
       while (node) {
-        const bg = parse(getComputedStyle(node).backgroundColor);
-        const alpha = getComputedStyle(node).backgroundColor.match(/rgba\([^)]*,\s*0\)/);
-        if (bg && !alpha) return bg;
+        const nodeStyle = getComputedStyle(node);
+        // A masked element's `background-color` is an icon fill (e.g.
+        // `mask-image` + `background-color: currentColor`, the single-colour
+        // tintable-icon pattern), not a rectangle painted behind text — the
+        // mask clips it to the glyph's silhouette, so there is no surface
+        // here for text to sit on. Skip it and keep walking for the real
+        // background, exactly as if this element painted nothing.
+        const masked = nodeStyle.maskImage !== 'none' || nodeStyle.webkitMaskImage !== 'none';
+        if (!masked) {
+          const bg = parse(nodeStyle.backgroundColor);
+          const alpha = nodeStyle.backgroundColor.match(/rgba\([^)]*,\s*0\)/);
+          if (bg && !alpha) return bg;
+        }
         node = node.parentElement;
       }
       return [255, 255, 255];
