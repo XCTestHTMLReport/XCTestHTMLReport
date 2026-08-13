@@ -65,7 +65,7 @@ asymmetries the differential still has to mask.
 | group / suite `duration` | `durationInSeconds` is `null` on every suite, plan and bundle node | **lost** — unrelated to `finish`; masked by the `durations` allow-list entry |
 | activity `uuid` | absent | synthesized locally (already how the HTML uses it) |
 | attachment `name` (user-supplied, e.g. `"HTML"`) | `name` holds the legacy *filename* | **lost** — present only in a sibling child-activity title |
-| attachment `filename` | `name` | maps, renamed |
+| attachment `filename` | `name` | ~~maps, renamed~~ **superseded (2026-08-12)** — true for user attachments, false for auto screen recordings, so both backends now derive export names from the shared payload id; see "Content-addressed attachment exports" |
 | attachment `uniformTypeIdentifier` | absent | **dropped** (answer 4) — both backends type from the file extension |
 | attachment `payloadRef.id` | `payloadId` | present, but payload-by-id export is itself a legacy command |
 | `ActionTestFailureSummary.fileName` / `.lineNumber` / `.issueType` | one string on the `Failure Message` node: `"RetryTests.swift:31: XCTAssertTrue failed"` | **lost as structure**, text preserved |
@@ -96,9 +96,14 @@ which the new format does not expose, so one of the two labels would always be
 fabricated. The modern tree is also the more consistent one — legacy places
 Swift Testing suites at a different depth than XCTest suites.
 
-Swift Testing display names also differ: legacy reports
-`taggedMultiplication()`, modern reports the `@Test` display name
-`Tagged multiplication check`.
+Swift Testing display names are a **model rule, not a rendering
+observation** *(amended during Task 12)*: the legacy format carries only the
+function-form name (`taggedMultiplication()`), the modern format's `name`
+holds the `@Test` display name (`Tagged multiplication check`), and a name
+only one backend can fill does not belong in the port — the same rule that
+removed `activityType`. Both readers therefore carry the function-form name
+from the test identifier's last component, and the display name is
+deliberately unused until the redesign models it.
 
 ### Attachments
 
@@ -313,7 +318,7 @@ that field.
 
 | Rule | What still differs | Exercised by |
 | --- | --- | --- |
-| `attachmentDisplayNames` | Modern exposes only the generated filename, so display names fall back to the type-derived label (`Screenshot`, `Video`, `File`). No modern source for the user-supplied name. | `TestResults` — `FirstSuite/testWithSpecialChars()` and `testAttachHtmlData()` both set `XCTAttachment.name` |
+| `attachmentDisplayNames` | Modern exposes only the generated filename, so display names fall back to the type-derived label (`Screenshot`, `Video`, `File`). No modern source for the user-supplied name. | `TestResults` — `FirstSuite/testWithSpecialChars()` and `testAttachHtmlData()` both set `XCTAttachment.name`; `RetryResults` — screen recordings show the raw `kXCTAttachmentScreenRecording` constant on legacy, the `Video` fallback on modern *(added during Task 12, measured)* |
 | `failureTitlePrefix` | Legacy renders `<issueType> at <file>:<line>:<message>`; modern's `Failure Message` node gives `<file>:<line>: <message>` pre-joined, with no `issueType`. | `TestResults` — every failing case; `RetryResults` — `testJustFail()` |
 | `wrapperGroups` | Modern omits the legacy `Selected tests` / `All tests` and `<target>.xctest` levels. A deliberate render difference, not a format loss. | `TestResults` — both bundles; `SanityResults` |
 | `durations` | **Group** durations, not activity ones. `durationInSeconds` is `null` on every `Test Suite`, `Test Plan` and `*test bundle` node in all three fixtures, so modern renders `(0.00s)` where legacy reports a real value — `FirstSuite` 0.699s, `SecondSuite` 0.126s, `ThirdSuite` 0.132s, `SampleAppUnitTests` 0.213s. Swift Testing test *cases* are `null` the same way. These are real suite names, so `wrapperGroups` does not mask them. | all three fixtures |
@@ -434,6 +439,110 @@ regexing them back out, since that would build visible UI on an inferred parse
 of a format Apple can reformat without notice. The residual difference — legacy
 renders `Assertion Failure at FirstSuite.swift:66:...`, modern renders
 `FirstSuite.swift:66: ...` — is a declared entry in the diff allow-list.
+
+### Task 12 execution rules (2026-08-12)
+
+Running the differential for the first time surfaced divergences the tables
+above did not anticipate. Each was resolved by a rule, recorded here with its
+reasoning; **none added an allow-list entry** — the list stands at the four
+above, and every rule below follows the settled doctrine: agree by
+construction over mask, and never model what only one backend can fill.
+
+**Content-addressed attachment exports (fixes #449).** Xcode 26.2 gives every
+auto screen recording in a session one shared display name
+(`Screen Recording <timestamp>.mp4` — in the activities document *and* the
+manifest's `suggestedHumanReadableName`), and the legacy pretty filename
+embeds a legacy-only uuid the modern format cannot see. Naming exports after
+either backend's pretty name therefore broke both ways at once: distinct
+payloads collapsed onto one path (every video row played the same recording),
+concurrent copies raced on it and intermittently recorded a spurious
+`.payloadExportFailed` — root-caused as #449 with a live `EEXIST` trace whose
+`fileExists` recovery check lost to a third thread's `removeItem`. The one
+attachment identifier both formats share is the content-addressed payload id
+(legacy `payloadRef.id` == modern `payloadId`, the same CAS id), so both
+backends name every exported payload
+`ParsedAttachment.exportFileName(payloadId:filenameExtension:)`. Names agree
+by construction, the export is idempotent (a file already at the destination
+*is* the payload — never removed, never rewritten), and byte-identical
+payloads deduplicate to one file. 4.0 release note: on-disk attachment names
+change for every user; display names in the report do not.
+
+**Symbol-annotation rows are dropped.** The 26.2 activities document nests
+backtrace-frame rows under failures (`RetryTests.testJustFail()`,
+`closure #1 in …`) — exactly the rows with no `startTime`. The timeline model
+orders on `start` (answer 1); a row without one is an annotation, not an
+event. A no-start row carrying attachments, a failure flag, or surviving
+children is kept, not dropped — rendering it unordered beats silently gutting
+real content if a future format variant stops stamping times.
+
+**Attachment-shadow rows are dropped by a timestamp join.** For every
+attachment the document also emits one childless, non-failure child row whose
+`startTime` equals the attachment's `timestamp` (title: the attachment's
+user-supplied name — which stays unmined, per "Reconstructing lost fields by
+heuristic"). The row is the attachment's shadow and is claimed by the join,
+mirroring the failure-message join. The leaf and non-failure guards are
+load-bearing, not decorative: on `testWithSpecialChars()` a genuine failure
+row shares the attachment's millisecond and must survive — pinned by
+`testSameMillisecondFailureSurvivesTheShadowJoin`.
+
+**Parameterized executions merge on legacy.** A Swift Testing
+`@Test(arguments:)` reaches the legacy format as duplicate sibling metadata
+entries sharing one identifier — the retry encoding, minus the
+`repetitionPolicySummary`. Rendering them as repetitions invents retry
+semantics ("3 succeeded", three `Iteration 0` rows) for what are argument
+variations, and the modern format renders one case. The legacy reader merges
+same-identifier siblings that all lack repetition metadata into one iteration
+(durations summed per answer 8; failed > skipped > passed precedence,
+mirroring the modern parent node's own summary). True retries always carry
+the policy summary and are untouched — `RetryResults` pins `[1, 2]` and
+`.mixed`. 4.0 release note: legacy rendering of parameterized tests changes.
+
+**Expected failures are non-events, enforced by an inverted join.** Legacy
+has always rendered nothing for `XCTExpectFailure` (status flattens to
+`.unknown`); the modern documents carry both the message and a matching
+activity row. For a test whose result is `Expected Failure`, each `Failure
+Message` claims and *removes* the first activity whose title equals the
+message **exactly — never fuzzily**, subtree included, and unmatched messages
+are suppressed rather than appended.
+
+**Skip notices were a legacy reader gap, now read.** The modern reader has
+always surfaced the skip reason (an unmatched `Failure Message`, appended);
+the legacy format carries the identical string on
+`ActionTestSummary.skipNoticeSummary`, which the reader simply never read.
+It now appends the same row — title as given, no timestamp — so both
+backends surface the reason identically. Today's report gains a row it never
+had; that is a fix, not a regression: the reason was in the bundle all along.
+
+**Failure-row placement goes through one shared function.** The modern
+format nests an assertion row inside the activity it fired in and flags every
+ancestor (`isAssociatedWithFailure`); the legacy format structurally cannot
+nest (post-3.39 failure summaries are separate objects). Re-nesting legacy's
+rows by `[start, finish]` window was tested and rejected on evidence: at the
+format's millisecond granularity the windows collide (`SecondSuite`'s failure
+timestamp sits inside `Set Up`'s window; `ThirdSuite`'s deliberately bare
+top-level assertion sits inside a *sibling* activity's window), so the join
+misplaces rows — exactly the heuristic reconstruction this spec bans. The
+resolution inverts it: `ParsedActivity.isFailure` means "this row IS the
+assertion row" (modern maps the tip of the flagged chain — flagged with no
+flagged children; each such node is a tip independently), and the modern
+reader hoists failure tips out of the tree, feeding
+`ParsedActivity.interleavingFailureRows` — the same function the legacy
+reader feeds its failure-summary list. One function is the strongest form of
+agree-by-construction: the order is total — `(start, activities before
+failure rows on tie, source index)`, `nil` starts last — and neither reader
+may sort these rows independently. **The hoist is a scaffold constraint, not
+a design preference**: it exists so the differential can hold both backends
+to one placement while both exist. Once the legacy backend is removed, the
+modern reader may stop hoisting and the redesign may restore the native
+nesting.
+
+**Run-log exports are named from the run's identifier path.** Legacy named
+the exported log after its CAS id, modern after the literal `action` — both
+backend-internal, so the names could never agree. Both now write
+`<run-identifier-path-digest>.log` (the same #430 scheme every element id
+uses): identical across backends by construction, and unique per run, so a
+multi-action bundle gets one log per action instead of last-writer-wins. 4.0
+release note: the log file's on-disk name changes.
 
 ## `--json` becomes our own schema
 

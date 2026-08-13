@@ -29,7 +29,7 @@ public struct Summary {
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat,
         faultCollector: FaultCollector = FaultCollector(),
-        backend: ResultBackend = .auto
+        backend: ResultBackend = .fromEnvironment()
     ) {
         var runs: [Run] = []
         var resultFiles: [ResultFile] = []

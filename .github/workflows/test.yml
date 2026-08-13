@@ -14,6 +14,16 @@ permissions:
 jobs:
   test:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # `auto` is what users get. The forced `modern` leg exercises the path
+        # that becomes the only path once Apple removes the legacy commands —
+        # without it, the modern reader is only ever covered by the
+        # differential tests, and never end to end.
+        result_reader: [auto, modern]
+    env:
+      XCHR_RESULT_READER: ${{ matrix.result_reader }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:

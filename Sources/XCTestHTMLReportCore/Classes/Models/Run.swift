@@ -74,7 +74,18 @@ struct Run: HTML {
         if let logReference = run.logReference {
             logContent = file.exportLogsContent(
                 reference: logReference,
-                renderingMode: renderingMode
+                renderingMode: renderingMode,
+                // Named from the run's identifier path, not from `reference`:
+                // the reference is backend-internal (a CAS id on legacy, a
+                // `--type` selector on modern), so a file named after it can
+                // never agree across backends. The path digest is the same
+                // scheme every element id already uses (#430), identical on
+                // both backends, and unique per run — a multi-action bundle
+                // gets one log file per action instead of a shared name that
+                // would leave last-writer-wins. No fixture exercises multiple
+                // actions, so that property is asserted here rather than in a
+                // test.
+                fileName: "\(identifierPath.identifier).log"
             )
         } else {
             Logger.warning("Can't find log reference for run \(run.destination.displayName)")

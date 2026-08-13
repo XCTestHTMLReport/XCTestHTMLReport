@@ -3623,6 +3623,31 @@ git commit -m "feat: select the result reader at runtime with --result-reader"
 What actually proves the migration. Runs both readers over one bundle and holds
 the diff to a declared list.
 
+> **Execution note (2026-08-12).** Landed; every snippet below is intent, and
+> the shipped implementation supersedes them in four ways, each forced by
+> evidence from the first real differential run (the run also root-caused
+> #449; the rulings live in the spec's "Task 12 execution rules"):
+>
+> 1. The `wrapperGroups` rule is structural, not line-filtering: dropping the
+>    heading *line* left the wrapper's 6-line div skeleton and its closing
+>    tag behind (measured on every fixture), so the masker parses with
+>    SwiftSoup (`prettyPrint(false)` preserves the other rules' line anchors),
+>    removes the wrapper's heading, and unwraps the element — matching the
+>    div *and its close*, as Step 3's own escape hatch prescribes.
+> 2. The `attachmentDisplayNames` regex below never matched: the `[[NAME]]`
+>    line is the *third* template line — a type-icon `<span>` sits between
+>    the `<p>` and the name — so the shipped anchor spans both preceding
+>    lines.
+> 3. `mask()` canonicalizes line joins (`>\s+<` → one tag per line) before
+>    comparing: template concatenation joins sibling blocks onto one line,
+>    and *which* boundaries join shifts once wrapper levels are unwrapped —
+>    same DOM, different line breaks.
+> 4. Anti-rot is enforced by a necessity probe, not by matching: a rule
+>    "fires" only if leaving it out (others still applied) leaves the two
+>    renders unequal. `testEveryAllowListEntryStillMasksARealDivergence`
+>    fails on any entry that fires on no fixture. The four entries all fire;
+>    the allow-list gained nothing.
+
 **Files:**
 - Create: `Tests/XCTestHTMLReportTests/DifferentialTests.swift`
 - Create: `Tests/XCTestHTMLReportTests/Resources/differential-allowlist.json`
@@ -4374,6 +4399,25 @@ Add a section covering `--result-reader auto|legacy|modern`, that `auto`
 prefers legacy while the toolchain offers it, the `--json` schema change with a
 before/after snippet, and the known differences between backends (drawn from
 the allow-list, not re-derived).
+
+**Release-notes checklist (added during Task 12 — every item is a 4.0
+output change accepted by ruling; see the spec's "Task 12 execution rules"):**
+
+- [ ] On-disk attachment names are content-addressed
+      (`<payloadId>.<ext>`) on **both** backends; display names in the
+      report are unchanged. Byte-identical payloads deduplicate to one file.
+      This also fixes intermittent `payloadExportFailed` degradation on
+      Xcode 26.2 screen recordings (#449).
+- [ ] The exported run log is named `<run-identifier-digest>.log` instead of
+      the backend-internal reference name (`<CAS id>.log` today).
+- [ ] Parameterized Swift Testing `@Test(arguments:)` cases render as one
+      test case instead of N pseudo-repetitions ("3 succeeded" /
+      `Iteration 0` rows).
+- [ ] Skipped tests now show their skip reason as a row; it was always in
+      the bundle, the legacy reader never read it.
+- [ ] Assertion-failure rows render where the assertion fired (interleaved
+      by start on both backends); expected failures render nothing, as
+      before, on both backends.
 
 - [ ] **Step 2: Mark the spec's phases 1-5 done**
 

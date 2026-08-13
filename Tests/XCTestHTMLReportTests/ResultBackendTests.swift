@@ -24,6 +24,30 @@ final class ResultBackendTests: XCTestCase {
         XCTAssertNotEqual(ResultBackend.legacy.resolve(), .use(.modern))
     }
 
+    /// `XCHR_RESULT_READER` is the CI override that drives the forced-modern
+    /// job leg: it defaults every `Summary` and the CLI flag, so `swift test`
+    /// under it exercises the whole suite on one backend. Unset or garbage
+    /// must fall back to `.auto` — an env var has no parser to reject it.
+    func testEnvironmentOverrideSelectsTheBackend() {
+        let original = ProcessInfo.processInfo.environment["XCHR_RESULT_READER"]
+        defer {
+            if let original {
+                setenv("XCHR_RESULT_READER", original, 1)
+            } else {
+                unsetenv("XCHR_RESULT_READER")
+            }
+        }
+
+        setenv("XCHR_RESULT_READER", "modern", 1)
+        XCTAssertEqual(ResultBackend.fromEnvironment(), .modern)
+        setenv("XCHR_RESULT_READER", "legacy", 1)
+        XCTAssertEqual(ResultBackend.fromEnvironment(), .legacy)
+        setenv("XCHR_RESULT_READER", "not-a-backend", 1)
+        XCTAssertEqual(ResultBackend.fromEnvironment(), .auto)
+        unsetenv("XCHR_RESULT_READER")
+        XCTAssertEqual(ResultBackend.fromEnvironment(), .auto)
+    }
+
     func testAutoNeverResolvesToAuto() {
         XCTAssertNotEqual(ResultBackend.auto.resolve(), .use(.auto))
         XCTAssertNotEqual(ResultBackend.auto.resolve(), .legacyUnavailable)

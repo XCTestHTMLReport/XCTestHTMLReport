@@ -38,6 +38,7 @@ let package = Package(
                 .process("Resources/TestResults.xcresult"),
                 .process("Resources/RetryResults.xcresult"),
                 .process("Resources/SanityResults.xcresult"),
+                .process("Resources/differential-allowlist.json"),
             ]
         ),
     ]

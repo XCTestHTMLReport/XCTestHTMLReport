@@ -54,14 +54,23 @@ final class ModernPayloadStore: PayloadProviding {
         }
         let resolved = fileName ?? source.lastPathComponent
         let destination = url.appendingPathComponent(resolved)
+        // Destinations are content-addressed (`ParsedAttachment.exportFileName`
+        // names them by payload id), so a file already at the destination *is*
+        // this payload and the export is idempotent: never remove, never
+        // rewrite. The predecessor removed-then-copied, which under Xcode
+        // 26.2's shared screen-recording display names raced concurrent
+        // exports on one path and intermittently recorded a spurious
+        // `.payloadExportFailed` (#449).
+        if FileManager.default.fileExists(atPath: destination.path) {
+            return relativeURL.appendingPathComponent(resolved)
+        }
         do {
-            try? FileManager.default.removeItem(at: destination)
             try FileManager.default.copyItem(at: source, to: destination)
             return relativeURL.appendingPathComponent(resolved)
         } catch {
-            // Another writer may have raced us to the destination (a second
-            // xchtmlreport over the same bundle): if the payload is sitting
-            // there, it was exported, and losing the race is not degradation.
+            // A concurrent writer of the same payload can still beat us to the
+            // creation; its bytes are our bytes, so losing that race is
+            // success, not degradation.
             if FileManager.default.fileExists(atPath: destination.path) {
                 return relativeURL.appendingPathComponent(resolved)
             }
@@ -87,11 +96,10 @@ final class ModernPayloadStore: PayloadProviding {
         }
     }
 
-    func exportLogs(reference: String) -> URL? {
+    func exportLogs(reference: String, fileName: String) -> URL? {
         guard let text = logText(reference: reference) else {
             return nil
         }
-        let fileName = "\(reference).log"
         let destination = url.appendingPathComponent(fileName)
         do {
             try? FileManager.default.removeItem(at: destination)

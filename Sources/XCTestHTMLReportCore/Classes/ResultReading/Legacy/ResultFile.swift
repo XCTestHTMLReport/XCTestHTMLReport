@@ -133,13 +133,12 @@ extension ResultFile: PayloadProviding {
         }
     }
 
-    func exportLogs(reference: String) -> URL? {
+    func exportLogs(reference: String, fileName: String) -> URL? {
         guard let logSection = file.getLogs(id: reference) else {
             Logger.warning("Can't get logs with id \(reference)")
             faultCollector.record(.logExportFailed, "log id \(reference)")
             return nil
         }
-        let fileName = "\(reference).log"
         let url = url.appendingPathComponent(fileName)
         let fileManager = FileManager.default
         do {

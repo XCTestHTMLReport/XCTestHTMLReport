@@ -83,10 +83,10 @@ struct SummaryOptions: ParsableArguments {
     @Option(
         name: .long,
         help: ArgumentHelp(
-            "Which result reader to use: auto, legacy, or modern. Defaults to auto, which prefers the legacy reader while the toolchain still supports it."
+            "Which result reader to use: auto, legacy, or modern. Defaults to $XCHR_RESULT_READER if set, else auto, which prefers the legacy reader while the toolchain supports it."
         )
     )
-    var resultReader: ResultBackend = .auto
+    var resultReader: ResultBackend = .fromEnvironment()
 }
 
 @main

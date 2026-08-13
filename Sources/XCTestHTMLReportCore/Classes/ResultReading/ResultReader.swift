@@ -21,7 +21,11 @@ protocol PayloadProviding {
     /// bundle-relative URL, or `nil` on failure.
     func exportPayload(reference: String, fileName: String?) -> URL?
     func exportPayloadData(reference: String) -> Data?
-    func exportLogs(reference: String) -> URL?
+    /// `reference` is backend-internal (a log ref id on legacy, a `--type`
+    /// selector on modern) and never names the file; `fileName` does, and the
+    /// caller derives it from backend-neutral data so both backends write the
+    /// same name — see `Run.init`.
+    func exportLogs(reference: String, fileName: String) -> URL?
     func exportLogsData(reference: String) -> Data?
 }
 
@@ -43,14 +47,16 @@ extension PayloadProviding {
 
     func exportLogsContent(
         reference: String,
-        renderingMode: Summary.RenderingMode
+        renderingMode: Summary.RenderingMode,
+        fileName: String
     ) -> RenderingContent {
         switch renderingMode {
         case .inline:
             return exportLogsData(reference: reference)
                 .map(RenderingContent.data) ?? .none
         case .linking:
-            return exportLogs(reference: reference).map(RenderingContent.url) ?? .none
+            return exportLogs(reference: reference, fileName: fileName)
+                .map(RenderingContent.url) ?? .none
         }
     }
 }

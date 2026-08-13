@@ -1,0 +1,25 @@
+{
+  "comment": "Each entry names one field the modern xcresulttool format does not provide, and the masking rule that removes its effect from a rendered report. The differential test masks BOTH renders with every rule here and then requires them to be byte-identical: after the declared losses are removed, nothing else may differ. Adding an entry means accepting a permanent difference between the backends — a design decision, not a way to quiet a failing test. Task 2.5 voided an earlier entry (activityTypeClasses) by removing the field from the port instead of masking the divergence; prefer that route to adding an entry here. Entries cannot rot either: a rule that no longer masks any real divergence fails testEveryAllowListEntryStillMasksARealDivergence, so the list shrinks the moment Apple fills a gap.",
+  "knownLosses": [
+    {
+      "rule": "durations",
+      "field": "group and suite duration",
+      "effect": "GROUP durations, not activity ones. durationInSeconds is null on every Test Suite, Test Plan, UI test bundle and Unit test bundle node in all three fixtures, so modern renders (0.00s) where legacy reports a real value -- FirstSuite 0.699s, SecondSuite 0.126s, ThirdSuite 0.132s, SampleAppUnitTests 0.213s. Swift Testing test cases are null the same way. These are real suite names, so wrapperGroups does not mask them. Unrelated to ParsedActivity.finish: an earlier revision deleted this entry believing removing that field removed all duration divergence."
+    },
+    {
+      "rule": "attachmentDisplayNames",
+      "field": "attachment user-supplied name",
+      "effect": "Attachment display names fall back to the type-derived label (Screenshot, Video, File) on the modern backend, because the new format exposes only the generated filename."
+    },
+    {
+      "rule": "failureTitlePrefix",
+      "field": "failure file and line",
+      "effect": "Failure activity titles are the pre-joined message rather than '<issueType> at <file>:<line>:<message>'."
+    },
+    {
+      "rule": "wrapperGroups",
+      "field": "test tree wrapper groups",
+      "effect": "The modern tree omits the legacy 'Selected tests' / 'All tests' and '<target>.xctest' wrapper levels."
+    }
+  ]
+}

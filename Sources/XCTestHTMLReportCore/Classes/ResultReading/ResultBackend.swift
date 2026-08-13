@@ -22,6 +22,18 @@ public enum ResultBackend: String, CaseIterable {
         case legacyUnavailable
     }
 
+    /// The CI override: `XCHR_RESULT_READER=modern swift test` forces every
+    /// `Summary` the harness builds onto one backend, which is how the
+    /// forced-`modern` CI leg exercises the whole suite end to end. The CLI
+    /// flag stays the primary control — this is only the *default* when the
+    /// flag is absent — and an unrecognised value falls back to `.auto`
+    /// rather than failing, since an env var has no argument parser to reject
+    /// it.
+    public static func fromEnvironment() -> ResultBackend {
+        ProcessInfo.processInfo.environment["XCHR_RESULT_READER"]
+            .flatMap(ResultBackend.init(rawValue:)) ?? .auto
+    }
+
     /// Only `auto` ever substitutes.
     ///
     /// An explicit `--result-reader legacy` that cannot be honoured is an

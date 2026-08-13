@@ -89,7 +89,7 @@ final class FaultReportingTests: XCTestCase {
             [.posixPermissions: 0o555], ofItemAtPath: bundle.path
         )
 
-        XCTAssertNil(file.exportLogs(reference: logReference))
+        XCTAssertNil(file.exportLogs(reference: logReference, fileName: "test.log"))
         XCTAssertTrue(
             collector.faults.contains { $0.kind == .logExportFailed },
             "A log that reads but cannot be written must be recorded as degradation"

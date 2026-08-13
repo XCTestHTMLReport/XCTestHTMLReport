@@ -87,7 +87,7 @@ struct LegacyResultReader: ResultReader {
                 identifier: identifier,
                 // Legacy has no counterpart to Swift Testing's Arguments nodes.
                 arguments: [],
-                iterations: iterations
+                iterations: Self.mergingArgumentExecutions(iterations)
             ))
         }
 
@@ -118,22 +118,35 @@ struct LegacyResultReader: ResultReader {
         // ActionTestActivitySummary, so failure summaries are interleaved by
         // start time. When failing sub-activities are already present we are
         // on an older tool and must not add them twice.
-        let combined: [ParsedActivity]
+        let failures: [ParsedActivity]
         if activities.contains(where: hasFailure) {
-            combined = activities
+            failures = []
         } else {
-            let failures = summary.failureSummaries.map(parseFailure)
-            // Ordered by `start`, which replaced `finish` as the ordering key
-            // under decision 1 — the modern format publishes no finish, so
-            // `start` is the only key both backends share. This sort is not
-            // cosmetic: it interleaves assertion-failure rows among the
-            // activities so a failure renders *where it occurred* rather than
-            // after everything else. Dropping it — rather than re-keying it —
-            // would silently append every failure row at the end of the test.
-            combined = (activities + failures).sorted {
-                ($0.start ?? .distantPast) < ($1.start ?? .distantPast)
-            }
+            failures = summary.failureSummaries.map(parseFailure)
         }
+
+        // The skip reason lives on its own summary object, which this reader
+        // previously never read — the modern reader has always surfaced the
+        // equivalent `Failure Message` node, so skipping it here was a reader
+        // gap, not a format limitation. Same shape as the modern append path:
+        // a failure row with no timestamp, which the shared interleaving
+        // orders after the timeline.
+        let skipNotice: [ParsedActivity] = (summary.skipNoticeSummary?.message).map {
+            [ParsedActivity(
+                title: $0, isFailure: true, start: nil, attachments: [], subActivities: []
+            )]
+        } ?? []
+
+        // The interleave — `start`-keyed, per decision 1 — is not cosmetic:
+        // it renders each failure row *where it occurred* rather than after
+        // everything else. It lives in the port
+        // (`ParsedActivity.interleavingFailureRows`) because both readers
+        // must place these rows identically, and one shared function is the
+        // only ordering rule that cannot drift.
+        let combined = ParsedActivity.interleavingFailureRows(
+            activities: activities,
+            failureRows: failures + skipNotice
+        )
 
         return ParsedIteration(
             iterationNumber: summary.repetitionPolicySummary?.iteration,
@@ -141,6 +154,51 @@ struct LegacyResultReader: ResultReader {
             duration: metadata.duration ?? 0,
             activities: combined
         )
+    }
+
+    /// Collapses Swift Testing argument executions into one iteration.
+    ///
+    /// A parameterized `@Test(arguments:)` reaches the legacy format as
+    /// duplicate sibling metadata entries sharing one identifier — the same
+    /// encoding as retries, except none of them carries a
+    /// `repetitionPolicySummary`. Rendering them as repetitions invents retry
+    /// semantics for what are argument variations ("3 succeeded", three
+    /// "Iteration 0" rows), and the modern format renders the same test as a
+    /// single case with `Arguments` children (answer 6). Merging on the
+    /// absence of repetition metadata makes both backends agree by
+    /// construction: durations sum (the rule answer 8 already sets), and
+    /// activities concatenate in source order.
+    ///
+    /// True retries are untouched: every `-retry-tests-on-failure` repetition
+    /// carries the policy summary, so at least one iteration has a number and
+    /// the merge does not fire. `RetryResults` pins that in the fixture suite.
+    static func mergingArgumentExecutions(
+        _ iterations: [ParsedIteration]
+    ) -> [ParsedIteration] {
+        guard iterations.count > 1,
+              iterations.allSatisfy({ $0.iterationNumber == nil })
+        else {
+            return iterations
+        }
+        let statuses = Set(iterations.map(\.status))
+        let merged: ParsedStatus
+        if statuses.count == 1 {
+            merged = statuses.first ?? .unknown
+        } else if statuses.contains(.failed) {
+            // Mirrors the modern parent node's own summary: passed only when
+            // every argument passed.
+            merged = .failed
+        } else if statuses.contains(.skipped) {
+            merged = .skipped
+        } else {
+            merged = .unknown
+        }
+        return [ParsedIteration(
+            iterationNumber: nil,
+            status: merged,
+            duration: iterations.reduce(0) { $0 + $1.duration },
+            activities: iterations.flatMap(\.activities)
+        )]
     }
 
     /// Legacy spellings into the neutral enum. The modern reader has the
@@ -188,16 +246,24 @@ struct LegacyResultReader: ResultReader {
     }
 
     private func parseAttachment(_ attachment: ActionTestAttachment) -> ParsedAttachment {
-        ParsedAttachment(
+        // The port carries no UTI (answer 4). Map it down to an extension
+        // here so both backends type attachments identically instead of
+        // the difference being allow-listed.
+        let ext = Self.filenameExtension(
+            forUTI: attachment.uniformTypeIdentifier,
+            filename: attachment.filename
+        )
+        return ParsedAttachment(
             name: attachment.name,
-            filename: attachment.filename,
-            // The port carries no UTI (answer 4). Map it down to an extension
-            // here so both backends type attachments identically instead of
-            // the difference being allow-listed.
-            filenameExtension: Self.filenameExtension(
-                forUTI: attachment.uniformTypeIdentifier,
-                filename: attachment.filename
-            ),
+            // Content-addressed, not `attachment.filename`: the legacy pretty
+            // name embeds a legacy-only uuid the modern format cannot see, so
+            // it can never agree across backends. The payload id can — see
+            // `ParsedAttachment.exportFileName`. An attachment with no payload
+            // has nothing to export and gets no filename, on both backends.
+            filename: attachment.payloadRef.map {
+                ParsedAttachment.exportFileName(payloadId: $0.id, filenameExtension: ext)
+            },
+            filenameExtension: ext,
             payloadReference: attachment.payloadRef?.id
         )
     }
