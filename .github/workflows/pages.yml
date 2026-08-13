@@ -8,6 +8,9 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+  # pages-release.yml calls this after writing a version into the store, so
+  # assembly and deployment exist in exactly one place.
+  workflow_call:
 
 # Read-only by default; the deploy job widens this for itself alone.
 permissions:
@@ -26,6 +29,16 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
+        persist-credentials: false
+
+    # The version store, checked out read-only. Its renders are immutable and
+    # main's is not stored here at all — that asymmetry is what keeps this
+    # workflow, which runs on every merge, free of write access.
+    - name: Check out the version store
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: pages-site
+        path: _site
         persist-credentials: false
 
     - name: Setup Xcode version
@@ -81,10 +94,16 @@ jobs:
     # UI is what people come here to look at.
     - name: Render demo report
       run: |
-        mkdir -p _site
         .build/release/xchtmlreport -i \
           -o _site \
           Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult
+
+    # Removes the store's .git, generates the version listing, and refuses to
+    # continue if the assembled tree does not match versions.json. deploy-pages
+    # replaces the entire site, so publishing a truncated tree would delete
+    # released versions in a run that still reported success.
+    - name: Assemble and verify the site
+      run: python3 scripts/assemble_site.py _site
 
     - name: Upload Pages artifact
       uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
