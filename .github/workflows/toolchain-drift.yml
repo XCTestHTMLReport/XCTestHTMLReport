@@ -128,18 +128,29 @@ jobs:
       timeout-minutes: 45
       run: swift test -v
 
-    # The issue's core signal: since 3.0 the tool exits non-zero when the
-    # report is degraded (collected faults), so a clean exit against a bundle
-    # produced by this exact toolchain is the whole assertion.
+    # The issue's core signal: since 3.0 the tool exits 3 when the report is
+    # degraded (collected faults); any other non-zero exit is a hard error,
+    # not degradation. A clean exit against a bundle produced by this exact
+    # toolchain is the whole assertion. The exit code is captured as a step
+    # output so the drift report can tell those two failures apart.
+    # `mkdir -p` first: xchtmlreport does not create the --output directory
+    # and fails late with a misleading error when it is missing (#444).
     - name: Run xchtmlreport against a fresh bundle
       id: tool
       if: steps.build.outcome == 'success' && steps.fixtures.outcome == 'success'
       continue-on-error: true
       timeout-minutes: 15
       run: |
+        mkdir -p "$RUNNER_TEMP/drift-report"
+        exit_code=0
         swift run xchtmlreport \
           Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult \
-          --output "$RUNNER_TEMP/drift-report"
+          --output "$RUNNER_TEMP/drift-report" || exit_code=$?
+        echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+        if [ "$exit_code" -ne 0 ]; then
+          echo "::error::xchtmlreport exited with code ${exit_code}"
+          exit "$exit_code"
+        fi
 
     # This job regenerated fixtures for the newest toolchain anyway, so save
     # them under the same key test.yml computes (#436): after a toolchain bump
@@ -177,6 +188,7 @@ jobs:
         FIXTURES: ${{ steps.fixtures.outcome }}
         TESTS: ${{ steps.tests.outcome }}
         TOOL: ${{ steps.tool.outcome }}
+        TOOL_EXIT: ${{ steps.tool.outputs.exit_code }}
       run: |
         faults=()
         if [ "$LEGACY" = "failure" ]; then
@@ -199,7 +211,11 @@ jobs:
           faults+=("\`swift test\` failed against freshly generated fixtures.")
         fi
         if [ "$TOOL" = "failure" ]; then
-          faults+=("\`xchtmlreport\` exited non-zero against a fresh \`.xcresult\` — since 3.0 that means the report degraded (collected faults).")
+          if [ "$TOOL_EXIT" = "3" ]; then
+            faults+=("\`xchtmlreport\` exited 3 against a fresh \`.xcresult\` — since 3.0 that means the report degraded (collected faults).")
+          else
+            faults+=("\`xchtmlreport\` failed against a fresh \`.xcresult\` with a hard error (exit ${TOOL_EXIT:-unknown}) — not fault degradation; see the run log.")
+          fi
         fi
 
         {
