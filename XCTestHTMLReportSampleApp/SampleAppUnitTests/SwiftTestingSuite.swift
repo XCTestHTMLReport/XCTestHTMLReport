@@ -21,6 +21,14 @@ struct SwiftTestingSuite {
     func taggedMultiplication() {
         #expect(2 * 3 == 6)
     }
+
+    /// Exercises the modern format's `Arguments` nodes, which no other test
+    /// produces — see Task 8 of the xcresulttool migration plan. Without this,
+    /// `ParsedTestCase.arguments` would be a field no fixture populates.
+    @Test(arguments: [1, 2, 3])
+    func parameterizedAddition(value: Int) {
+        #expect(value + 0 == value)
+    }
 }
 
 extension Tag {
