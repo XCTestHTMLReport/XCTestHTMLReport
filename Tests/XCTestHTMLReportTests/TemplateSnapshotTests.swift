@@ -12,7 +12,8 @@ final class TemplateSnapshotTests: XCTestCase {
             payloads: SyntheticResult.payloads,
             renderingMode: renderingMode,
             downsizeImagesEnabled: false,
-            downsizeScaleFactor: 0.5
+            downsizeScaleFactor: 0.5,
+            bundleNames: ["Synthetic"]
         )
     }
 

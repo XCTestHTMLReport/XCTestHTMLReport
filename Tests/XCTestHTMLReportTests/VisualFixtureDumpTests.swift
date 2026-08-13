@@ -26,7 +26,8 @@ final class VisualFixtureDumpTests: XCTestCase {
                 payloads: SyntheticResult.payloads,
                 renderingMode: mode,
                 downsizeImagesEnabled: false,
-                downsizeScaleFactor: 0.5
+                downsizeScaleFactor: 0.5,
+                bundleNames: ["Synthetic"]
             ).generatedHtmlReport()
 
             let path = "\(dir)/\(name).html"

@@ -121,15 +121,22 @@ public struct Summary {
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat,
         faultCollector: FaultCollector = FaultCollector(),
-        bundleNames: [String] = ["Synthetic"]
+        bundleNames: [String]
     ) {
         self.faultCollector = faultCollector
         self.bundleNames = bundleNames
         self.parsedRuns = parsedRuns
+        // Mirrors the path-based initialiser's shape above
+        // (`bundle\(resultIndex)`/`action\(actionIndex)`), rather than the
+        // unrelated `run-\(index)`, so the goldens pin an identifier set a
+        // real report could actually produce. There is one synthetic action
+        // per run here, hence the literal `action0`.
         runs = parsedRuns.enumerated().compactMap { index, run in
             Run(
                 run: run,
-                identifierPath: IdentifierPath.root.appending("run-\(index)"),
+                identifierPath: IdentifierPath.root
+                    .appending("bundle\(index)")
+                    .appending("action0"),
                 file: payloads,
                 renderingMode: renderingMode,
                 downsizeImagesEnabled: downsizeImagesEnabled,
