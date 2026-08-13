@@ -44,10 +44,6 @@ class ResultFile {
         file.getActionTestSummary(id: id)
     }
 
-    func exportJson() -> Data? {
-        file.exportRecursiveJson()
-    }
-
     // MARK: - Private
 
     /// Lock guarding every export of `id`, created on first use.

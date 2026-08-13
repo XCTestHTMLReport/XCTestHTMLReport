@@ -10,7 +10,9 @@ import Foundation
 
 public struct Summary {
     let runs: [Run]
-    let resultFiles: [ResultFile]
+    /// The backend-neutral model the runs were built from, retained so
+    /// `generatedJsonReport()` can emit it without a second parse.
+    private let parsedRuns: [ParsedRun]
     private let faultCollector: FaultCollector
 
     public enum RenderingMode {
@@ -32,7 +34,7 @@ public struct Summary {
         backend: ResultBackend = .fromEnvironment()
     ) {
         var runs: [Run] = []
-        var resultFiles: [ResultFile] = []
+        var parsedRuns: [ParsedRun] = []
         self.faultCollector = faultCollector
 
         // The CLI already rejects an explicit `legacy` the toolchain cannot
@@ -57,7 +59,6 @@ public struct Summary {
             Logger.step("Parsing \(resultPath)")
             let url = URL(fileURLWithPath: resultPath)
             let resultFile = ResultFile(url: url, faultCollector: faultCollector)
-            resultFiles.append(resultFile)
 
             let (reader, payloads) = Self.makeReader(
                 resolved: resolved,
@@ -72,6 +73,7 @@ public struct Summary {
                 // bundle when multiple were passed.
                 continue
             }
+            parsedRuns.append(contentsOf: parsed.runs)
             // Identifiers are derived from the bundle's position in the
             // argument list rather than from its path, so moving a bundle
             // between directories still renders the same report. See
@@ -92,7 +94,7 @@ public struct Summary {
             runs.append(contentsOf: resultRuns)
         }
         self.runs = runs
-        self.resultFiles = resultFiles
+        self.parsedRuns = parsedRuns
     }
 
     /// Reader and payload provider for one bundle on the resolved backend.
@@ -139,16 +141,15 @@ public struct Summary {
         Logger.substep("Deleted \(deletedFilesCount) unattached files")
     }
 
+    /// Emits the parsed model as JSON, per the contract in
+    /// docs/json-schema.md.
+    ///
+    /// Before 4.0 this dumped `xcresulttool`'s legacy object graph verbatim.
+    /// That graph is Apple's internal shape and disappears with the legacy
+    /// commands, so the output is now our own documented, versioned schema —
+    /// identical on both backends.
     public func generatedJsonReport() -> String {
-        let jsonStrings: [String] = resultFiles.compactMap { resultFile in
-            guard let jsonData = resultFile.exportJson() else {
-                return nil
-            }
-            return String(data: jsonData, encoding: .utf8)
-        }
-
-        // TODO: The result files may be encoded directly as an array instead of concatenating raw output
-        return "[\(jsonStrings.joined(separator: ","))]"
+        JsonReport(runs: parsedRuns).encoded()
     }
 
     /// Check post-conditions on the assembled model and record any degradation.
