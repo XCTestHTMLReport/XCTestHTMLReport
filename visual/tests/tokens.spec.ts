@@ -49,16 +49,20 @@ test('no rule references an undeclared token', async ({ page }) => {
   await page.goto(reportURL);
   const declared = new Set(await declaredTokens(page));
 
+  // Reads `rule.cssText` rather than iterating `rule.style` longhand-by-
+  // longhand: a shorthand that contains a `var()` (e.g. `border: 1px solid
+  // var(--color-border-strong)`) is stored by Chromium as a *pending-
+  // substitution value*, so every expanded longhand it covers serialises to
+  // `""` and the reference is invisible to `rule.style.getPropertyValue`.
+  // `cssText` still carries the literal `var(...)` text regardless of
+  // shorthand expansion, so the regex scan below sees it.
   const referenced: string[] = await page.evaluate(() => {
     const names = new Set<string>();
     const walk = (rules: CSSRuleList) => {
       for (const rule of Array.from(rules)) {
         if (rule instanceof CSSStyleRule) {
-          for (const prop of Array.from(rule.style)) {
-            const value = rule.style.getPropertyValue(prop);
-            for (const match of value.matchAll(/var\(\s*(--[\w-]+)/g)) {
-              names.add(match[1]);
-            }
+          for (const match of rule.style.cssText.matchAll(/var\(\s*(--[\w-]+)/g)) {
+            names.add(match[1]);
           }
         } else if (rule instanceof CSSGroupingRule) {
           walk(rule.cssRules);
