@@ -224,6 +224,9 @@ struct LegacyResultReader: ResultReader {
         case "com.apple.log": return "log"
         case "public.html": return "html"
         case "public.zip-archive": return "zip"
+        // `public.data` is itself an `AttachmentType` raw value; without this
+        // entry an extensionless data attachment degrades `.data` → `.unknown`.
+        case "public.data": return "dat"
         default: return nil
         }
     }

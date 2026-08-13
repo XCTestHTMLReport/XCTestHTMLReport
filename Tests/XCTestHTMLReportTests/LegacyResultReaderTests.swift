@@ -93,6 +93,13 @@ final class LegacyResultReaderTests: XCTestCase {
             ),
             "png"
         )
+        // `public.data` is a raw value of `AttachmentType`, so an
+        // extensionless attachment carrying it must keep typing as `.data`
+        // rather than degrading to `.unknown` for want of a table entry.
+        XCTAssertEqual(
+            LegacyResultReader.filenameExtension(forUTI: "public.data", filename: nil),
+            "dat"
+        )
         XCTAssertNil(
             LegacyResultReader.filenameExtension(forUTI: nil, filename: nil)
         )
