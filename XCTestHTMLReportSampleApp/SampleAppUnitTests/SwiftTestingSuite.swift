@@ -29,6 +29,17 @@ struct SwiftTestingSuite {
     func parameterizedAddition(value: Int) {
         #expect(value + 0 == value)
     }
+
+    /// Swift Testing's counterpart to `XCTExpectFailure`. Added alongside
+    /// SampleAppUnitTests.testExpectedFailure so the `Expected Failure`
+    /// status has coverage from both test frameworks — verify against
+    /// `xcresulttool get test-results tests` what this actually records as,
+    /// rather than assuming it matches XCTest. See #439.
+    @Test func knownIssue() {
+        withKnownIssue("Intentional known issue for fixture coverage") {
+            #expect(1 == 2, "This known-issue expectation fails on purpose")
+        }
+    }
 }
 
 extension Tag {
