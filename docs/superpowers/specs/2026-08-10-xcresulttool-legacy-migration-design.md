@@ -236,10 +236,19 @@ advertises. Exposed as a CLI option (`--result-reader legacy|modern|auto`,
 default `auto`) so the harness can drive it through the existing
 `xchtmlreportCmd` helper.
 
-Demotion is scoped to **capability detection only**. `auto` and an explicit
-`legacy` both fall back to `modern` when the toolchain does not advertise the
-legacy commands, so a version string that changes shape unexpectedly degrades
-to working rather than broken.
+Demotion is scoped to **capability detection only**, and only `auto` ever
+substitutes. `auto` falls back to `modern` when the toolchain does not
+advertise the legacy commands or the version string does not parse, so a
+version string that changes shape unexpectedly degrades to working rather
+than broken. *(Amended during Task 11: this paragraph originally said an
+explicit `legacy` also falls back.)* An explicit `legacy` is never silently
+substituted — the CLI rejects it up front when the toolchain definitively
+lacks the legacy commands, and `Summary` records a `legacyReaderUnavailable`
+fault (reaching exit 3) for library consumers who never pass through the CLI.
+When the probe is merely inconclusive, an explicit `legacy` attempts legacy
+anyway and lets any command failure surface as a fault rather than as a
+capability signal. Substituting silently would let the differential run
+modern-vs-modern and report parity against itself.
 
 It is deliberately **not** "any hard failure of a legacy command demotes".
 A corrupt bundle, a permission error, a truncated `.xcresult`, or a subprocess
