@@ -92,7 +92,15 @@ struct HTMLTemplates
        with the light theme, which is what the token layer bought us. */
     @media (prefers-color-scheme: dark) {
       :root {
-        --color-accent: #1E65C2;
+        /* The selection fill lands on three different backgrounds — the
+           sidebar (#232327, the lightest and so the binding one), the
+           surface, and the group header — and has to clear 3:1 against each
+           while still carrying white text at 4.5:1. That window is narrow:
+           at this hue no value clears both floors by more than ~7%, and this
+           one sits at its centre (sidebar 3.25, white 4.82). Splitting a
+           separate fill token would buy nothing, because the selected device
+           card needs both floors satisfied at once. */
+        --color-accent: #2170D6;
         --color-accent-text: #7FB0FF;
         --color-accent-soft: #274A73;
         --color-on-accent: #FFF;
