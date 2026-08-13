@@ -2145,7 +2145,33 @@ this path is tested.
 them and **ignore the parent's `result`**. Only a childless Test Case uses its
 own.
 
-- [ ] **Step 1: Write the failing test**
+**Amendment (2026-08-12, PR D) — failure text is a join, not a choice.**
+Measured while executing this task: the activities document carries **every**
+assertion failure as a failure-flagged activity row of its own — positioned,
+timestamped, and *nested* when the assertion fired inside a user activity
+(`RetryResults`' failure is a sub-activity of `Retryable Activity`) — but with
+the `file:line` prefix stripped; the `Failure Message` node keeps the prefix
+but has no timestamp. This task's original anti-double-count guard kept the
+activity row and dropped the message, so the modern render lost `file:line`
+for every failing case — strictly less information than the spec's
+`failureTitlePrefix` entry documents. Coordinator ruling: **join the two
+documents.** Each message claims the first unclaimed failure-flagged activity
+— pre-order, document order, first-unmatched-first — whose title is an exact
+suffix of the message, and retitles it with the message as given, preserving
+position, nesting, `start`, attachments and children; unmatched messages
+(skip reasons, expected-failure notes — their activity twins are not
+failure-flagged) append as before; the string is never regex-parsed apart.
+The snippet below reflects the ruling (`mergingFailureMessages`). Shipped
+tests additionally pin: `file:line` presence on the plain and the nested
+retry case, no duplicate row, skip-reason append, empty-but-decodable → nil,
+and a zero-fault full modern render of all three fixtures.
+
+Two mechanical corrections from the same execution: Task 9 lands **before**
+Task 8 so each commit builds (the reader's `payloadStore` property references
+the store type), and `TestRun` shipped nested as `TestActivities.TestRun` in
+Task 7, so the snippet's type annotation reads accordingly.
+
+- [x] **Step 1: Write the failing test**
 
 ```swift
 //
@@ -2306,7 +2332,7 @@ final class ModernResultReaderTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 ```bash
 swift test --filter ModernResultReaderTests
@@ -2314,7 +2340,7 @@ swift test --filter ModernResultReaderTests
 
 Expected: FAIL — `cannot find 'ModernResultReader' in scope`.
 
-- [ ] **Step 3: Implement the reader**
+- [x] **Step 3: Implement the reader**
 
 ```swift
 //
@@ -2441,62 +2467,81 @@ struct ModernResultReader: ResultReader {
         )
     }
 
-    /// `Failure Message` children carry `File.swift:66: message`, which the
-    /// activities document does not — its titles drop the file and line
-    /// entirely. Measured on `TestResults`: the tests tree gives
-    /// `"FirstSuite.swift:66: XCTAssertTrue failed - Test failed"` where
-    /// activities gives only `"XCTAssertTrue failed - Test failed"`. Sourcing
-    /// failures from here is strictly closer to legacy, which formats
-    /// `"<issueType> at <file>:<line>:<message>"`.
+    /// Joins the tests document's `Failure Message` nodes onto the activity
+    /// tree. (Amended 2026-08-12 — see the amendment note above; the original
+    /// guard kept the activity row's title and lost `file:line`.)
     ///
-    /// Skipped tests use the same node (`"Test skipped - Test skipped"`).
-    /// Failure rows from the `tests` document, **minus any the activities
-    /// document already supplied**.
+    /// Both documents describe the same failure, each holding half of it. The
+    /// `Failure Message` node keeps the `file:line` prefix
+    /// (`"FirstSuite.swift:86: XCTAssertTrue failed - Test failed"`) but has
+    /// no timestamp; the activities document reports the failure as a
+    /// failure-flagged activity row — positioned and timestamped, nested
+    /// inside the user's own activity when the assertion fired there — but
+    /// drops the prefix. Sourcing titles from activities loses `file:line`
+    /// everywhere; appending messages unconditionally renders two rows per
+    /// failure.
     ///
-    /// Both documents describe the same failure. On `FirstSuite/testTwo()` the
-    /// activities document carries `"XCTAssertTrue failed - Test failed"` with
-    /// `isAssociatedWithFailure: true`, and the tests document carries
-    /// `"FirstSuite.swift:86: XCTAssertTrue failed - Test failed"`. Appending
-    /// both unconditionally renders **two failure rows for every failing
-    /// test** — and the extra row is not something `failureTitlePrefix` can
-    /// mask, because it is a whole element rather than a prefix.
-    ///
-    /// Task 4 carries an explicit anti-double-count guard for the legacy
-    /// equivalent (`if activities.contains(where: hasFailure)`); this is its
-    /// counterpart. Matching is on the message tail, since the tests document
-    /// prefixes `<file>:<line>: ` and the activities document does not.
-    private func failureActivities(
-        _ node: TestNode,
-        existing: [ParsedActivity]
+    /// So: each message claims the first failure-flagged activity — pre-order,
+    /// document order, first-unmatched-first, which pairs repeated identical
+    /// assertions deterministically — whose title is an exact suffix of the
+    /// message, and that activity is retitled with the message as given,
+    /// keeping its position, nesting, start, attachments and children. The
+    /// string is never parsed apart. Messages that match nothing (skip
+    /// reasons, expected-failure notes) append as failure rows at the end.
+    private func mergingFailureMessages(
+        _ messages: [String],
+        into activities: [ParsedActivity]
     ) -> [ParsedActivity] {
-        func tail(_ text: String) -> String {
-            // Strip a leading `<file>.swift:<line>: ` if present.
-            guard let range = text.range(
-                of: #"^[\w.+-]+:\d+:\s*"#, options: .regularExpression
-            ) else {
-                return text
-            }
-            return String(text[range.upperBound...])
+        guard !messages.isEmpty else {
+            return activities
         }
-        func alreadyPresent(_ activities: [ParsedActivity], _ needle: String) -> Bool {
-            activities.contains { activity in
-                (activity.isFailure && tail(activity.title) == needle)
-                    || alreadyPresent(activity.subActivities, needle)
+
+        var candidates: [(path: [Int], title: String)] = []
+        func collect(_ activities: [ParsedActivity], _ prefix: [Int]) {
+            for (index, activity) in activities.enumerated() {
+                let path = prefix + [index]
+                if activity.isFailure, !activity.title.isEmpty {
+                    candidates.append((path, activity.title))
+                }
+                collect(activity.subActivities, path)
+            }
+        }
+        collect(activities, [])
+
+        var retitles: [[Int]: String] = [:]
+        var appended: [ParsedActivity] = []
+        for message in messages {
+            if let match = candidates.first(where: {
+                retitles[$0.path] == nil && message.hasSuffix($0.title)
+            }) {
+                retitles[match.path] = message
+            } else {
+                appended.append(ParsedActivity(
+                    title: message, isFailure: true, start: nil,
+                    attachments: [], subActivities: []
+                ))
             }
         }
 
-        return (node.children ?? [])
-            .filter { $0.nodeType == "Failure Message" }
-            .filter { !alreadyPresent(existing, tail($0.name ?? "")) }
-            .map { message in
-                ParsedActivity(
-                    title: message.name ?? "",
-                    isFailure: true,
-                    start: nil,
-                    attachments: [],
-                    subActivities: []
+        func rebuild(_ activities: [ParsedActivity], _ prefix: [Int]) -> [ParsedActivity] {
+            activities.enumerated().map { index, activity in
+                let path = prefix + [index]
+                return ParsedActivity(
+                    title: retitles[path] ?? activity.title,
+                    isFailure: activity.isFailure,
+                    start: activity.start,
+                    attachments: activity.attachments,
+                    subActivities: rebuild(activity.subActivities, path)
                 )
             }
+        }
+        return (retitles.isEmpty ? activities : rebuild(activities, [])) + appended
+    }
+
+    private func failureMessages(of node: TestNode) -> [String] {
+        (node.children ?? [])
+            .filter { $0.nodeType == "Failure Message" }
+            .compactMap(\.name)
     }
 
     private func parseTestCase(_ node: TestNode) -> ParsedTestCase {
@@ -2505,14 +2550,14 @@ struct ModernResultReader: ResultReader {
 
         let iterations: [ParsedIteration]
         if repetitions.isEmpty {
-            // Activities first, then the failure messages, matching the
-            // legacy reader's ordering of activitySummaries + failureSummaries.
-            let base = activities(for: identifier, iteration: nil)
             iterations = [ParsedIteration(
                 iterationNumber: nil,
                 status: Self.status(node.result),
                 duration: node.durationInSeconds ?? 0,
-                activities: base + failureActivities(node, existing: base)
+                activities: mergingFailureMessages(
+                    failureMessages(of: node),
+                    into: activities(for: identifier, iteration: nil)
+                )
             )]
         } else {
             // The parent node's own `result` summarises the retries and is not
@@ -2524,10 +2569,10 @@ struct ModernResultReader: ResultReader {
                         ?? (index + 1),
                     status: Self.status(repetition.result),
                     duration: repetition.durationInSeconds ?? 0,
-                    activities: {
-                        let base = activities(for: identifier, iteration: index)
-                        return base + failureActivities(repetition, existing: base)
-                    }()
+                    activities: mergingFailureMessages(
+                        failureMessages(of: repetition),
+                        into: activities(for: identifier, iteration: index)
+                    )
                 )
             }
         }
@@ -2589,11 +2634,11 @@ struct ModernResultReader: ResultReader {
                 as: TestActivities.self
             )
             let runs = document.testRuns ?? []
-            // Flattened deliberately: `iteration.map { ... }` already yields
-            // `TestRun?`, so `?? runs.first` produces `TestRun?`, not
+            // Flattened deliberately: `iteration.flatMap { ... }` already
+            // yields `TestRun?`, so `?? runs.first` produces `TestRun?`, not
             // `TestRun??`. Double-chaining here fails to compile with
             // "cannot use optional chaining on non-optional value".
-            let run: TestRun? = iteration
+            let run: TestActivities.TestRun? = iteration
                 .flatMap { index in runs.indices.contains(index) ? runs[index] : nil }
                 ?? runs.first
             return (run?.activities ?? []).map(parseActivity)
@@ -2639,7 +2684,7 @@ struct ModernResultReader: ResultReader {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 swift test --filter ModernResultReaderTests
@@ -2650,13 +2695,19 @@ Expected: PASS, 6 of 7 tests, with `testParameterizedTestCarriesItsArguments`
 what stops `arguments` from shipping as a field nothing populates and nothing
 checks.
 
+> Execution note (2026-08-12): fixtures are not committed, so a worker starting
+> from a clean checkout regenerates them anyway — applying Step 6's sample-app
+> change *before* the single generation run collapses the 6-of-7 intermediate
+> state, and all tests pass together at this step. The grep in Step 6 still
+> verifies the `Arguments` nodes are real (measured: 3).
+
 If `testRepetitionsBecomeIterations` reports one iteration, `repetitions` is
 not matching — confirm `nodeType` is exactly `"Repetition"`. If
 `testFailedActivitiesQueryRecordsAFault` fails, the collector reaching the
 reader is not the one recording — check that `Summary.init` passes its own
 collector rather than constructing a new one.
 
-- [ ] **Step 6: Give `arguments` a fixture that exercises it**
+- [x] **Step 6: Give `arguments` a fixture that exercises it**
 
 `ParsedTestCase.arguments` is added on the strength of the published schema —
 no bundle in the suite contains an `Arguments` node, because
@@ -2691,7 +2742,7 @@ This is also the first fixture change in the plan, so expect every count-based
 assertion in the existing suite to shift by the number of cases the
 parameterized test contributes. Update those counts from the actual run.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 swiftformat . && git add Sources/XCTestHTMLReportCore/Classes/ResultReading/Modern/ModernResultReader.swift \
@@ -2724,7 +2775,18 @@ Export lazily, once, on first use. Unlike the legacy path there is no shared
 temp file per id, so no per-id lock is needed — but the one-shot export itself
 must be guarded so concurrent parsing does not run it twice.
 
-- [ ] **Step 1: Write the failing test**
+**Amendment (2026-08-12, PR D).** As built: the store exposes `let url: URL`
+(the bundle directory) because `PayloadProviding` requires it — attachment
+downsizing reconstructs absolute paths from it — so the snippet's private
+`bundleURL` is the protocol property instead. This task's commit lands
+*before* Task 8's so each commit builds. Two tests were added beyond the
+snippet: `exportPayloadData` returns the payload bytes, and the `"action"`
+log reference exports through `get log --type action` (verified to accept the
+client's pinned `--schema-version`, alongside `get test-results` and
+`export attachments` — the #441 review's invocation-shape concern needed no
+client change).
+
+- [x] **Step 1: Write the failing test**
 
 ```swift
 //
@@ -2803,7 +2865,7 @@ final class ModernPayloadStoreTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 ```bash
 swift test --filter ModernPayloadStoreTests
@@ -2811,7 +2873,7 @@ swift test --filter ModernPayloadStoreTests
 
 Expected: FAIL — `cannot find 'ModernPayloadStore' in scope`.
 
-- [ ] **Step 3: Implement the store**
+- [x] **Step 3: Implement the store**
 
 ```swift
 //
@@ -3013,7 +3075,7 @@ Note: remove the duplicated `self.faultCollector` assignment in `init` — it is
 shown above only to flag that the property is assigned once; SwiftLint will
 catch the duplicate.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 swift test --filter ModernPayloadStoreTests
@@ -3021,7 +3083,7 @@ swift test --filter ModernPayloadStoreTests
 
 Expected: PASS, 3 tests.
 
-- [ ] **Step 5: Wire the store into the reader and re-run Task 8's tests**
+- [x] **Step 5: Wire the store into the reader and re-run Task 8's tests**
 
 Pass a real `ModernPayloadStore` where Task 8 passed `nil`.
 
@@ -3031,7 +3093,7 @@ swift test --filter "ModernResultReaderTests|ModernPayloadStoreTests"
 
 Expected: PASS, 7 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 swiftformat . && git add Sources/XCTestHTMLReportCore/Classes/ResultReading/Modern/ModernPayloadStore.swift \
@@ -3069,7 +3131,17 @@ MIME types; the extension mapping follows the same shape, with the explicit
 table below as the floor-safe path. Do not raise the deployment target for
 this.
 
-- [ ] **Step 1: Write the failing test**
+**Amendment (2026-08-12, PR D).** #443 shipped this initializer ahead of
+schedule as a *failable* `init?(filenameExtension:)` (including `"dat"` →
+`.data`), with `Attachment.init` flat-mapping nil to `.unknown` — same
+behaviour, different spelling, kept as landed rather than reshaped to the
+snippet. The tests below were adapted accordingly (unrecognised extensions
+assert `nil`, not `.unknown`). What this PR added on top: the cross-backend
+agreement test, and `public.data` → `"dat"` in the legacy UTI fallback table
+(the #443 review note) so an extensionless `public.data` attachment keeps
+typing `.data` instead of degrading to `.unknown`.
+
+- [x] **Step 1: Write the failing test**
 
 ```swift
 //
@@ -3128,7 +3200,7 @@ final class AttachmentTypeTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 ```bash
 swift test --filter AttachmentTypeTests
@@ -3136,7 +3208,7 @@ swift test --filter AttachmentTypeTests
 
 Expected: FAIL — no such initializer.
 
-- [ ] **Step 3: Implement it**
+- [x] **Step 3: Implement it**
 
 Add to `AttachmentType` in `Attachment.swift`:
 
@@ -3172,7 +3244,7 @@ type = attachment.filenameExtension
 `UTType(rawValue:)` on macOS 11+, so the UTI strings remain useful as the
 enum's identity even though nothing constructs the type from one any more.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 swift test --filter AttachmentTypeTests && swift test 2>&1 | tail -5
@@ -3183,7 +3255,7 @@ Expected: 3 new tests PASS; the full suite stays green. If
 type — fix the mapping rather than allow-listing the difference, since removing
 that allow-list entry is the reason this task exists.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 swiftformat . && git add Sources/XCTestHTMLReportCore/Classes/Models/Attachment.swift \
