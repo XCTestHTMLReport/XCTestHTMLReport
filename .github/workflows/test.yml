@@ -82,6 +82,9 @@ jobs:
       if: failure()
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
-        name: xcresult-fixtures
+        # Suffixed per matrix leg: upload-artifact v4+ refuses duplicate
+        # artifact names, so a run where both legs fail would otherwise lose
+        # the second leg's upload.
+        name: xcresult-fixtures-${{ matrix.result_reader }}
         path: Tests/XCTestHTMLReportTests/Resources
         retention-days: 7

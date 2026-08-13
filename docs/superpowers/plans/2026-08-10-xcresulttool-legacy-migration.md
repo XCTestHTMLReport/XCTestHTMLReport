@@ -4224,7 +4224,7 @@ Breaking change, landing in 4.0 with release notes.
 - Modify: `Sources/XCTestHTMLReportCore/Classes/Models/ResultFile.swift`
 - Create: `Tests/XCTestHTMLReportTests/JsonReportTests.swift`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```swift
 //
@@ -4296,7 +4296,7 @@ final class JsonReportTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 ```bash
 swift test --filter JsonReportTests
@@ -4304,7 +4304,7 @@ swift test --filter JsonReportTests
 
 Expected: FAIL — output still contains `_value`.
 
-- [ ] **Step 3: Write the wire contract before writing the encoder**
+- [x] **Step 3: Write the wire contract before writing the encoder**
 
 `--json` is public output. A synthesized `Encodable` publishes whatever the
 Swift type looks like that day, which makes every later field rename a silent
@@ -4320,7 +4320,7 @@ Write it from the final `ParsedResult`, then make the encoder match the
 document — not the other way round. The spec's `--json` section lists these as
 required.
 
-- [ ] **Step 4: Make `ParsedResult` `Encodable` and re-point `--json`**
+- [x] **Step 4: Make `ParsedResult` `Encodable` and re-point `--json`**
 
 Add `: Encodable` to every `Parsed*` type, to `ParsedNode`, and to
 `ParsedStatus` — the last needs `String` raw values so `--json` emits
@@ -4357,7 +4357,7 @@ public func generatedJsonReport() -> String {
 Delete `ResultFile.exportJson()` and its `exportRecursiveJson()` call — the
 last XCResultKit use outside `LegacyResultReader`.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 ```bash
 swift test --filter JsonReportTests && swift test 2>&1 | tail -5
@@ -4365,7 +4365,7 @@ swift test --filter JsonReportTests && swift test 2>&1 | tail -5
 
 Expected: 2 new tests PASS; full suite green.
 
-- [ ] **Step 6: Confirm XCResultKit is confined to one file**
+- [x] **Step 6: Confirm XCResultKit is confined to one file**
 
 ```bash
 grep -rln "import XCResultKit" Sources/
@@ -4374,7 +4374,7 @@ grep -rln "import XCResultKit" Sources/
 Expected: exactly
 `Sources/XCTestHTMLReportCore/Classes/ResultReading/Legacy/LegacyResultReader.swift`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 swiftformat . && git add -A
@@ -4385,6 +4385,43 @@ That graph is Apple's internal shape and disappears with the legacy commands,
 so --json now emits a documented schema, identical on both backends."
 ```
 
+**Amendments (implementation, 2026-08-12).**
+
+- **Step 4's synthesized `Encodable` is superseded by an explicit encoding
+  layer** (`Classes/Models/JsonReport.swift`), on the spec's own rationale:
+  a synthesized conformance publishes whatever the Swift type looks like on
+  the day, and every later field rename becomes a silent breaking change to
+  public output. `Parsed*` types stay plain; the wire keys are explicit
+  strings in `JsonReport`, and `ParsedStatus` keeps no raw values — the
+  encoder owns the five wire spellings in a `switch`, so renaming a case
+  breaks compilation instead of the contract. `Summary` retains the parsed
+  runs from `init` and `generatedJsonReport()` is
+  `JsonReport(runs: parsedRuns).encoded()`.
+- **Step 1's `keyPaths` comparison collapses the tree's recursion edges**
+  (`groups`/`children` unify, consecutive `subActivities` collapse) before
+  comparing. The raw path sets the snippet compared differ on every fixture
+  for a *permitted* reason — `wrapperGroups` means legacy alone places group
+  nodes at nested positions — while the collapsed sets still fail on any key
+  one backend's groups or test cases carry and the other's lack. Two more
+  tests beyond the snippet: contract pins for enum spellings and timestamp
+  shape, and a masked value-differential asserting values equal outside the
+  two permitted classes (with `arguments` asserted per class 2 — legacy
+  `== []` explicitly, modern non-empty for the parameterized fixture case —
+  never by blind equality).
+- **The value differential surfaced one reader-parity gap** the HTML
+  differential structurally cannot see: under a retry-enabled plan, legacy
+  stamps every summary with `repetitionPolicySummary` ("iteration 1" of a
+  policy that never fired) while modern emits `Repetition` children only for
+  actual repetitions. Nothing renders a lone iteration number, so
+  `LegacyResultReader` now strips it (`strippingLoneIterationNumber`): a
+  single execution carries no repetition information, on either backend.
+  Recorded in the spec's "Task 14 execution rules".
+- **Step 6's expectation is two files, not one**: `ResultFile.swift` moved
+  into `ResultReading/Legacy/` during Task 5a and legitimately still imports
+  XCResultKit for the object-graph accessors. XCResultKit is confined to
+  `Sources/XCTestHTMLReportCore/Classes/ResultReading/Legacy/` — both files
+  are deleted together in phase 6.
+
 ---
 
 ## Task 15: Documentation
@@ -4393,7 +4430,7 @@ so --json now emits a documented schema, identical on both backends."
 - Modify: `README.md`
 - Modify: `docs/superpowers/specs/2026-08-10-xcresulttool-legacy-migration-design.md`
 
-- [ ] **Step 1: Document the flag and the `--json` break in `README.md`**
+- [x] **Step 1: Document the flag and the `--json` break in `README.md`**
 
 Add a section covering `--result-reader auto|legacy|modern`, that `auto`
 prefers legacy while the toolchain offers it, the `--json` schema change with a
@@ -4403,29 +4440,29 @@ the allow-list, not re-derived).
 **Release-notes checklist (added during Task 12 — every item is a 4.0
 output change accepted by ruling; see the spec's "Task 12 execution rules"):**
 
-- [ ] On-disk attachment names are content-addressed
+- [x] On-disk attachment names are content-addressed
       (`<payloadId>.<ext>`) on **both** backends; display names in the
       report are unchanged. Byte-identical payloads deduplicate to one file.
       This also fixes intermittent `payloadExportFailed` degradation on
       Xcode 26.2 screen recordings (#449).
-- [ ] The exported run log is named `<run-identifier-digest>.log` instead of
+- [x] The exported run log is named `<run-identifier-digest>.log` instead of
       the backend-internal reference name (`<CAS id>.log` today).
-- [ ] Parameterized Swift Testing `@Test(arguments:)` cases render as one
+- [x] Parameterized Swift Testing `@Test(arguments:)` cases render as one
       test case instead of N pseudo-repetitions ("3 succeeded" /
       `Iteration 0` rows).
-- [ ] Skipped tests now show their skip reason as a row; it was always in
+- [x] Skipped tests now show their skip reason as a row; it was always in
       the bundle, the legacy reader never read it.
-- [ ] Assertion-failure rows render where the assertion fired (interleaved
+- [x] Assertion-failure rows render where the assertion fired (interleaved
       by start on both backends); expected failures render nothing, as
       before, on both backends.
 
-- [ ] **Step 2: Mark the spec's phases 1-5 done**
+- [x] **Step 2: Mark the spec's phases 1-5 done**
 
 Add a short status line at the top of the spec noting which phases landed and
 that phase 6 (removing XCResultKit) is deliberately deferred until Apple
 removes the legacy commands.
 
-- [ ] **Step 3: Full verification**
+- [x] **Step 3: Full verification**
 
 ```bash
 swiftformat --lint --reporter github-actions-log . && echo "FORMAT OK"
@@ -4438,12 +4475,24 @@ XCHR_RESULT_READER=modern swift test 2>&1 | tail -5
 
 Expected: every line reports success; both test runs green.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add README.md docs/
 git commit -m "docs: document --result-reader and the --json schema change"
 ```
+
+**Amendments (implementation, 2026-08-12).** The repo keeps release notes as
+GitHub release bodies (3.0.0 set the narrative style), so the 4.0 notes are
+drafted in-repo at `docs/release-notes/4.0.0.md` for the release to source.
+The draft covers this task's checklist plus the items added by rulings
+R1/R5/R7 and the #443/#450 reviews: the `--json` break with the contract
+linked, `--result-reader`, content-addressed attachment export names
+(`<payloadId>.<ext>`, #449), digest-derived run-log names, parameterized
+legacy rendering collapsing to one case, skip reasons appearing, the
+failure-row reposition (which the JUnit report inherits — shape 4 of Task
+5b's enumerated diff), activity types/durations leaving the report, the
+four declared reader differences, and the break-once 4.0 framing.
 
 ---
 

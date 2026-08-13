@@ -39,11 +39,20 @@ final class LegacyResultReaderTests: XCTestCase {
         XCTAssertEqual(retried.iterations.map(\.iterationNumber), [1, 2])
         XCTAssertEqual(retried.iterations.map(\.status), [.failed, .passed])
 
-        // And a non-repeated test still has exactly one iteration.
+        // And a non-repeated test still has exactly one iteration — with no
+        // iteration number. Under a retry-enabled plan legacy stamps every
+        // summary "iteration 1" even when the policy never fired; the modern
+        // format reports nothing for a single run, and a lone number renders
+        // nowhere, so the reader drops it and the backends agree by
+        // construction. `--json` is where the asymmetry would surface.
         let passed = try XCTUnwrap(
             cases.first { $0.identifier == "RetryTests/testJustPass()" }
         )
         XCTAssertEqual(passed.iterations.count, 1)
+        XCTAssertNil(
+            passed.iterations[0].iterationNumber,
+            "A single execution carries no repetition information"
+        )
     }
 
     func testAttachmentFieldsSurviveTranslation() throws {

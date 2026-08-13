@@ -87,7 +87,9 @@ struct LegacyResultReader: ResultReader {
                 identifier: identifier,
                 // Legacy has no counterpart to Swift Testing's Arguments nodes.
                 arguments: [],
-                iterations: Self.mergingArgumentExecutions(iterations)
+                iterations: Self.strippingLoneIterationNumber(
+                    Self.mergingArgumentExecutions(iterations)
+                )
             ))
         }
 
@@ -198,6 +200,35 @@ struct LegacyResultReader: ResultReader {
             status: merged,
             duration: iterations.reduce(0) { $0 + $1.duration },
             activities: iterations.flatMap(\.activities)
+        )]
+    }
+
+    /// A single execution carries no repetition information, on either
+    /// backend.
+    ///
+    /// Under a retry-enabled test plan, legacy stamps *every* test's summary
+    /// with a `repetitionPolicySummary` — a test that ran once is "iteration
+    /// 1" of a policy that never fired — while the modern format only emits
+    /// `Repetition` children when there was more than one run. Nothing
+    /// renders a lone iteration number (the HTML differential is green
+    /// across this asymmetry), but `--json` emits the model, so the
+    /// difference surfaced there: legacy `1` against modern `null` on every
+    /// single-run test in `RetryResults`. Dropping the number from the lone
+    /// iteration makes the backends agree by construction; true repetitions
+    /// always come in twos or more and keep theirs.
+    static func strippingLoneIterationNumber(
+        _ iterations: [ParsedIteration]
+    ) -> [ParsedIteration] {
+        guard iterations.count == 1, let only = iterations.first,
+              only.iterationNumber != nil
+        else {
+            return iterations
+        }
+        return [ParsedIteration(
+            iterationNumber: nil,
+            status: only.status,
+            duration: only.duration,
+            activities: only.activities
         )]
     }
 

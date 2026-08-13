@@ -113,12 +113,83 @@ JUnit report successfully created at report.junit
 You can generate json reports with the `--json` flag
 
 ``` bash
-$ xchtmlreport -json TestResults1
+$ xchtmlreport --json TestResults1
 
 Report successfully created at ./index.html
 
 JSON report successfully created at ./report.json
 ```
+
+Starting in 4.0, `report.json` is our own documented, versioned schema —
+[docs/json-schema.md](docs/json-schema.md) is the contract. The *schema* is
+identical whichever result reader produced it: same keys, same nesting, same
+`schemaVersion`. A few *values* legitimately differ between readers — the
+four differences listed under "Choosing the result reader" below, plus
+`testCase.arguments`, which only the modern reader can populate — and the
+contract documents each one. Earlier versions dumped
+`xcresulttool`'s legacy object graph verbatim; that graph is Apple's
+internal shape and disappears together with the legacy commands, so 4.0
+replaces it once, deliberately. The change is visible at a glance — before:
+
+``` json
+[{"_type":{"_name":"ActionsInvocationRecord"},"actions":{"_type":{"_name":"Array"},"_values":[...
+```
+
+after:
+
+``` json
+{
+  "runs" : [ ... ],
+  "schemaVersion" : "1.0.0"
+}
+```
+
+Consumers should read `schemaVersion` first and follow the version policy in
+the contract document.
+
+### Choosing the result reader
+
+`xcresulttool`'s legacy API — the way every version before 4.0 read result
+bundles — is deprecated and will be removed from Xcode. `xchtmlreport` now
+has two readers and picks one per run:
+
+``` bash
+$ xchtmlreport --result-reader auto TestResults.xcresult    # the default
+```
+
+- `auto` prefers `legacy` while the toolchain still offers the legacy
+  commands, and falls back to `modern` once they are gone (or when the probe
+  cannot tell).
+- `modern` forces the new-format reader on any toolchain.
+- `legacy` forces the legacy reader; if the toolchain no longer provides the
+  legacy commands this is an error, never a silent substitution.
+
+The `XCHR_RESULT_READER` environment variable sets the default when the flag
+is absent — useful for forcing a whole CI job onto one reader.
+
+Reports from the two readers are held byte-identical by a differential test
+suite, up to a short declared list of differences the new format cannot
+avoid:
+
+- **Attachment display names.** The new format does not expose the
+  user-supplied `XCTAttachment` name, so the modern reader labels
+  attachments by their type (`Screenshot`, `Video`, `File`).
+- **Failure title prefixes.** Legacy renders
+  `Assertion Failure at File.swift:12: message`; modern renders
+  `File.swift:12: message` — the new format pre-joins the string and drops
+  the issue type.
+- **Wrapper groups.** Legacy nests two extra levels
+  (`All tests` / `Selected tests`, then `<target>.xctest`) that the new
+  format does not have; the modern reader renders the natural flat tree.
+- **Group durations.** The new format reports no duration for test suites
+  and bundles, so the modern reader shows `(0.00s)` where legacy shows a
+  real value.
+
+`--json` output additionally carries `testCase.arguments` (Swift Testing
+`@Test(arguments:)` values), which only the modern reader can populate — the
+legacy format has no counterpart, so it is always `[]` there. See the
+[schema contract](docs/json-schema.md) for how consumers should compare
+reports across readers.
 
 ## Exit codes
 

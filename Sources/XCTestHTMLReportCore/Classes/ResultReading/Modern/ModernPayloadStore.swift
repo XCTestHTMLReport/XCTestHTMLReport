@@ -24,7 +24,7 @@ final class ModernPayloadStore: PayloadProviding {
         }
     }
 
-    init(client: XCResultToolClient, bundleURL: URL, faultCollector: FaultCollector) {
+    init(client: XCResultToolInvoking, bundleURL: URL, faultCollector: FaultCollector) {
         self.client = client
         self.faultCollector = faultCollector
         url = bundleURL
@@ -120,7 +120,10 @@ final class ModernPayloadStore: PayloadProviding {
 
     // MARK: Private
 
-    private let client: XCResultToolClient
+    /// The protocol, not the concrete client, so tests can fail the one-shot
+    /// export on demand and prove the degradation is recorded — the same seam
+    /// `ModernResultReader` already uses.
+    private let client: XCResultToolInvoking
     private let relativeURL: URL
     private let faultCollector: FaultCollector
 
@@ -190,6 +193,10 @@ final class ModernPayloadStore: PayloadProviding {
         } catch {
             Logger.warning("Can't export attachments: \(error)")
             faultCollector.record(.payloadExportFailed, "attachment export")
+            // `exportDirectory` was never set, so `deinit` will not clean the
+            // directory the failed export leaves behind — remove it here or
+            // every failed run leaks it into NSTemporaryDirectory().
+            try? FileManager.default.removeItem(at: directory)
         }
     }
 
