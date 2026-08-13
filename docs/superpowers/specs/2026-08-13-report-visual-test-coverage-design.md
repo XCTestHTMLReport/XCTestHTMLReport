@@ -309,3 +309,48 @@ than as a pass.
 improvement: the fixture could then move to a committed JSON file and double
 as executable documentation of the wire contract in `docs/json-schema.md`.
 The Swift fixture is a deliberate first step, not a permanent choice.
+
+## Amendments (2026-08-13)
+
+Recorded after a whole-branch review found five places where this document
+claims something the delivered work does not do. Left in place rather than
+edited into the sections above, so the document still reads as what was
+decided going in.
+
+1. **Fixture coverage is narrower than "one attachment of each rendered
+   kind."** The Architecture section says the synthetic fixture covers "PNG,
+   video, plain text, HTML, and an attachment whose filename contains quotes
+   and angle brackets." It covers PNG and plain-text attachments only. The
+   video and HTML render paths are unexercised by any layer.
+
+2. **Only 2 of the 3 stated behavioural assertions shipped.** Layer 3 point 5
+   claims filter tabs, arrow-key navigation, *and* "clicking an attachment
+   populates the preview pane." The first two are implemented in
+   `visual/tests/behaviour.spec.ts`; the third was not.
+
+3. **Contrast pairings are sampled, not discovered, from one static DOM
+   state.** Layer 3 point 2 claims pairings are "discovered from the
+   stylesheet" cascade. What ships walks the rendered DOM's computed styles
+   at one point in time — the default, non-interactive state. `:hover`,
+   `:focus`, and `:active` states are unreachable this way, and two declared
+   text tokens, `--color-text-secondary` and `--color-accent-soft`, are never
+   sampled because no element in the synthetic fixture's default render
+   happens to use them for text-on-background.
+
+4. **axe moderate/minor findings reach the raw log, not
+   `$GITHUB_STEP_SUMMARY`.** Layer 3 point 4 implies a job-summary-level
+   report. `a11y.spec.ts` writes them with `console.log`, which lands in the
+   raw Playwright/CI log — readable, but not surfaced the way a
+   `$GITHUB_STEP_SUMMARY` write would be.
+
+5. **The Sequencing section did not happen as planned.** Step 1 says "this
+   suite lands on `main`," and step 2 says "#456 rebases onto it." In fact
+   PR #456 merged to `main` first and is this branch's merge-base
+   (`7b891a3`) — the suite was built on top of #456, not the other way
+   around, so #456 never rebased onto it and its dark-mode/contrast claims
+   were never gated by this suite before merging. Those claims were instead
+   verified retroactively, after the fact, against the code #456 already
+   shipped — and were confirmed sound. The retroactive capture described
+   under "The retroactive baseline" absorbed the work step 2 was meant to
+   do; step 3 (findings recorded on #439/#455) is the part that actually
+   happened as written.
