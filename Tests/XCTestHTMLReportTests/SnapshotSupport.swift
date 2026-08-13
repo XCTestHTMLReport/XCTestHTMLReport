@@ -34,7 +34,17 @@ func assertSnapshot(
             try actual.write(to: url, atomically: true, encoding: .utf8)
         } catch {
             XCTFail("Could not write golden \(name): \(error)", file: file, line: line)
+            return
         }
+        // A refresh run must not look like a pass: writing the golden proves
+        // nothing about whether the new content is correct, only that it was
+        // written. Fail on purpose so CI can never go green while
+        // XCHR_UPDATE_SNAPSHOTS=1 is set, and so a developer refreshing
+        // locally re-runs without it to get a real verdict.
+        XCTFail(
+            "Snapshots refreshed — re-run without XCHR_UPDATE_SNAPSHOTS to verify",
+            file: file, line: line
+        )
         return
     }
 
