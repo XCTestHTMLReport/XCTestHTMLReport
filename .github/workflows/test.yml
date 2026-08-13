@@ -78,17 +78,6 @@ jobs:
     - name: Run tests
       run: swift test -v
 
-    - name: Upload fixtures on failure
-      if: failure()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-      with:
-        # Suffixed per matrix leg: upload-artifact v4+ refuses duplicate
-        # artifact names, so a run where both legs fail would otherwise lose
-        # the second leg's upload.
-        name: xcresult-fixtures-${{ matrix.result_reader }}
-        path: Tests/XCTestHTMLReportTests/Resources
-        retention-days: 7
-
     # A rendered report is what this tool actually ships, and until now nothing
     # in CI let a reviewer look at one — the suite only ever compares report
     # HTML as text (DifferentialTests, ReproducibilityTests). Rendering here
@@ -99,7 +88,7 @@ jobs:
     # which reader each one exercises, so a PR touching the templates or either
     # reader can be eyeballed per backend — the whole question during the 4.0
     # migration (#391). Names are suffixed per leg for the same reason the
-    # fixture upload above is.
+    # fixture upload below is.
     - name: Render sample report
       run: |
         swift build --product xchtmlreport
@@ -119,3 +108,19 @@ jobs:
         name: report-${{ matrix.result_reader }}
         path: ${{ runner.temp }}/report/index.html
         retention-days: 14
+
+    # Deliberately last. `if: failure()` is evaluated when the step is reached
+    # and a skipped step never runs again, so this only covers the steps above
+    # it: parked any earlier, a render that failed after the tests went green
+    # would upload nothing at all, leaving the failure undiagnosable without
+    # regenerating the bundles by hand. Keep it at the end of the job.
+    - name: Upload fixtures on failure
+      if: failure()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        # Suffixed per matrix leg: upload-artifact v4+ refuses duplicate
+        # artifact names, so a run where both legs fail would otherwise lose
+        # the second leg's upload.
+        name: xcresult-fixtures-${{ matrix.result_reader }}
+        path: Tests/XCTestHTMLReportTests/Resources
+        retention-days: 7
