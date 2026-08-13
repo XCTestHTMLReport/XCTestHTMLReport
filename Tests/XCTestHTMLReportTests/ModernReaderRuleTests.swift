@@ -121,6 +121,94 @@ final class ModernReaderRuleTests: XCTestCase {
         )
     }
 
+    /// The symbol-annotation drop's keep-guard, exercised on all three kinds
+    /// of content it protects: a no-`startTime` row carrying an attachment, a
+    /// failure flag, or surviving children is **kept**, while the genuinely
+    /// empty no-start row is dropped. The guard exists so a future format
+    /// variant that stops stamping times degrades to unordered rows instead
+    /// of silently gutting real content — no fixture produces such rows, so
+    /// this is pinned on a crafted document.
+    func testNoStartRowsWithContentSurviveTheAnnotationDrop() throws {
+        let testCase = try craftedCase(
+            testsJSON: Self.testsDocument(result: "Passed", failureMessages: []),
+            activitiesJSON: #"""
+            {"testIdentifier":"S/t()","testRuns":[{"activities":[
+              {"title":"container","startTime":1,"childActivities":[
+                {"title":"annotation"},
+                {"title":"keeps its attachment","attachments":[
+                  {"uuid":"A1","payloadId":"P1","name":"shot.png","timestamp":9}]},
+                {"title":"keeps its child","childActivities":[
+                  {"title":"inner","startTime":2}]},
+                {"title":"keeps its failure flag","isAssociatedWithFailure":true}]}]}]}
+            """#
+        )
+        let rows = testCase.iterations[0].activities
+        let all = flattened(rows)
+        XCTAssertFalse(
+            all.contains { $0.title == "annotation" },
+            "The contentless no-start row is an annotation and must drop"
+        )
+        let container = try XCTUnwrap(rows.first { $0.title == "container" })
+        XCTAssertEqual(
+            container.subActivities.map(\.title),
+            ["keeps its attachment", "keeps its child"],
+            "No-start rows with content must survive in source order"
+        )
+        XCTAssertFalse(
+            try XCTUnwrap(all.first { $0.title == "keeps its attachment" })
+                .attachments.isEmpty
+        )
+        // The flagged no-start row survives as a failure tip; the hoist moves
+        // it to the top level and the interleave orders its nil start last.
+        let flagged = try XCTUnwrap(all.first { $0.title == "keeps its failure flag" })
+        XCTAssertTrue(flagged.isFailure)
+        XCTAssertEqual(rows.last?.title, "keeps its failure flag")
+    }
+
+    /// A repetition index the activities document cannot satisfy renders no
+    /// activities and records the degradation — never repetition 1's rows
+    /// under repetition N, which is what a silent `runs.first` fallback did.
+    func testOutOfRangeRepetitionIndexDegradesLoudly() throws {
+        let collector = FaultCollector()
+        let reader = ModernResultReader(
+            client: CraftedClient(
+                testsJSON: #"""
+                {"devices":[{"deviceId":"D","deviceName":"iPhone","modelName":"iPhone","osVersion":"1.0"}],
+                 "testNodes":[{"nodeType":"Test Plan","name":"P","children":[
+                   {"nodeType":"Unit test bundle","name":"B","children":[
+                     {"nodeType":"Test Suite","name":"S","children":[
+                       {"nodeType":"Test Case","name":"t()","nodeIdentifier":"S/t()",
+                        "result":"Passed","children":[
+                          {"nodeType":"Repetition","nodeIdentifier":"1","result":"Passed"},
+                          {"nodeType":"Repetition","nodeIdentifier":"2","result":"Passed"}]}]}]}]}]}
+                """#,
+                activitiesJSON: #"""
+                {"testIdentifier":"S/t()","testRuns":[{"activities":[
+                  {"title":"only recorded run","startTime":1}]}]}
+                """#
+            ),
+            payloadStore: nil,
+            faultCollector: collector
+        )
+        let testCase = try XCTUnwrap(
+            try testCases(in: XCTUnwrap(reader.read())).first
+        )
+        XCTAssertEqual(
+            testCase.iterations[0].activities.map(\.title), ["only recorded run"]
+        )
+        XCTAssertTrue(
+            testCase.iterations[1].activities.isEmpty,
+            "The missing testRun must not borrow repetition 1's activities"
+        )
+        XCTAssertTrue(
+            collector.faults.contains {
+                $0.kind == .missingActivities && $0.detail == "S/t()"
+            },
+            "Rendering a repetition without its activities is a degradation "
+                + "and must say so"
+        )
+    }
+
     /// A flagged activity with no flagged descendants is itself the tip: it
     /// keeps its failure flag, gets retitled by the join, and stays where the
     /// interleave puts it.

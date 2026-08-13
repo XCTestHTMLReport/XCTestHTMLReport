@@ -227,9 +227,26 @@ struct ModernResultReader: ResultReader {
                 as: TestActivities.self
             )
             let runs = document.testRuns ?? []
-            let run: TestActivities.TestRun? = iteration
-                .flatMap { index in runs.indices.contains(index) ? runs[index] : nil }
-                ?? runs.first
+            let run: TestActivities.TestRun?
+            if let index = iteration {
+                // The document carries one testRun per repetition, in order.
+                // An index the document cannot satisfy is a document anomaly,
+                // not a format limitation: falling back to `runs.first` here
+                // would silently render repetition 1's activities under
+                // repetition N, which is worse than rendering none and
+                // saying so.
+                guard runs.indices.contains(index) else {
+                    Logger.warning(
+                        "Activities document for \(identifier) has \(runs.count) "
+                            + "testRun(s); repetition index \(index) is out of range"
+                    )
+                    faultCollector.record(.missingActivities, identifier)
+                    return []
+                }
+                run = runs[index]
+            } else {
+                run = runs.first
+            }
             return (run?.activities ?? []).map { parseActivity(pruning: $0) }
         } catch {
             // A failed activities query is a genuine read failure, not a

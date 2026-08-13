@@ -114,6 +114,55 @@ final class ModernPayloadStoreTests: XCTestCase {
         )
     }
 
+    /// Serves nothing: every subcommand fails. The store degrades through
+    /// `FaultCollector` rather than aborting, and this is the only way to
+    /// prove the degradation is recorded — a real bundle cannot be made to
+    /// fail on demand. The protocol seam exists for exactly this test.
+    private struct FailingClient: XCResultToolInvoking {
+        var bundleDescription: String {
+            "Failing.xcresult"
+        }
+
+        func run(_ arguments: [String]) throws -> Data {
+            throw XCResultToolError.executionFailed(
+                arguments: arguments, status: 1, stderr: "injected failure"
+            )
+        }
+
+        func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
+            try JSONDecoder().decode(type, from: run(arguments))
+        }
+    }
+
+    func testFailedExportRecordsAFaultAndLeaksNoTempDirectory() throws {
+        /// The export directory's name is internal, so hold the whole family
+        /// of names still across the call: any new survivor is the leak.
+        func exportDirectories() throws -> Set<String> {
+            try Set(
+                FileManager.default
+                    .contentsOfDirectory(atPath: NSTemporaryDirectory())
+                    .filter { $0.hasPrefix("xchtmlreport-attachments-") }
+            )
+        }
+        let before = try exportDirectories()
+
+        let collector = FaultCollector()
+        let store = ModernPayloadStore(
+            client: FailingClient(),
+            bundleURL: URL(fileURLWithPath: NSTemporaryDirectory()),
+            faultCollector: collector
+        )
+        XCTAssertNil(store.exportPayload(reference: "any-uuid", fileName: nil))
+        XCTAssertTrue(
+            collector.faults.contains { $0.kind == .payloadExportFailed },
+            "A failed one-shot export must reach the degradation path"
+        )
+        XCTAssertEqual(
+            try exportDirectories(), before,
+            "The failed export left its temp directory behind"
+        )
+    }
+
     func testActionLogExportsNextToTheBundle() throws {
         let (store, bundle) = try store(for: "SanityResults")
         // "action" is the fixed log reference the modern reader emits; the
