@@ -121,8 +121,12 @@ JSON report successfully created at ./report.json
 ```
 
 Starting in 4.0, `report.json` is our own documented, versioned schema —
-[docs/json-schema.md](docs/json-schema.md) is the contract, and the file is
-identical whichever result reader produced it. Earlier versions dumped
+[docs/json-schema.md](docs/json-schema.md) is the contract. The *schema* is
+identical whichever result reader produced it: same keys, same nesting, same
+`schemaVersion`. A few *values* legitimately differ between readers — the
+four differences listed under "Choosing the result reader" below, plus
+`testCase.arguments`, which only the modern reader can populate — and the
+contract documents each one. Earlier versions dumped
 `xcresulttool`'s legacy object graph verbatim; that graph is Apple's
 internal shape and disappears together with the legacy commands, so 4.0
 replaces it once, deliberately. The change is visible at a glance — before:
@@ -180,6 +184,12 @@ avoid:
 - **Group durations.** The new format reports no duration for test suites
   and bundles, so the modern reader shows `(0.00s)` where legacy shows a
   real value.
+
+`--json` output additionally carries `testCase.arguments` (Swift Testing
+`@Test(arguments:)` values), which only the modern reader can populate — the
+legacy format has no counterpart, so it is always `[]` there. See the
+[schema contract](docs/json-schema.md) for how consumers should compare
+reports across readers.
 
 ## Exit codes
 
