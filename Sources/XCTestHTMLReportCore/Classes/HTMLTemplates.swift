@@ -156,7 +156,11 @@ struct HTMLTemplates
       color: var(--color-text-primary);
       background-color: var(--color-surface);
       width: 100%;
-      height: 70px;
+      /* Same reasoning as .toolbar: 70px is ~4px of slack over the title
+         band plus the Tests/Logs row, so any text scaling clipped it. The
+         two rows never wrap on their own — the pills that do wrap live in
+         .tests-header, not here. */
+      min-height: 70px;
     }
 
     #info-sections ul {
