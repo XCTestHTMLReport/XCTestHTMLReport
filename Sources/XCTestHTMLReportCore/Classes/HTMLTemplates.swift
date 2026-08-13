@@ -10,29 +10,41 @@ struct HTMLTemplates
   <html lang=\"en\">
   <head>
     <meta charset=\"utf-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
 
-    <title>XCHTMLReport</title>
+    <title>[[TITLE]]</title>
     <meta name=\"description\" content=\"Xcode Testing HTML Report\">
 
     <style type=\"text/css\">
 
-    /* Design tokens (#439). Every value matches the pre-token stylesheet
-       byte-for-byte in computed terms; retheme by editing this block only. */
+    /* Design tokens (#439). The token layer is the whole theme: every colour
+       the report paints comes from here, so the dark block below overrides
+       values only — it contains no selectors of its own. */
     :root {
-      /* Colour — brand */
-      --color-accent: #1780FA;
+      /* Follow the OS. Also gives form controls and scrollbars the right
+         appearance, which a background-colour alone does not. */
+      color-scheme: light dark;
+
+      /* Colour — brand.
+         --color-accent is the selection fill (white text sits on it);
+         --color-accent-text is the same blue used *as* text on a surface.
+         They are separate tokens because dark mode cannot satisfy both
+         roles with one value: a fill dark enough for white text is too
+         dark to read as text itself. */
+      --color-accent: #1163CC;
+      --color-accent-text: #1163CC;
       --color-accent-soft: #B1D3FE;
       --color-on-accent: #FFF;
 
       /* Colour — text */
       --color-text-primary: #111;
       --color-text-secondary: #333;
-      --color-text-muted: #777;
-      --color-text-subtle: #666;
-      --color-text-placeholder: #AAA;
+      --color-text-muted: #555;
+      --color-text-subtle: #555;
+      --color-text-placeholder: #6E6E73;
 
       /* Colour — status */
-      --status-failed: red;
+      --status-failed: #D70015;
 
       /* Colour — surfaces */
       --color-surface: #FFF;
@@ -43,12 +55,14 @@ struct HTMLTemplates
       --color-border-strong: #BBB;
       --color-border-medium: #CCC;
       --color-border-light: #DDD;
-      --color-border-faint: #EEE;
+      --color-border-faint: #E5E5E5;
       --color-preview-border: #021a40;
 
-      /* Typography — \"SF Pro Display\" stack pinned exactly as-is;
-         the font fix is C-refresh scope, not tokenization's */
-      --font-family-base: \"SF Pro Display\", \"SF Pro Icons\", \"Helvetica Neue\", \"Helvetica\", \"Arial\";
+      /* Typography — the system UI face, so the report looks native on the
+         platform it is read on. `system-ui` first, `-apple-system` for the
+         Safari versions that predate it, then named fallbacks, and a
+         generic family last so the chain can always terminate. */
+      --font-family-base: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Helvetica, Arial, sans-serif;
       --font-size-xs: 11px;
       --font-size-sm: 12px;
       --font-size-md: 13px;
@@ -58,7 +72,11 @@ struct HTMLTemplates
       --font-weight-regular: 400;
       --font-weight-medium: 500;
 
-      /* Spacing — only the two steps the stylesheet actually repeats */
+      /* Spacing — the two steps used as a shared scale, i.e. repeated across
+         unrelated components. 2px and 6px each also appear four times, but
+         as component-local nudges (icon baseline shifts, the #title and
+         #report-issue paddings, the resizer's width) with no common meaning
+         to name, so they stay inline. */
       --space-xs: 4px;
       --space-sm: 10px;
 
@@ -70,12 +88,54 @@ struct HTMLTemplates
       --radius-sm: 3px;
     }
 
+    /* Dark theme. Token values only — every selector in the sheet is shared
+       with the light theme, which is what the token layer bought us. */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        /* The selection fill lands on three different backgrounds — the
+           sidebar (#232327, the lightest and so the binding one), the
+           surface, and the group header — and has to clear 3:1 against each
+           while still carrying white text at 4.5:1. That window is narrow:
+           at this hue no value clears both floors by more than ~7%, and this
+           one sits at its centre (sidebar 3.25, white 4.82). Splitting a
+           separate fill token would buy nothing, because the selected device
+           card needs both floors satisfied at once. */
+        --color-accent: #2170D6;
+        --color-accent-text: #7FB0FF;
+        --color-accent-soft: #274A73;
+        --color-on-accent: #FFF;
+
+        --color-text-primary: #E8E8EA;
+        --color-text-secondary: #C9C9CE;
+        --color-text-muted: #9A9AA2;
+        --color-text-subtle: #9A9AA2;
+        --color-text-placeholder: #8A8A92;
+
+        --status-failed: #FF6E6A;
+
+        --color-surface: #161619;
+        --color-bg-sidebar: #232327;
+        --color-bg-group-header: #202024;
+
+        --color-border-strong: #3A3A40;
+        --color-border-medium: #33333A;
+        --color-border-light: #2E2E34;
+        --color-border-faint: #2A2A2F;
+        --color-preview-border: #3A3A40;
+      }
+    }
+
     html, body {
       margin: 0;
       padding: 0;
       font-family: var(--font-family-base);
       height: 100%;
       overflow: hidden;
+      /* Explicit, so the canvas is ours in both themes. Previously unset:
+         the white page was the browser default, which is what made dark
+         mode impossible to bolt on. */
+      background-color: var(--color-surface);
+      color: var(--color-text-primary);
     }
 
     body.dragging {
@@ -104,7 +164,11 @@ struct HTMLTemplates
       color: var(--color-text-primary);
       background-color: var(--color-surface);
       width: 100%;
-      height: 70px;
+      /* Same reasoning as .toolbar: 70px is ~4px of slack over the title
+         band plus the Tests/Logs row, so any text scaling clipped it. The
+         two rows never wrap on their own — the pills that do wrap live in
+         .tests-header, not here. */
+      min-height: 70px;
     }
 
     #info-sections ul {
@@ -161,7 +225,12 @@ struct HTMLTemplates
 
     .toolbar {
       background-color: var(--color-surface);
-      height: 24px;
+      /* min-, not a fixed height: identical while the row fits on one line,
+         but lets it grow instead of spilling over the next element once the
+         pills wrap. Adding the viewport meta stopped phones from rendering
+         this page zoomed out at desktop width, which is what had been hiding
+         that overlap. The actual narrow-screen layout is PR 2's job. */
+      min-height: 24px;
       border-bottom: 1px solid var(--color-border-light);
       padding: var(--space-xs) var(--space-sm);
     }
@@ -199,7 +268,9 @@ struct HTMLTemplates
 
     ul.toggle-toolbar li:hover {
       background-color: var(--color-accent-soft);
-      color: var(--color-on-accent);
+      /* Primary, not --color-on-accent: the soft tint is a pale wash, and
+         white on it was 1.55:1. */
+      color: var(--color-text-primary);
     }
 
     ul.toggle-toolbar li.selected {
@@ -215,7 +286,7 @@ struct HTMLTemplates
 
     ul.toggle-toolbar.centered-toolbar li.selected {
       background-color: var(--color-surface);
-      color: var(--color-accent) !important;
+      color: var(--color-accent-text) !important;
     }
 
     ul.toggle-toolbar.centered-toolbar li:hover {
@@ -224,7 +295,7 @@ struct HTMLTemplates
     }
 
     .table-header {
-      height: 18px;
+      min-height: 18px;
       margin: 0;
       padding-top: 0;
     }
