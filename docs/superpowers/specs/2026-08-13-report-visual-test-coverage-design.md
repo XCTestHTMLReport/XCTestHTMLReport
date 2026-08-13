@@ -66,9 +66,9 @@ Verified against `main` at `f3f960f`:
   boundary between "read an `.xcresult`" and "render HTML" already a seam.
 - **`Run.init?` takes a `ParsedRun`.** Templates below the page level render
   without any `.xcresult` at all.
-- **`PayloadProviding` is a three-member protocol** — `url`,
-  `exportPayload`, `exportPayloadData`. Trivially stubbable; the test target
-  already uses `@testable import`.
+- **`PayloadProviding` is a five-member protocol** — `url`,
+  `exportPayload`, `exportPayloadData`, `exportLogs`, `exportLogsData`.
+  Trivially stubbable; the test target already uses `@testable import`.
 - **All 20 test files use XCTest.** swift-testing appears only inside the
   sample app, as fixture material. New tests use XCTest.
 - **`ParsedResult` has no `Decodable` conformance.** The fixture is therefore
