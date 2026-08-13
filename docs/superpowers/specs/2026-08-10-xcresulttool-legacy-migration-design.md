@@ -406,10 +406,18 @@ equivalent — measured on `TestResults`:
 | `get test-results tests`, `Failure Message` node | `FirstSuite.swift:66: XCTAssertTrue failed - Test failed` |
 | `get test-results activities`, activity title | `XCTAssertTrue failed - Test failed` |
 
-The activities document drops the file and line entirely. The modern reader
-therefore sources failure text from the `Failure Message` nodes, which retain
-it, and appends those to the activity list. Skipped tests carry their reason on
-the same node (`Test skipped - Test skipped`).
+The activities document drops the file and line, **not the failure itself**
+(refined 2026-08-12, from Task 8's execution): it reports every assertion
+failure as a failure-flagged activity row of its own, positioned and
+timestamped, nested inside the user's activity when the assertion fired there
+— only the `file:line` prefix is missing from its title. The modern reader
+therefore *joins* the two documents rather than choosing one: each `Failure
+Message` retitles the first unclaimed failure-flagged activity row whose
+title is an exact suffix of the message (document order,
+first-unmatched-first), keeping the row's position, nesting and timestamp;
+messages with no matching row are appended to the activity list. Skipped
+tests carry their reason on the same node (`Test skipped - Test skipped`) and
+have no failure-flagged row, so they take the append path.
 
 What remains lost is the *structure*: the reader populates the title with the
 string as given and leaves `fileName`/`lineNumber`/`issueType` nil rather than

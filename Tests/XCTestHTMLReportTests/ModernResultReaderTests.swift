@@ -1,0 +1,325 @@
+//
+//  ModernResultReaderTests.swift
+//
+
+import XCTest
+@testable import XCTestHTMLReportCore
+
+final class ModernResultReaderTests: XCTestCase {
+    // MARK: - Helpers
+
+    private func read(_ resource: String) throws -> ParsedResult {
+        let url = try XCTUnwrap(
+            Bundle.testBundle.url(forResource: resource, withExtension: "xcresult")
+        )
+        let reader = ModernResultReader(
+            client: XCResultToolClient(bundleURL: url),
+            payloadStore: nil,
+            faultCollector: FaultCollector()
+        )
+        return try XCTUnwrap(reader.read())
+    }
+
+    private func testCases(in result: ParsedResult) -> [ParsedTestCase] {
+        func walk(_ node: ParsedNode) -> [ParsedTestCase] {
+            switch node {
+            case let .group(group): return group.children.flatMap(walk)
+            case let .testCase(testCase): return [testCase]
+            }
+        }
+        return result.runs
+            .flatMap(\.testables)
+            .flatMap(\.groups)
+            .flatMap { $0.children.flatMap(walk) }
+    }
+
+    private func flattened(_ activities: [ParsedActivity]) -> [ParsedActivity] {
+        activities.flatMap { [$0] + flattened($0.subActivities) }
+    }
+
+    // MARK: - Tree, status, iterations
+
+    func testRepetitionsBecomeIterationsAndParentResultIsIgnored() throws {
+        let retried = try XCTUnwrap(
+            try testCases(in: read("RetryResults"))
+                .first { $0.identifier == "RetryTests/testRetryOnFailure()" }
+        )
+        // The Test Case node says "Passed". Legacy reports mixed. Taking the
+        // parent result here would silently turn a mixed test green.
+        XCTAssertEqual(retried.iterations.count, 2)
+        XCTAssertEqual(retried.iterations.map(\.iterationNumber), [1, 2])
+        XCTAssertEqual(retried.iterations.map(\.status), [.failed, .passed])
+    }
+
+    func testStatusesMapIntoTheNeutralEnum() throws {
+        let cases = try testCases(in: read("TestResults"))
+        func status(_ identifier: String) throws -> ParsedStatus {
+            try XCTUnwrap(cases.first { $0.identifier == identifier })
+                .iterations[0].status
+        }
+        XCTAssertEqual(try status("FirstSuite/testOne()"), .passed)
+        XCTAssertEqual(try status("FirstSuite/testTwo()"), .failed)
+        XCTAssertEqual(try status("SampleAppUnitTests/testSkipped()"), .skipped)
+
+        // Both readers must agree on the vocabulary, which is the whole point
+        // of the enum: no fixture assertion can catch one reader drifting.
+        XCTAssertEqual(ModernResultReader.status("Passed"), LegacyResultReader.status("Success"))
+        XCTAssertEqual(ModernResultReader.status("Failed"), LegacyResultReader.status("Failure"))
+        XCTAssertEqual(ModernResultReader.status("Skipped"), LegacyResultReader.status("Skipped"))
+        XCTAssertEqual(
+            ModernResultReader.status("Expected Failure"),
+            LegacyResultReader.status("Expected Failure")
+        )
+        // `unknown` is in the published schema but in no fixture.
+        XCTAssertEqual(ModernResultReader.status("unknown"), .unknown)
+        XCTAssertEqual(ModernResultReader.status(nil), .unknown)
+    }
+
+    func testExpectedFailureStillRendersAsUnknown() throws {
+        let unknownState = try XCTUnwrap(
+            try testCases(in: read("RetryResults"))
+                .first { $0.identifier == "RetryTests/testInUnknownState()" }
+        )
+        // The model names the state; the renderer still flattens it to
+        // .unknown, which is what both backends do today. Preserve that
+        // rather than "fixing" it here.
+        XCTAssertEqual(unknownState.iterations[0].status, .expectedFailure)
+        XCTAssertNil(Status(rawValue: "Expected Failure"))
+    }
+
+    func testParameterizedTestCarriesItsArguments() throws {
+        // Requires the parameterized @Test in SwiftTestingSuite. Without that
+        // fixture, `arguments` would be a field no fixture ever populates,
+        // asserted by no test.
+        let parameterized = try XCTUnwrap(
+            try testCases(in: read("TestResults"))
+                .first { $0.identifier.contains("parameterizedAddition") },
+            "No parameterized test in the fixture — see Task 8 of the migration plan"
+        )
+        XCTAssertEqual(
+            parameterized.arguments.sorted(), ["1", "2", "3"],
+            "Arguments nodes exist in the bundle but did not reach the model"
+        )
+    }
+
+    func testTreeIsFlatWithoutLegacyWrapperGroups() throws {
+        let result = try read("TestResults")
+        let targets = result.runs.flatMap(\.testables).map(\.targetName).sorted()
+        XCTAssertEqual(targets, ["SampleAppUITests", "SampleAppUnitTests"])
+
+        let groupNames = result.runs
+            .flatMap(\.testables)
+            .flatMap(\.groups)
+            .map(\.name)
+        // Deliberately flat: no "Selected tests" / "All tests" / "*.xctest".
+        XCTAssertFalse(groupNames.contains("Selected tests"))
+        XCTAssertFalse(groupNames.contains("All tests"))
+        XCTAssertTrue(groupNames.contains("FirstSuite"))
+        XCTAssertTrue(groupNames.contains("SwiftTestingSuite"))
+    }
+
+    // MARK: - Failure text: file:line from the tests document
+
+    /// The activities document reports each assertion failure as an activity
+    /// row but drops the `file:line` prefix; the tests document's `Failure
+    /// Message` node keeps it. The reader joins the two — message text onto
+    /// the activity row's position — so losing either half is a regression.
+    func testFailureTitlesKeepFileAndLineFromTheTestsDocument() throws {
+        let failing = try XCTUnwrap(
+            try testCases(in: read("TestResults"))
+                .first { $0.identifier == "FirstSuite/testTwo()" }
+        )
+        let rows = flattened(failing.iterations[0].activities)
+            .filter { $0.title.hasSuffix("XCTAssertTrue failed - Test failed") }
+
+        XCTAssertEqual(
+            rows.count, 1,
+            "The same failure must not render as both the activity row and an appended message row"
+        )
+        let row = try XCTUnwrap(rows.first)
+        XCTAssertTrue(
+            row.title.hasPrefix("FirstSuite.swift:"),
+            "Failure text must come from the Failure Message node, which keeps file:line — got '\(row.title)'"
+        )
+        XCTAssertTrue(row.isFailure)
+        XCTAssertNotNil(
+            row.start,
+            "The retitled row keeps the activity's own timestamp and position"
+        )
+    }
+
+    /// The retried test's assertion fires inside the user's own activity, so
+    /// the activities document nests the failure row. The join must retitle it
+    /// in place — nested, positioned, timestamped — not append a duplicate.
+    func testNestedRetryFailureIsRetitledInPlace() throws {
+        let retried = try XCTUnwrap(
+            try testCases(in: read("RetryResults"))
+                .first { $0.identifier == "RetryTests/testRetryOnFailure()" }
+        )
+        let firstAttempt = retried.iterations[0]
+        let wrapper = try XCTUnwrap(
+            firstAttempt.activities.first { $0.title == "Retryable Activity" },
+            "The user-created activity must survive translation"
+        )
+        let nested = try XCTUnwrap(
+            flattened(wrapper.subActivities).first { $0.isFailure },
+            "The failure row stays nested under the activity it fired in"
+        )
+        XCTAssertTrue(
+            nested.title.hasPrefix("RetryTests.swift:"),
+            "Nested failure rows are retitled from the Failure Message node too — got '\(nested.title)'"
+        )
+        // And nothing appended a second copy at the top level.
+        XCTAssertEqual(
+            flattened(firstAttempt.activities).filter { $0.title.hasSuffix(": failed") }.count,
+            1
+        )
+    }
+
+    /// Failure Messages with no matching activity row — skip reasons and
+    /// expected-failure notes, whose activity rows are not failure-flagged —
+    /// still append, or the reason never reaches the report at all.
+    func testSkipReasonAppendsWhenNoActivityRowMatches() throws {
+        let skipped = try XCTUnwrap(
+            try testCases(in: read("TestResults"))
+                .first { $0.identifier == "SampleAppUnitTests/testSkipped()" }
+        )
+        XCTAssertTrue(
+            skipped.iterations[0].activities
+                .contains { $0.isFailure && $0.title.contains("Test skipped") },
+            "The skip reason rides a Failure Message node with no activity twin"
+        )
+    }
+
+    // MARK: - Fault discipline
+
+    /// A failed activities query degrades to an empty activity list. That is
+    /// only acceptable because it is *reported*: without the fault the CLI
+    /// exits 0 on a report whose tests have no activities at all.
+    func testFailedActivitiesQueryRecordsAFault() throws {
+        let url = try XCTUnwrap(
+            Bundle.testBundle.url(forResource: "SanityResults", withExtension: "xcresult")
+        )
+
+        // Passes everything through to the real tool except `activities`,
+        // which always fails.
+        struct ActivitiesFailingClient: XCResultToolInvoking {
+            let wrapped: XCResultToolClient
+
+            var bundleDescription: String {
+                wrapped.bundleDescription
+            }
+
+            func run(_ arguments: [String]) throws -> Data {
+                try wrapped.run(arguments)
+            }
+
+            func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
+                if arguments.contains("activities") {
+                    throw XCResultToolError.executionFailed(
+                        arguments: arguments, status: 1, stderr: "injected failure"
+                    )
+                }
+                return try wrapped.json(arguments, as: type)
+            }
+        }
+
+        let collector = FaultCollector()
+        let reader = ModernResultReader(
+            client: ActivitiesFailingClient(wrapped: XCResultToolClient(bundleURL: url)),
+            payloadStore: nil,
+            faultCollector: collector
+        )
+        let result = try XCTUnwrap(reader.read())
+
+        // The read still succeeds — degraded, not aborted.
+        XCTAssertFalse(testCases(in: result).isEmpty)
+        XCTAssertTrue(
+            collector.faults.contains { $0.kind == .missingActivities },
+            "A failed activities query must be reported, not swallowed"
+        )
+    }
+
+    /// A decodable document with no destinations is a failed read, not an
+    /// empty report: nil routes it to `.missingInvocationRecord` and exit 3,
+    /// exactly like the legacy reader's no-runs case.
+    func testEmptyButDecodableDocumentReadsAsNil() throws {
+        struct EmptyDocumentClient: XCResultToolInvoking {
+            var bundleDescription: String {
+                "Empty.xcresult"
+            }
+
+            func run(_: [String]) throws -> Data {
+                Data("{\"devices\":[],\"testNodes\":[]}".utf8)
+            }
+
+            func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
+                try JSONDecoder().decode(type, from: run(arguments))
+            }
+        }
+
+        let reader = ModernResultReader(
+            client: EmptyDocumentClient(),
+            payloadStore: nil,
+            faultCollector: FaultCollector()
+        )
+        XCTAssertNil(reader.read())
+    }
+
+    /// The trap the spec names: fields the modern backend structurally cannot
+    /// provide — attachment display names, activity types, suite durations,
+    /// finish times — must never fault. A full modern-path render of every
+    /// fixture, attachments and logs included, has to come out clean, or
+    /// every modern run exits 3.
+    func testModernRenderOfEveryFixtureRecordsNoFaults() throws {
+        for resource in ["TestResults", "SanityResults", "RetryResults"] {
+            let source = try XCTUnwrap(
+                Bundle.testBundle.url(forResource: resource, withExtension: "xcresult")
+            )
+            // Copy: rendering in linking mode writes payloads and logs into
+            // the bundle directory.
+            let copy = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathComponent(source.lastPathComponent)
+            try FileManager.default.createDirectory(
+                at: copy.deletingLastPathComponent(), withIntermediateDirectories: true
+            )
+            try FileManager.default.copyItem(at: source, to: copy)
+
+            let collector = FaultCollector()
+            let client = XCResultToolClient(bundleURL: copy)
+            let store = ModernPayloadStore(
+                client: client, bundleURL: copy, faultCollector: collector
+            )
+            let reader = ModernResultReader(
+                client: client, payloadStore: store, faultCollector: collector
+            )
+            let parsed = try XCTUnwrap(reader.read(), "\(resource) must read")
+
+            let runs = parsed.runs.enumerated().compactMap { index, run in
+                Run(
+                    run: run,
+                    identifierPath: IdentifierPath.root
+                        .appending("bundle0")
+                        .appending("action\(index)"),
+                    file: store,
+                    renderingMode: .linking,
+                    downsizeImagesEnabled: false,
+                    downsizeScaleFactor: 1
+                )
+            }
+            XCTAssertFalse(runs.isEmpty, "\(resource) must render at least one run")
+
+            let unresolved = runs.flatMap(\.allAttachments).filter(\.failedToResolve)
+            XCTAssertTrue(
+                unresolved.isEmpty,
+                "\(resource): attachments failed to resolve on the modern path: "
+                    + unresolved.map(\.faultDescription).joined(separator: ", ")
+            )
+            XCTAssertTrue(
+                collector.faults.isEmpty,
+                "\(resource): modern render must be fault-free, got \(collector.faults)"
+            )
+        }
+    }
+}

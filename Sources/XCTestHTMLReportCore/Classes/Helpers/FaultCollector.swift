@@ -20,6 +20,10 @@ public struct Fault: Equatable {
         /// `Summary.validate()` after the model is assembled, which catches
         /// nested decode failures that the call sites below cannot see.
         case unresolvedAttachment
+        /// The activity tree for a test could not be read, so the test appears
+        /// in the report with no activities. A genuine read failure, distinct
+        /// from a backend that structurally cannot provide a field.
+        case missingActivities
         /// XCResultKit could not produce an attachment's payload, or the
         /// exported file could not be moved into the bundle. The attachment is
         /// missing from the report.

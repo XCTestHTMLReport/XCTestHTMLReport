@@ -23,7 +23,7 @@ public enum LegacyCapability {
 
 // MARK: - XCResultToolError
 
-enum XCResultToolError: Error, CustomStringConvertible {
+enum XCResultToolError: Error, CustomStringConvertible, LocalizedError {
     case executionFailed(arguments: [String], status: Int32, stderr: String)
     case decodingFailed(arguments: [String], underlying: Error)
 
@@ -36,6 +36,13 @@ enum XCResultToolError: Error, CustomStringConvertible {
         case let .decodingFailed(arguments, underlying):
             return "Could not decode xcresulttool \(arguments.joined(separator: " ")): \(underlying)"
         }
+    }
+
+    /// Faults and log lines surface these through `localizedDescription`,
+    /// which without this conformance is the generic "The operation couldn't
+    /// be completed" instead of the diagnosis above.
+    var errorDescription: String? {
+        description
     }
 }
 
