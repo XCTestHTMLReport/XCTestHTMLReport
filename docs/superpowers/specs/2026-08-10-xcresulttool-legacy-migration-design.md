@@ -2,6 +2,14 @@
 
 Design spec for [#391](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/391). Milestone 4.0.
 
+> **Status (2026-08-12): phases 1–5 have landed** — the port and legacy
+> reader (#443), the modern reader and payload store (#447), backend
+> selection (#448), the differential and forced-modern CI leg (#450), and
+> `--json` on the documented schema with the 4.0 release notes drafted
+> (this phase's PR). Phase 6 — removing XCResultKit and the legacy reader —
+> is **deliberately deferred until Apple removes the legacy commands**: the
+> differential only proves the modern reader right while both paths exist.
+
 > Originally written against milestone 3.0, inherited from #391's label. 3.0.0
 > shipped on 2026-08-07, so the breaking changes here — the `--json` schema and
 > the declared output diff — land in 4.0. The migration shares that major with a
@@ -543,6 +551,35 @@ backend-internal, so the names could never agree. Both now write
 uses): identical across backends by construction, and unique per run, so a
 multi-action bundle gets one log per action instead of last-writer-wins. 4.0
 release note: the log file's on-disk name changes.
+
+### Task 14 execution rules (2026-08-12)
+
+Deriving `--json` from the model made one asymmetry visible that the HTML
+differential structurally cannot see, because nothing renders it. Same
+doctrine as Task 12's rules: agree by construction, never model what only
+one backend can fill, and no allow-list entry was added.
+
+**A single execution carries no repetition information.** Under a
+retry-enabled test plan the legacy format stamps *every* test summary with a
+`repetitionPolicySummary` — a test that ran once reports "iteration 1" of a
+policy that never fired — while the modern format emits `Repetition`
+children only when there was more than one run. A lone iteration number
+renders nowhere (the HTML differential is green across the asymmetry), but
+`--json` emits the model, so it surfaced there: legacy `1` against modern
+`null` on every single-run test in `RetryResults`. The legacy reader strips
+the number from a lone iteration (`strippingLoneIterationNumber`); true
+repetitions always come in twos or more and keep theirs. Pinned by
+`LegacyResultReaderTests` on `testJustPass()`.
+
+**Schema identity is per node type, not per document position.** The wire
+tree is recursive, and the `wrapperGroups` loss means legacy alone places
+group nodes at nested positions — so raw key-path sets differ between
+backends on every fixture, for a permitted class-1 reason. The `--json`
+schema-identity test therefore collapses the recursion edges
+(`groups`/`children` unify, consecutive `subActivities` collapse) before
+comparing: what is asserted is that a group carries the same keys on both
+backends and a test case carries the same keys on both backends, at
+whatever depth a node sits — which is what the contract promises.
 
 ## `--json` becomes our own schema
 
