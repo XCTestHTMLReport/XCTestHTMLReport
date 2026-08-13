@@ -58,4 +58,38 @@ final class SummarySeamTests: XCTestCase {
             "Two renders of one fixture must agree byte for byte"
         )
     }
+
+    /// `SyntheticResultTests.testCoversHostileAttachmentFilename` proves the
+    /// *fixture* contains a filename with `"` `'` `<` `>` `&`. This proves
+    /// the *render* escapes it — and it does not: `HTMLTemplates.swift`
+    /// interpolates the raw filename into `onclick="showText('[[SOURCE]]')"`
+    /// with no attribute escaping, so the embedded `"` breaks out of the
+    /// `onclick` attribute early. The committed goldens already contain the
+    /// broken markup this produces.
+    ///
+    /// This is a known, pre-existing HTML-injection defect in
+    /// `HTMLTemplates.swift` / `Attachment.swift`, out of scope to fix here.
+    /// `XCTExpectFailure` records it without turning the suite red: today it
+    /// passes-as-expected-failure, and the moment someone fixes the
+    /// escaping, this assertion starts succeeding, `XCTExpectFailure` turns
+    /// that into a *failure* (an unexpectedly-passing expected failure), and
+    /// the fix has to update this test — which is the signal that the
+    /// defect is gone.
+    func testHostileAttachmentFilenameDoesNotBreakOutOfAttribute() {
+        XCTExpectFailure("""
+        Known defect: HTMLTemplates.swift does not attribute-escape \
+        attachment filenames, so a filename containing a double quote \
+        breaks out of the onclick="showText('...')" attribute. Fixing the \
+        escaping in HTMLTemplates.swift / Attachment.swift is out of scope \
+        here; when it is fixed, this test will start passing and should be \
+        promoted out of XCTExpectFailure.
+        """)
+
+        let html = summary().generatedHtmlReport()
+        XCTAssertFalse(
+            html.contains("onclick=\"showText('FileName with DoubleQuote\""),
+            "the rendered attribute must not let the filename's embedded "
+                + "double quote terminate the onclick attribute early"
+        )
+    }
 }
