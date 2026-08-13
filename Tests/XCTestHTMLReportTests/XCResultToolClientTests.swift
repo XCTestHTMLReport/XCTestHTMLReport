@@ -33,6 +33,19 @@ final class XCResultToolClientTests: XCTestCase {
         )
     }
 
+    func testErrorsCarryTheirDescriptionThroughLocalizedError() throws {
+        // Callers surface these through `error.localizedDescription` (Logger,
+        // faults). Without `LocalizedError` that prints the generic
+        // "The operation couldn't be completed" instead of the diagnosis.
+        let error = XCResultToolError.executionFailed(
+            arguments: ["get", "test-results", "tests"],
+            status: 64,
+            stderr: "unknown option"
+        )
+        XCTAssertEqual(error.localizedDescription, error.description)
+        try XCTAssertContains(error.localizedDescription, "exited 64")
+    }
+
     func testLegacyAvailabilityIsDetectable() {
         // Not asserting a value: it is true on today's toolchains and false
         // once Apple removes the legacy commands. Asserting either would make
