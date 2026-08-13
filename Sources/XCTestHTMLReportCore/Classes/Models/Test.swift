@@ -93,7 +93,12 @@ public struct TestGroup: Test {
             return .success
         }
 
-        for s: Status in [.failure, .mixed, .skipped] {
+        // Precedence, so `.expectedFailure` sits last: a suite holding a real
+        // failure is a failed suite whatever else it holds. Added with the
+        // status itself (#439) — without it a suite whose every test is an
+        // expected failure fell through to `.unknown`, the one value that
+        // means "we could not tell", while each of its rows said otherwise.
+        for s: Status in [.failure, .mixed, .skipped, .expectedFailure] {
             if subTests.contains(where: { $0.status == s }) {
                 return s
             }
