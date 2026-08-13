@@ -257,7 +257,13 @@ The suite is doing its job when:
   Layer 3 assertion 1 — confirmed by trying it, not assumed.
 - Deliberately darkening `--color-text-muted` past the floor fails
   assertion 2.
-- Layers 1 and 2 run with no simulator and no `.xcresult` present.
+- Layers 1 and 2 run with no simulator and no `.xcresult` present. Verified by
+  parking only the three `.xcresult` bundles: `Package.swift` also declares
+  `Resources/differential-allowlist.json`, and SwiftPM synthesizes
+  `Bundle.module` — which `TestSupport.swift` references unconditionally — only
+  when at least one declared resource resolves. Removing the whole `Resources`
+  directory therefore breaks the test target's build for a packaging reason
+  unrelated to these tests.
 - The retroactive diff produces a definite verdict on #455 either way. "No
   output" is a failed capture, not a pass — the harness header already warns
   that `diff -r` reports two partial directories as identical.
