@@ -917,8 +917,11 @@ struct HTMLTemplates
         padding-left: var(--space-sm);
       }
 
-      /* The longest of the four fields and the least useful on a phone. */
-      .device-identifier {
+      /* The longest of the four fields and the least useful on a phone.
+         Qualified by the ID above deliberately: a bare `.device-identifier`
+         loses the cascade to `#info-sections ul li`'s `display: inline`
+         a dozen lines up, and the field stays on screen. */
+      #info-sections ul li.device-identifier {
         display: none;
       }
 

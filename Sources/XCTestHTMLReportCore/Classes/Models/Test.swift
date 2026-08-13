@@ -8,7 +8,10 @@
 
 import Foundation
 
-enum Status: String {
+/// `CaseIterable` so `StatusCSSClassTests` can assert its table covers every
+/// case: a status added without a `cssClass` draws no glyph at all, which is
+/// how `.expectedFailure` went unnoticed until #439.
+enum Status: String, CaseIterable {
     case unknown = ""
     case failure = "Failure"
     case success = "Success"
