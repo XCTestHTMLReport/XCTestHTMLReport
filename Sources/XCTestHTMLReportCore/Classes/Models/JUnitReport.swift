@@ -183,7 +183,13 @@ private extension JUnitReport.TestCase {
             state = .skipped
         case .mixed:
             state = .mixed
-        case .unknown:
+        case .expectedFailure, .unknown:
+            // #439 gave expected failures their own `Status` so the HTML can
+            // draw them a glyph of their own. That is a rendering change and
+            // stops there: JUnit has no expected-failure state, and the two
+            // have been reported as `unknown` here since long before the
+            // distinction existed. Splitting them is a JUnit-consumer
+            // decision, not a side effect of the redesign.
             state = .unknown
         }
         /// Activities can be nested in infinite levels so here everything should be flatted
@@ -231,7 +237,10 @@ private extension JUnitReport.TestCase {
 private extension Iteration {
     var didFail: Bool {
         switch status {
-        case .success, .skipped, .mixed, .unknown:
+        // An expected failure is the one outcome that is a failure by
+        // construction and not a failure by result, so it groups with the
+        // non-fatal states exactly as it did while it was `.unknown`.
+        case .success, .skipped, .mixed, .unknown, .expectedFailure:
             false
         case .failure:
             true

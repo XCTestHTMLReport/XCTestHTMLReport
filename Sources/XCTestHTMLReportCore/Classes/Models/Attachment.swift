@@ -105,30 +105,40 @@ enum AttachmentType: String {
     }
 }
 
+/// An attachment's name as the xcresult recorded it, split by whether a human
+/// chose it.
+///
+/// XCTest fills the field in itself for attachments the framework creates —
+/// `kXCTAttachmentScreenRecording`, `kXCTAttachmentLegacyScreenImageData` and
+/// the rest of the `kXCT…` family — and those are internal identifiers, not
+/// labels: the audit found `kXCTAttachmentScreenRecording` printed verbatim in
+/// the UI where Xcode shows "Screen recording". Matching the whole family by
+/// prefix rather than enumerating it means a constant Apple adds later is
+/// caught the day it appears instead of the day someone notices it on screen.
+///
+/// The distinction is deliberately drawn from the name alone, which is a field
+/// both backends have. Anything richer (asking whether the attachment came
+/// from the screenshot machinery, say) exists only on legacy, and would make
+/// the two backends label the same attachment differently.
 enum AttachmentName: RawRepresentable {
-    enum Constant: String {
-        case kXCTAttachmentLegacyScreenImageData
-    }
-
-    case constant(Constant)
+    /// A name XCTest generated for itself. Never shown.
+    case `internal`(String)
+    /// A name the test author passed to `XCTAttachment.name`.
     case custom(String)
+
+    private static let internalPrefix = "kXCT"
 
     var rawValue: String {
         switch self {
-        case let .constant(constant):
-            return constant.rawValue
-        case let .custom(rawValue):
+        case let .internal(rawValue), let .custom(rawValue):
             return rawValue
         }
     }
 
     init(rawValue: String) {
-        guard let constant = Constant(rawValue: rawValue) else {
-            self = .custom(rawValue)
-            return
-        }
-
-        self = .constant(constant)
+        self = rawValue.hasPrefix(Self.internalPrefix)
+            ? .internal(rawValue)
+            : .custom(rawValue)
     }
 }
 
@@ -217,12 +227,22 @@ struct Attachment: HTML {
         return "\(label) (payload id \(payloadId))"
     }
 
+    /// The label an attachment carries when no human named it.
+    ///
+    /// Derived from `type`, which both backends set from the same fact (the
+    /// payload's filename extension), so the same attachment reads the same
+    /// on either — the one property this vocabulary has to have. Modern
+    /// xcresults never carry a user-supplied name at all, so for them this
+    /// is not a fallback, it is the label.
     var fallbackDisplayName: String {
         switch type {
         case .png, .jpeg, .heic:
             return "Screenshot"
         case .gif:
-            return "Gif"
+            // "Gif" was a file format shouted at the reader; the row is
+            // already labelled by an image glyph and the extension is in the
+            // preview link.
+            return "Image"
         case .mp4:
             return "Video"
         case .text, .html, .data, .log, .zip:
@@ -246,11 +266,16 @@ struct Attachment: HTML {
         }
     }
 
+    /// What the report prints for this attachment.
+    ///
+    /// A name only reaches the UI when a test author wrote it. Everything
+    /// else — an unnamed attachment, or one XCTest named for itself — gets
+    /// the type-derived label, so no `kXCT…` identifier can be rendered.
     var displayName: String {
         switch name {
         case let .some(.custom(customName)):
             return customName
-        default:
+        case .some(.internal), .none:
             return fallbackDisplayName
         }
     }

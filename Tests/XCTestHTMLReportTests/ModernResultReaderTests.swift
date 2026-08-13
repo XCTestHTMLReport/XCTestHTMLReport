@@ -75,16 +75,37 @@ final class ModernResultReaderTests: XCTestCase {
         XCTAssertEqual(ModernResultReader.status(nil), .unknown)
     }
 
-    func testExpectedFailureStillRendersAsUnknown() throws {
-        let unknownState = try XCTUnwrap(
+    /// Replaces `testExpectedFailureStillRendersAsUnknown`, which pinned the
+    /// flattening this test now pins the removal of.
+    ///
+    /// That pin was correct while the port was the only thing in flight: the
+    /// model named the state, the renderer folded it into `.unknown`, and
+    /// holding the renderer still was how the differential stayed meaningful.
+    /// #439 is the change that pin was waiting for — an expected failure has
+    /// a `Status` of its own so the stylesheet can draw it a glyph, instead
+    /// of the empty class that rendered a blank status cell.
+    ///
+    /// What deliberately did *not* change is where the state comes from: both
+    /// readers already mapped xcresult's `Expected Failure`, so this is a
+    /// rendering change and neither backend moved. (The fixture's name is a
+    /// misnomer inherited from before anyone checked — `testInUnknownState`
+    /// is an `XCTExpectFailure`, and is the row the audit reported as an
+    /// unknown-status blank.)
+    func testExpectedFailureCarriesItsOwnStatus() throws {
+        let expectedFailure = try XCTUnwrap(
             try testCases(in: read("RetryResults"))
                 .first { $0.identifier == "RetryTests/testInUnknownState()" }
         )
-        // The model names the state; the renderer still flattens it to
-        // .unknown, which is what both backends do today. Preserve that
-        // rather than "fixing" it here.
-        XCTAssertEqual(unknownState.iterations[0].status, .expectedFailure)
-        XCTAssertNil(Status(rawValue: "Expected Failure"))
+        XCTAssertEqual(expectedFailure.iterations[0].status, .expectedFailure)
+        XCTAssertEqual(Status(rawValue: "Expected Failure"), Status.expectedFailure)
+        XCTAssertEqual(
+            Status(.expectedFailure).cssClass, "expected-failure",
+            "The class the stylesheet hangs the expected-failure glyph on"
+        )
+        XCTAssertNotEqual(
+            Status(.expectedFailure), Status(.unknown),
+            "Folding these together is what produced the blank cell"
+        )
     }
 
     func testParameterizedTestCarriesItsArguments() throws {
