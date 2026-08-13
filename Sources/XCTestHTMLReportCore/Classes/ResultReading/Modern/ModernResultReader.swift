@@ -159,35 +159,49 @@ struct ModernResultReader: ResultReader {
 
         let iterations: [ParsedIteration]
         if repetitions.isEmpty {
+            let status = Self.status(node.result)
             iterations = [ParsedIteration(
                 iterationNumber: nil,
-                status: Self.status(node.result),
+                status: status,
                 duration: node.durationInSeconds ?? 0,
-                activities: mergingFailureMessages(
+                activities: hoistingFailureRows(joiningFailureMessages(
                     failureMessages(of: node),
-                    into: activities(for: identifier, iteration: nil)
-                )
+                    into: activities(for: identifier, iteration: nil),
+                    status: status
+                ))
             )]
         } else {
             // The parent node's own `result` summarises the retries and is not
             // the legacy status: a test that failed then passed reports
             // "Passed" here while legacy reports mixed. Derive from children.
             iterations = repetitions.enumerated().map { index, repetition in
-                ParsedIteration(
+                let status = Self.status(repetition.result)
+                return ParsedIteration(
                     iterationNumber: repetition.nodeIdentifier.flatMap(Int.init)
                         ?? (index + 1),
-                    status: Self.status(repetition.result),
+                    status: status,
                     duration: repetition.durationInSeconds ?? 0,
-                    activities: mergingFailureMessages(
+                    activities: hoistingFailureRows(joiningFailureMessages(
                         failureMessages(of: repetition),
-                        into: activities(for: identifier, iteration: index)
-                    )
+                        into: activities(for: identifier, iteration: index),
+                        status: status
+                    ))
                 )
             }
         }
 
         return ParsedTestCase(
-            name: node.name ?? "",
+            // The identifier's last component, not `node.name`. For XCTest the
+            // two are the same string; for Swift Testing `node.name` is the
+            // `@Test` display name ("Tagged multiplication check"), which the
+            // legacy format cannot see. A name only one backend can fill does
+            // not belong in the port (the same rule that removed
+            // `activityType`), so both readers carry the function-form name
+            // the identifier gives them. The display name is deliberately
+            // unused until the redesign models it.
+            name: identifier.isEmpty
+                ? (node.name ?? "")
+                : (identifier.components(separatedBy: "/").last ?? node.name ?? ""),
             identifier: identifier,
             arguments: Self.arguments(of: node),
             iterations: iterations
@@ -198,85 +212,6 @@ struct ModernResultReader: ResultReader {
         (node.children ?? [])
             .filter { $0.nodeType == "Failure Message" }
             .compactMap(\.name)
-    }
-
-    /// Joins the tests document's `Failure Message` nodes onto the activity
-    /// tree.
-    ///
-    /// Both documents describe the same failure, each holding half of it. The
-    /// `Failure Message` node keeps the `file:line` prefix
-    /// (`"FirstSuite.swift:86: XCTAssertTrue failed - Test failed"`) but has
-    /// no timestamp; the activities document reports the failure as a
-    /// failure-flagged activity row — positioned and timestamped, nested
-    /// inside the user's own activity when the assertion fired there — but
-    /// drops the prefix. Sourcing titles from activities loses `file:line`
-    /// everywhere; appending messages unconditionally renders two rows per
-    /// failure.
-    ///
-    /// So: each message claims the first failure-flagged activity — pre-order,
-    /// document order, first-unmatched-first, which pairs repeated identical
-    /// assertions deterministically — whose title is an exact suffix of the
-    /// message, and that activity is retitled with the message as given,
-    /// keeping its position, nesting, start, attachments and children. The
-    /// string is never parsed apart: rebuilding `fileName`/`lineNumber` from
-    /// it would put visible UI on an inferred parse of a format Apple can
-    /// reformat without notice (see the spec's "Failure location").
-    ///
-    /// Messages that match nothing still append as failure rows at the end —
-    /// skip reasons and expected-failure notes ride the same node type, and
-    /// their activity twins are not failure-flagged, so they have no row to
-    /// claim and no timestamp to interleave on.
-    private func mergingFailureMessages(
-        _ messages: [String],
-        into activities: [ParsedActivity]
-    ) -> [ParsedActivity] {
-        guard !messages.isEmpty else {
-            return activities
-        }
-
-        var candidates: [(path: [Int], title: String)] = []
-        func collect(_ activities: [ParsedActivity], _ prefix: [Int]) {
-            for (index, activity) in activities.enumerated() {
-                let path = prefix + [index]
-                if activity.isFailure, !activity.title.isEmpty {
-                    candidates.append((path, activity.title))
-                }
-                collect(activity.subActivities, path)
-            }
-        }
-        collect(activities, [])
-
-        var retitles: [[Int]: String] = [:]
-        var appended: [ParsedActivity] = []
-        for message in messages {
-            if let match = candidates.first(where: {
-                retitles[$0.path] == nil && message.hasSuffix($0.title)
-            }) {
-                retitles[match.path] = message
-            } else {
-                appended.append(ParsedActivity(
-                    title: message,
-                    isFailure: true,
-                    start: nil,
-                    attachments: [],
-                    subActivities: []
-                ))
-            }
-        }
-
-        func rebuild(_ activities: [ParsedActivity], _ prefix: [Int]) -> [ParsedActivity] {
-            activities.enumerated().map { index, activity in
-                let path = prefix + [index]
-                return ParsedActivity(
-                    title: retitles[path] ?? activity.title,
-                    isFailure: activity.isFailure,
-                    start: activity.start,
-                    attachments: activity.attachments,
-                    subActivities: rebuild(activity.subActivities, path)
-                )
-            }
-        }
-        return (retitles.isEmpty ? activities : rebuild(activities, [])) + appended
     }
 
     /// One `activities` subprocess per exact test-case id — suite and bundle
@@ -295,7 +230,7 @@ struct ModernResultReader: ResultReader {
             let run: TestActivities.TestRun? = iteration
                 .flatMap { index in runs.indices.contains(index) ? runs[index] : nil }
                 ?? runs.first
-            return (run?.activities ?? []).map(parseActivity)
+            return (run?.activities ?? []).map { parseActivity(pruning: $0) }
         } catch {
             // A failed activities query is a genuine read failure, not a
             // format limitation: the test renders with no activities at all.
@@ -306,13 +241,61 @@ struct ModernResultReader: ResultReader {
         }
     }
 
-    private func parseActivity(_ node: ActivityNode) -> ParsedActivity {
-        ParsedActivity(
+    /// Translates an activity node, dropping two families of bookkeeping rows
+    /// Xcode 26.2 nests inside real activities and the legacy tree never had:
+    ///
+    /// 1. **Symbol annotations** — children with no `startTime`, titled with
+    ///    the failing frame (`RetryTests.testJustFail()`, `closure #1 in …`).
+    ///    The timeline model orders on `start` (answer 1); a row without one
+    ///    is an annotation, not an event. A no-start row that carries
+    ///    attachments, a failure flag, or surviving children is **kept**, not
+    ///    dropped: dropping content because a future format variant stopped
+    ///    stamping times would silently gut real data, and rendering it
+    ///    unordered is the lesser harm.
+    ///
+    /// 2. **Attachment shadows** — for every attachment the document also
+    ///    emits one childless, non-failure child row whose `startTime` equals
+    ///    the attachment's `timestamp` (its title is the attachment's
+    ///    user-supplied name, which the spec deliberately does not mine — see
+    ///    "Reconstructing lost fields by heuristic"). The row is the
+    ///    attachment's shadow, so it is claimed by the timestamp join and
+    ///    dropped, mirroring the failure-message join below. The leaf and
+    ///    non-failure guards are load-bearing: a genuine failure row can share
+    ///    the attachment's millisecond (observed on
+    ///    `testWithSpecialChars()`), and must survive.
+    private func parseActivity(pruning node: ActivityNode) -> ParsedActivity {
+        let attachmentTimes = Set((node.attachments ?? []).compactMap(\.timestamp))
+        let children: [ParsedActivity] = (node.childActivities ?? []).compactMap { child in
+            let parsed = parseActivity(pruning: child)
+            let hasContent = parsed.isFailure || !parsed.attachments.isEmpty
+                || !parsed.subActivities.isEmpty
+            guard !hasContent else {
+                return parsed
+            }
+            if child.startTime == nil {
+                return nil // symbol annotation
+            }
+            if let start = child.startTime, attachmentTimes.contains(start) {
+                return nil // attachment shadow
+            }
+            return parsed
+        }
+        // Tip-of-chain, not the raw flag: the new format sets
+        // `isAssociatedWithFailure` on every ancestor of a failure, while the
+        // port's `isFailure` means "this row IS the assertion row". The tip is
+        // the flagged node with no flagged children; containers revert to
+        // plain activities, and the renderer derives containment itself. A
+        // chain with several assertion rows has several tips — each flagged
+        // node without flagged children qualifies independently.
+        let flagged = node.isAssociatedWithFailure ?? false
+        let childFlagged = (node.childActivities ?? [])
+            .contains { $0.isAssociatedWithFailure ?? false }
+        return ParsedActivity(
             title: node.title ?? "",
-            isFailure: node.isAssociatedWithFailure ?? false,
+            isFailure: flagged && !childFlagged,
             start: node.startTime.map { Date(timeIntervalSince1970: $0) },
             attachments: (node.attachments ?? []).map(parseAttachment),
-            subActivities: (node.childActivities ?? []).map(parseActivity)
+            subActivities: children
         )
     }
 
@@ -327,10 +310,19 @@ struct ModernResultReader: ResultReader {
             .map { ($0 as NSString).pathExtension.lowercased() }
             .first { !$0.isEmpty }
         return ParsedAttachment(
-            // `name` in the new format holds what legacy calls `filename`; the
-            // user-supplied name is not exposed. Report it as filename only.
+            // The user-supplied name is not exposed by the new format; the
+            // display name falls back to the type-derived label (the
+            // `attachmentDisplayNames` allow-list entry).
             name: nil,
-            filename: attachment.name,
+            // Content-addressed, not `attachment.name`: Xcode 26.2 gives every
+            // auto screen recording in a session one shared display name, so
+            // naming exports after it collapsed distinct payloads onto one
+            // path and raced concurrent copies (#449). `payloadId` is the same
+            // CAS id legacy calls `payloadRef.id`, so both backends derive the
+            // identical name — see `ParsedAttachment.exportFileName`.
+            filename: attachment.payloadId.map {
+                ParsedAttachment.exportFileName(payloadId: $0, filenameExtension: ext)
+            },
             filenameExtension: ext,
             payloadReference: attachment.uuid
         )

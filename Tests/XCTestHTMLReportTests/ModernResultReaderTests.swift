@@ -149,9 +149,12 @@ final class ModernResultReaderTests: XCTestCase {
     }
 
     /// The retried test's assertion fires inside the user's own activity, so
-    /// the activities document nests the failure row. The join must retitle it
-    /// in place — nested, positioned, timestamped — not append a duplicate.
-    func testNestedRetryFailureIsRetitledInPlace() throws {
+    /// the activities document nests the failure row. The join retitles it,
+    /// and the hoist then moves it to the top level — positioned by its own
+    /// timestamp through the shared interleave — because the legacy format
+    /// cannot nest failure rows and re-nesting legacy's by time window was
+    /// tested and rejected (windows collide at millisecond granularity).
+    func testNestedRetryFailureIsRetitledAndHoisted() throws {
         let retried = try XCTUnwrap(
             try testCases(in: read("RetryResults"))
                 .first { $0.identifier == "RetryTests/testRetryOnFailure()" }
@@ -161,15 +164,39 @@ final class ModernResultReaderTests: XCTestCase {
             firstAttempt.activities.first { $0.title == "Retryable Activity" },
             "The user-created activity must survive translation"
         )
-        let nested = try XCTUnwrap(
-            flattened(wrapper.subActivities).first { $0.isFailure },
-            "The failure row stays nested under the activity it fired in"
+        XCTAssertFalse(
+            wrapper.isFailure,
+            "The container is not the assertion row; only the tip of the flagged chain is"
         )
         XCTAssertTrue(
-            nested.title.hasPrefix("RetryTests.swift:"),
-            "Nested failure rows are retitled from the Failure Message node too — got '\(nested.title)'"
+            flattened(wrapper.subActivities).isEmpty,
+            "The failure row must be hoisted out of the activity it fired in"
         )
-        // And nothing appended a second copy at the top level.
+
+        let hoisted = try XCTUnwrap(
+            firstAttempt.activities.first(where: \.isFailure),
+            "The hoisted failure row surfaces at the top level"
+        )
+        XCTAssertTrue(
+            hoisted.title.hasPrefix("RetryTests.swift:"),
+            "Hoisted failure rows are retitled from the Failure Message node too — got '\(hoisted.title)'"
+        )
+        XCTAssertNotNil(
+            hoisted.start,
+            "The hoisted row keeps its own timestamp; the shared interleave positions it"
+        )
+        // Positioned where it occurred: the assertion fired during the
+        // user-created activity, so start-keyed interleaving puts the row
+        // right after it, not at the end of the test.
+        let titles = firstAttempt.activities.map(\.title)
+        let wrapperIndex = try XCTUnwrap(titles.firstIndex(of: "Retryable Activity"))
+        let failureIndex = try XCTUnwrap(titles
+            .firstIndex(where: { $0.hasPrefix("RetryTests.swift:") }))
+        XCTAssertEqual(
+            failureIndex, wrapperIndex + 1,
+            "Start-keyed interleave places the failure beside the activity it fired in"
+        )
+        // And nothing appended a second copy anywhere.
         XCTAssertEqual(
             flattened(firstAttempt.activities).filter { $0.title.hasSuffix(": failed") }.count,
             1
