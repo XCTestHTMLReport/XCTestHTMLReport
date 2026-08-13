@@ -102,6 +102,42 @@ public struct Summary {
         self.parsedRuns = parsedRuns
     }
 
+    /// Builds a summary from already-parsed runs, bypassing result reading.
+    ///
+    /// #391 made `ParsedResult` the contract between reading and rendering;
+    /// this injects at that boundary rather than bolting a back door onto an
+    /// unrelated type. Tests use it to render from constants, which is what
+    /// makes committed golden files possible at all — renders driven by the
+    /// generated .xcresult fixtures cannot support one, because the fixtures
+    /// are regenerated on every run.
+    ///
+    /// Internal, not public, because `PayloadProviding` is internal.
+    /// `@testable import` reaches it; library consumers keep the path-based
+    /// initialiser.
+    init(
+        parsedRuns: [ParsedRun],
+        payloads: PayloadProviding,
+        renderingMode: RenderingMode,
+        downsizeImagesEnabled: Bool,
+        downsizeScaleFactor: CGFloat,
+        faultCollector: FaultCollector = FaultCollector(),
+        bundleNames: [String] = ["Synthetic"]
+    ) {
+        self.faultCollector = faultCollector
+        self.bundleNames = bundleNames
+        self.parsedRuns = parsedRuns
+        runs = parsedRuns.enumerated().compactMap { index, run in
+            Run(
+                run: run,
+                identifierPath: IdentifierPath.root.appending("run-\(index)"),
+                file: payloads,
+                renderingMode: renderingMode,
+                downsizeImagesEnabled: downsizeImagesEnabled,
+                downsizeScaleFactor: downsizeScaleFactor
+            )
+        }
+    }
+
     /// Bundle file names for the title, in argument order.
     ///
     /// Names, not paths: the title has to survive a bundle moving directories
