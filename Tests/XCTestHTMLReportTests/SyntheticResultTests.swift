@@ -11,8 +11,12 @@ import XCTest
 @testable import XCTestHTMLReportCore
 
 final class SyntheticResultTests: XCTestCase {
-    func testCoversEveryRenderedStatus() {
-        let statuses = SyntheticResult.parsedResult.runs
+    /// Every `ParsedTestCase` in the fixture, flattened out of the
+    /// run/testable/group/child tree. Shared by all three tests below so the
+    /// extraction chain — which `ParsedNode` requires because a group's
+    /// children mix `.group` and `.testCase` cases — is written once.
+    private func allTestCases() -> [ParsedTestCase] {
+        SyntheticResult.parsedResult.runs
             .flatMap(\.testables)
             .flatMap(\.groups)
             .flatMap { group -> [ParsedTestCase] in
@@ -23,6 +27,10 @@ final class SyntheticResultTests: XCTestCase {
                     return nil
                 }
             }
+    }
+
+    func testCoversEveryRenderedStatus() {
+        let statuses = allTestCases()
             .flatMap(\.iterations)
             .map(\.status)
 
@@ -34,17 +42,7 @@ final class SyntheticResultTests: XCTestCase {
     }
 
     func testCoversRetries() {
-        let iterationCounts = SyntheticResult.parsedResult.runs
-            .flatMap(\.testables)
-            .flatMap(\.groups)
-            .flatMap { group -> [ParsedTestCase] in
-                group.children.compactMap {
-                    if case let .testCase(testCase) = $0 {
-                        return testCase
-                    }
-                    return nil
-                }
-            }
+        let iterationCounts = allTestCases()
             .map(\.iterations.count)
 
         XCTAssertTrue(
@@ -54,26 +52,19 @@ final class SyntheticResultTests: XCTestCase {
     }
 
     func testCoversHostileAttachmentFilename() {
-        let filenames = SyntheticResult.parsedResult.runs
-            .flatMap(\.testables)
-            .flatMap(\.groups)
-            .flatMap { group -> [ParsedTestCase] in
-                group.children.compactMap {
-                    if case let .testCase(testCase) = $0 {
-                        return testCase
-                    }
-                    return nil
-                }
-            }
+        let filenames = allTestCases()
             .flatMap(\.iterations)
             .flatMap(\.activities)
             .flatMap(\.attachments)
             .compactMap(\.filename)
 
         XCTAssertTrue(
-            filenames.contains { $0.contains("\"") && $0.contains("<") },
-            "A filename with quotes and angle brackets must be present — it is "
-                + "the escaping path the real fixture covers"
+            filenames.contains {
+                $0.contains("\"") && $0.contains("'") && $0.contains("<")
+                    && $0.contains(">") && $0.contains("&")
+            },
+            "A filename with quotes, angle brackets, and an ampersand must be "
+                + "present — it is the escaping path the real fixture covers"
         )
     }
 }
