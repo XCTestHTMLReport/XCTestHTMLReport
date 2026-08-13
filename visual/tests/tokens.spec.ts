@@ -4,18 +4,27 @@ import { resolve } from 'node:path';
 
 const reportURL = pathToFileURL(resolve(__dirname, '../fixtures/report.html')).href;
 
-/** Every custom property declared on :root, read from the live stylesheet. */
+/** Every custom property declared on :root, read from the live stylesheet.
+ *  Walks nested grouping rules (e.g. @media, @supports, @layer) recursively
+ *  so a :root inside @media (prefers-color-scheme: dark) is not missed. */
 async function declaredTokens(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const names = new Set<string>();
-    for (const sheet of Array.from(document.styleSheets)) {
-      for (const rule of Array.from(sheet.cssRules)) {
-        if (!(rule instanceof CSSStyleRule)) continue;
-        if (!rule.selectorText.split(',').some((s) => s.trim() === ':root')) continue;
-        for (const prop of Array.from(rule.style)) {
-          if (prop.startsWith('--')) names.add(prop);
+    const walk = (rules: CSSRuleList) => {
+      for (const rule of Array.from(rules)) {
+        if (rule instanceof CSSStyleRule) {
+          if (rule.selectorText.split(',').some((s) => s.trim() === ':root')) {
+            for (const prop of Array.from(rule.style)) {
+              if (prop.startsWith('--')) names.add(prop);
+            }
+          }
+        } else if (rule instanceof CSSGroupingRule) {
+          walk(rule.cssRules);
         }
       }
+    };
+    for (const sheet of Array.from(document.styleSheets)) {
+      walk(sheet.cssRules);
     }
     return Array.from(names);
   });
@@ -42,16 +51,22 @@ test('no rule references an undeclared token', async ({ page }) => {
 
   const referenced: string[] = await page.evaluate(() => {
     const names = new Set<string>();
-    for (const sheet of Array.from(document.styleSheets)) {
-      for (const rule of Array.from(sheet.cssRules)) {
-        if (!(rule instanceof CSSStyleRule)) continue;
-        for (const prop of Array.from(rule.style)) {
-          const value = rule.style.getPropertyValue(prop);
-          for (const match of value.matchAll(/var\(\s*(--[\w-]+)/g)) {
-            names.add(match[1]);
+    const walk = (rules: CSSRuleList) => {
+      for (const rule of Array.from(rules)) {
+        if (rule instanceof CSSStyleRule) {
+          for (const prop of Array.from(rule.style)) {
+            const value = rule.style.getPropertyValue(prop);
+            for (const match of value.matchAll(/var\(\s*(--[\w-]+)/g)) {
+              names.add(match[1]);
+            }
           }
+        } else if (rule instanceof CSSGroupingRule) {
+          walk(rule.cssRules);
         }
       }
+    };
+    for (const sheet of Array.from(document.styleSheets)) {
+      walk(sheet.cssRules);
     }
     return Array.from(names);
   });
