@@ -42,7 +42,19 @@ if [[ -n "$swift_staged" ]]; then
     # committed. SwiftLint ignores the config's excluded: list for explicit
     # paths unless told otherwise — --force-exclude keeps exclusions
     # (e.g. HTMLTemplates.swift) in effect here just as they are in CI.
-    staged '*.swift' | xargs -0 swiftlint lint --quiet --force-exclude || fail=1
+    if lint_output="$(staged '*.swift' | xargs -0 swiftlint lint --quiet --force-exclude 2>&1)"; then
+      [[ -n "$lint_output" ]] && printf '%s\n' "$lint_output"
+    elif [[ "$lint_output" == *"No lintable files found"* ]]; then
+      # Every staged Swift file is excluded by .swiftlint.yml (e.g. a commit
+      # touching only HTMLTemplates.swift) — SwiftLint exits nonzero even
+      # though it linted nothing. Zero lintable files means zero possible
+      # violations, so treating exactly this outcome as success cannot hide
+      # a real lint failure; any other nonzero exit still fails below.
+      echo "all staged Swift files are excluded by .swiftlint.yml; nothing to lint"
+    else
+      printf '%s\n' "$lint_output"
+      fail=1
+    fi
   else
     echo "swiftlint not installed; skipping (brew install swiftlint)"
   fi
