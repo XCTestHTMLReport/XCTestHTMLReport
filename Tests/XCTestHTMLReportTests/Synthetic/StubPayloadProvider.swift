@@ -19,6 +19,11 @@ struct StubPayloadProvider: PayloadProviding {
 
     static let plainText = Data("synthetic attachment body\n".utf8)
 
+    /// A run's console/test log. Short, fixed, and recognisable so a rendered
+    /// page can be asserted to contain it, the same way `onePixelPNG` and
+    /// `plainText` back attachment assertions.
+    static let logText = Data("Synthetic run log line one\nSynthetic run log line two\n".utf8)
+
     let url: URL
     let exports: [String: Data]
 
@@ -38,14 +43,19 @@ struct StubPayloadProvider: PayloadProviding {
         exports[reference]
     }
 
-    /// Not exercised by Task 1's tests (only screenshot attachments flow
-    /// through `exportPayload`/`exportPayloadData`), but required for
-    /// `PayloadProviding` conformance.
-    func exportLogs(reference _: String, fileName _: String) -> URL? {
-        nil
+    /// Mirrors `exportPayload`: resolves from the same `exports` map keyed by
+    /// reference, and — like `exportPayload` — never touches the filesystem.
+    /// The returned URL is a stand-in for where the log would be written, not
+    /// a promise that anything is there.
+    func exportLogs(reference: String, fileName: String) -> URL? {
+        guard exports[reference] != nil else {
+            return nil
+        }
+        return URL(fileURLWithPath: fileName, relativeTo: url)
     }
 
-    func exportLogsData(reference _: String) -> Data? {
-        nil
+    /// Mirrors `exportPayloadData`.
+    func exportLogsData(reference: String) -> Data? {
+        exports[reference]
     }
 }

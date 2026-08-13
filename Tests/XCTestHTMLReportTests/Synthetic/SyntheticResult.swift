@@ -11,11 +11,13 @@ import Foundation
 enum SyntheticResult {
     static let pngReference = "payload-png"
     static let textReference = "payload-text"
+    static let logReference = "payload-log"
 
     static var payloads: StubPayloadProvider {
         StubPayloadProvider(exports: [
             pngReference: StubPayloadProvider.onePixelPNG,
             textReference: StubPayloadProvider.plainText,
+            logReference: StubPayloadProvider.logText,
         ])
     }
 
@@ -163,7 +165,7 @@ enum SyntheticResult {
                 modelName: "Synthetic Model",
                 operatingSystemVersion: "1.0"
             ),
-            logReference: nil,
+            logReference: logReference,
             testables: [ParsedTestable(targetName: "SyntheticTests", groups: [group])]
         )
     }
