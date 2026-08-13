@@ -74,3 +74,95 @@ test('no rule references an undeclared token', async ({ page }) => {
   const undeclared = referenced.filter((name) => !declared.has(name));
   expect(undeclared, `referenced but never declared: ${undeclared.join(', ')}`).toEqual([]);
 });
+
+/** WCAG 2.1 relative luminance. */
+function luminance(rgb: [number, number, number]): number {
+  const [r, g, b] = rgb.map((channel) => {
+    const c = channel / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+/**
+ * Resolved foreground/background pairs for every element that carries text.
+ * Discovered from the live cascade rather than a hand-written matrix: a fixed
+ * list stops covering a pairing the moment the redesign introduces one.
+ */
+async function textPairs(page: Page) {
+  return page.evaluate(() => {
+    const parse = (value: string): [number, number, number] | null => {
+      const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+    };
+    const effectiveBackground = (element: Element): [number, number, number] => {
+      let node: Element | null = element;
+      while (node) {
+        const bg = parse(getComputedStyle(node).backgroundColor);
+        const alpha = getComputedStyle(node).backgroundColor.match(/rgba\([^)]*,\s*0\)/);
+        if (bg && !alpha) return bg;
+        node = node.parentElement;
+      }
+      return [255, 255, 255];
+    };
+
+    const results: { selector: string; fg: number[]; bg: number[]; size: number; bold: boolean }[] = [];
+    for (const element of Array.from(document.querySelectorAll('body *'))) {
+      const text = Array.from(element.childNodes)
+        .filter((n) => n.nodeType === Node.TEXT_NODE)
+        .map((n) => n.textContent?.trim() ?? '')
+        .join('');
+      if (!text) continue;
+      const style = getComputedStyle(element);
+      if (style.visibility === 'hidden' || style.display === 'none') continue;
+      const fg = parse(style.color);
+      if (!fg) continue;
+      results.push({
+        selector: element.tagName.toLowerCase() + (element.className ? `.${element.className}` : ''),
+        fg,
+        bg: effectiveBackground(element),
+        size: parseFloat(style.fontSize),
+        bold: Number(style.fontWeight) >= 700,
+      });
+    }
+    return results;
+  });
+}
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`text clears WCAG AA contrast floors in ${scheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto(reportURL);
+
+    const pairs = await textPairs(page);
+    expect(pairs.length, 'no text elements found — the fixture rendered nothing').toBeGreaterThan(0);
+
+    const failures: string[] = [];
+    for (const pair of pairs) {
+      // WCAG "large text": 18.66px bold, or 24px regular.
+      const large = pair.size >= 24 || (pair.bold && pair.size >= 18.66);
+      const floor = large ? 3.0 : 4.5;
+      const ratio = contrastRatio(pair.fg as [number, number, number], pair.bg as [number, number, number]);
+      if (ratio < floor) {
+        failures.push(`${pair.selector}: ${ratio.toFixed(2)}:1 < ${floor}:1`);
+      }
+    }
+    expect(failures, failures.join('\n')).toEqual([]);
+  });
+}
+
+test('dark mode actually changes the palette', async ({ page }) => {
+  const surfaceIn = async (scheme: 'light' | 'dark') => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto(reportURL);
+    return page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim(),
+    );
+  };
+  expect(await surfaceIn('dark')).not.toBe(await surfaceIn('light'));
+});
