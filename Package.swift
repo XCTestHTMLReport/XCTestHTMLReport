@@ -28,9 +28,8 @@ let package = Package(
         ),
         .target(
             name: "XCTestHTMLReportCore",
-            dependencies: ["Rainbow", "XCResultKit"],
-            exclude: ["HTML"]
-        ), // ignore HTML directory resources. They are already imported as static strings.
+            dependencies: ["Rainbow", "XCResultKit"]
+        ),
         .testTarget(
             name: "XCTestHTMLReportTests",
             dependencies: ["XCTestHTMLReport", "SwiftSoup"],
