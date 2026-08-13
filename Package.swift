@@ -33,6 +33,7 @@ let package = Package(
         .testTarget(
             name: "XCTestHTMLReportTests",
             dependencies: ["XCTestHTMLReport", "SwiftSoup"],
+            exclude: ["Snapshots"],
             resources: [
                 .process("Resources/TestResults.xcresult"),
                 .process("Resources/RetryResults.xcresult"),

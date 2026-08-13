@@ -39,8 +39,8 @@ Pull requests are welcome, and greatly encouraged. When submitting a pull reques
 
 ### Building and testing
 
-The test suite runs against real `.xcresult` bundles. Generate them once, then
-run the tests:
+The Swift test suite runs against real `.xcresult` bundles. Generate them once,
+then run the tests:
 
 ```bash
 ./prepareTestResults.sh   # builds the sample app and produces fixtures
@@ -48,11 +48,47 @@ swift test
 ```
 
 `prepareTestResults.sh` picks the newest available iPhone simulator automatically.
-No credentials or secrets are required — CI runs exactly these two commands, so a
-green run locally means a green run on your pull request.
+No credentials or secrets are required for this part.
 
 Regenerate fixtures after upgrading Xcode; `.xcresult` contents change between
 Xcode versions.
+
+`swift test` also runs two other layers that need no `.xcresult` and no
+simulator, because they render from a hand-written synthetic fixture instead:
+
+- **Template snapshots** — `TemplateSnapshotTests` compares rendered HTML
+  against committed goldens in `Tests/XCTestHTMLReportTests/Snapshots/`. If a
+  template change is intentional, refresh the goldens and review the diff
+  before committing:
+
+  ```bash
+  XCHR_UPDATE_SNAPSHOTS=1 swift test --filter TemplateSnapshotTests
+  ```
+
+  A refresh run always fails on purpose (`SnapshotSupport.swift`) — writing a
+  golden proves nothing about whether the new content is correct. Re-run
+  without the environment variable afterwards to get a real verdict.
+
+- **Browser assertions** — `visual/` at the repository root is a separate npm
+  project (Playwright + axe-core) checking things only a browser knows:
+  computed token values, WCAG contrast in light and dark mode, accessibility
+  violations, and interactive behaviour. It reads a report file rather than
+  building one, so first dump the synthetic fixture:
+
+  ```bash
+  XCHR_VISUAL_DIR="$(pwd)/visual/fixtures" swift test --filter VisualFixtureDumpTests
+  cd visual
+  npm ci
+  npx playwright test
+  ```
+
+  CI runs this as two jobs, mirrored above: a macOS job dumps the fixture,
+  an ubuntu job installs Playwright's browsers and runs the assertions
+  against it. See `docs/superpowers/specs/2026-08-13-report-visual-test-coverage-design.md`
+  for the full design and its layers.
+
+CI runs `prepareTestResults.sh`, `swift test`, and the `visual/` job above, so
+a green run of all of it locally means a green run on your pull request.
 
 ### Optional: run the checks before committing
 

@@ -25,3 +25,9 @@ Tests/XCTestHTMLReportTests/Resources/report.json
 
 # Local demo render (see .github/workflows/pages.yml).
 /_site
+
+# Browser test layer (see .github/workflows/visual.yml).
+visual/node_modules
+visual/test-results
+visual/playwright-report
+visual/fixtures
