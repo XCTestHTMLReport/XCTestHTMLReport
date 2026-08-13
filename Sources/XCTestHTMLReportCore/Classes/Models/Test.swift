@@ -14,6 +14,7 @@ enum Status: String {
     case success = "Success"
     case skipped = "Skipped"
     case mixed = "Mixed"
+    case expectedFailure = "Expected Failure"
 
     init(_ parsed: ParsedStatus) {
         switch parsed {
@@ -23,15 +24,26 @@ enum Status: String {
             self = .failure
         case .skipped:
             self = .skipped
-        case .expectedFailure, .unknown:
-            // `Status` has no case for an expected failure, so it has always
-            // rendered as `.unknown` (`Status(rawValue: "Expected Failure")`
-            // is nil). Both readers preserve that; giving it its own status is
-            // explicitly out of scope — see the spec's status table.
+        case .expectedFailure:
+            // Folded into `.unknown` until #439: with no case of its own an
+            // expected failure rendered an empty status class, which the
+            // stylesheet draws as a blank cell. Both readers already map
+            // xcresult's `Expected Failure` to `ParsedStatus.expectedFailure`
+            // (legacy and modern alike), so carrying it through to the
+            // renderer costs nothing and diverges neither backend.
+            self = .expectedFailure
+        case .unknown:
             self = .unknown
         }
     }
 
+    /// The class the stylesheet draws a status glyph from.
+    ///
+    /// `.unknown` returns a name rather than the empty string it used to:
+    /// "no icon at all" and "an icon meaning we do not know" are different
+    /// statements, and only the second one is true. Note this is *not* the
+    /// same set the header counts use — `Run` buckets on the enum, and
+    /// expected failures deliberately land in no bucket.
     var cssClass: String {
         switch self {
         case .failure:
@@ -42,8 +54,10 @@ enum Status: String {
             return "skipped"
         case .mixed:
             return "mixed"
-        default:
-            return ""
+        case .expectedFailure:
+            return "expected-failure"
+        case .unknown:
+            return "unknown"
         }
     }
 }
