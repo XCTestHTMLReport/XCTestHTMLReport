@@ -14,6 +14,9 @@ public struct Summary {
     /// `generatedJsonReport()` can emit it without a second parse.
     private let parsedRuns: [ParsedRun]
     private let faultCollector: FaultCollector
+    /// Bundle file names in argument order, duplicates collapsed. Retained
+    /// only to title the page — see `title`.
+    private let bundleNames: [String]
 
     public enum RenderingMode {
         case inline
@@ -36,6 +39,8 @@ public struct Summary {
         var runs: [Run] = []
         var parsedRuns: [ParsedRun] = []
         self.faultCollector = faultCollector
+
+        bundleNames = Self.bundleNames(from: resultPaths)
 
         // The CLI already rejects an explicit `legacy` the toolchain cannot
         // honour in `validate()`. This arm is defence in depth for library
@@ -95,6 +100,24 @@ public struct Summary {
         }
         self.runs = runs
         self.parsedRuns = parsedRuns
+    }
+
+    /// Bundle file names for the title, in argument order.
+    ///
+    /// Names, not paths: the title has to survive a bundle moving directories
+    /// for the same reason the identifiers minted in `init` do. Duplicates are
+    /// collapsed because the same bundle may legitimately be passed twice.
+    private static func bundleNames(from resultPaths: [String]) -> [String] {
+        var seen = Set<String>()
+        return resultPaths.compactMap { path in
+            let name = URL(fileURLWithPath: path)
+                .deletingPathExtension()
+                .lastPathComponent
+            guard !name.isEmpty, seen.insert(name).inserted else {
+                return nil
+            }
+            return name
+        }
     }
 
     /// Reader and payload provider for one bundle on the resolved backend.
@@ -187,6 +210,23 @@ public struct Summary {
     }
 }
 
+extension Summary {
+    /// Tab title. Constant `XCHTMLReport` until #439: parked tabs from
+    /// different runs were indistinguishable (UI audit, finding 7).
+    ///
+    /// Derived from the bundle file names rather than from anything read out
+    /// of a bundle, which keeps it byte-identical across the legacy and
+    /// modern readers — the differential gate holds by construction rather
+    /// than by allow-list. Falls back to the product name when no bundle
+    /// yielded a usable name, so the title is never empty.
+    var title: String {
+        guard !bundleNames.isEmpty else {
+            return "XCTestHTMLReport"
+        }
+        return "\(bundleNames.joined(separator: ", ")) — XCTestHTMLReport"
+    }
+}
+
 extension Summary: HTML {
     var htmlTemplate: String {
         HTMLTemplates.index
@@ -205,6 +245,7 @@ extension Summary: HTML {
             "DEVICES": runs.map(\.runDestination.html).joined(),
             "RESULT_CLASS": resultClass,
             "RUNS": runs.map(\.html).joined(),
+            "TITLE": title.stringByEscapingXMLChars,
         ]
     }
 }
