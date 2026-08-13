@@ -22,3 +22,6 @@ xcuserdata/
 Tests/XCTestHTMLReportTests/Resources/index.html
 Tests/XCTestHTMLReportTests/Resources/report.junit
 Tests/XCTestHTMLReportTests/Resources/report.json
+
+# Local demo render (see .github/workflows/pages.yml).
+/_site
