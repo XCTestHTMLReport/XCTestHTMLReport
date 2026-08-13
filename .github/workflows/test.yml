@@ -88,3 +88,34 @@ jobs:
         name: xcresult-fixtures-${{ matrix.result_reader }}
         path: Tests/XCTestHTMLReportTests/Resources
         retention-days: 7
+
+    # A rendered report is what this tool actually ships, and until now nothing
+    # in CI let a reviewer look at one — the suite only ever compares report
+    # HTML as text (DifferentialTests, ReproducibilityTests). Rendering here
+    # costs an incremental build plus a few seconds, because this job already
+    # holds the fixtures.
+    #
+    # Both matrix legs render, and the job-level XCHR_RESULT_READER decides
+    # which reader each one exercises, so a PR touching the templates or either
+    # reader can be eyeballed per backend — the whole question during the 4.0
+    # migration (#391). Names are suffixed per leg for the same reason the
+    # fixture upload above is.
+    - name: Render sample report
+      run: |
+        swift build --product xchtmlreport
+        mkdir -p "$RUNNER_TEMP/report"
+        .build/debug/xchtmlreport -i \
+          -o "$RUNNER_TEMP/report" \
+          Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult
+
+    # `-i` inlines every attachment as base64, making index.html self-contained
+    # (~9 MB) so it opens straight from the download. The default linking mode
+    # would emit a 460 KB file whose src attributes point back into the
+    # .xcresult bundle, which is not uploaded alongside it — every screenshot,
+    # video and log in the downloaded report would 404.
+    - name: Upload rendered report
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: report-${{ matrix.result_reader }}
+        path: ${{ runner.temp }}/report/index.html
+        retention-days: 14
