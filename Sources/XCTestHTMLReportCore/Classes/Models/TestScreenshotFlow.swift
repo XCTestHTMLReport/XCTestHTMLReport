@@ -9,7 +9,7 @@ struct TestScreenshotFlow {
     var screenshots: [ScreenshotFlowAttachment]
     var screenshotsTail: [ScreenshotFlowAttachment]
 
-    init?(activities: [Activity]?, tailCount _: Int = 3) {
+    init?(activities: [Activity]?, tailCount: Int = 3) {
         guard let activities = activities else {
             return nil
         }
@@ -28,7 +28,7 @@ struct TestScreenshotFlow {
                 $0.screenshotAttachments
                     .map { ScreenshotFlowAttachment(attachment: $0, className: "screenshot-tail") }
             }
-            .suffix(3)
+            .suffix(tailCount)
     }
 }
 
