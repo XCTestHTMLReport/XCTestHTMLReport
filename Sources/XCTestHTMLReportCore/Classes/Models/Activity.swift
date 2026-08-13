@@ -94,11 +94,6 @@ struct Activity: HTML {
             "PAPER_CLIP_CLASS": hasGlobalAttachment ? "inline-block" : "none",
             "PADDING": (subActivities.isEmpty && attachments.isEmpty) ? String(padding + 18) :
                 String(padding),
-            // Empty rather than a duration: the port carries no finish time
-            // (decision 1), and a fabricated `(0.00s)` would be worse than the
-            // stray `()` this leaves. Removing the placeholder itself is the
-            // redesign's call — the templates are frozen for this work.
-            "TIME": "",
             "ACTIVITY_TYPE_CLASS": cssClasses,
             "HAS_SUB-ACTIVITIES_CLASS": (subActivities.isEmpty && attachments.isEmpty) ?
                 "no-drop-down" : "",
