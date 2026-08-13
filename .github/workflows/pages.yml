@@ -1,0 +1,108 @@
+name: Demo Site
+
+# The README's only pictures of this tool's output are two imgur uploads that
+# predate 4.0 and that nobody here controls. A report rendered from the current
+# tree on every merge replaces both with something that cannot go stale and
+# cannot be taken down by a third party.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Read-only by default; the deploy job widens this for itself alone.
+permissions:
+  contents: read
+
+# Pages has exactly one live deployment, so overlapping runs would race to be
+# last writer. Queue instead of cancelling: a merge that lands mid-run should
+# still publish, just after the run ahead of it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Setup Xcode version
+      uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+      with:
+        xcode-version: latest-stable
+
+    # Same shared action, same key, same paths as test.yml — deliberately. A
+    # merge to main runs both workflows, and whichever reaches the cache first
+    # serves the other, so publishing the demo usually costs no simulator boot
+    # at all. Any divergence here would silently forfeit that (#436, #392).
+    - name: Compute fixture cache key
+      id: fixture-key
+      uses: ./.github/actions/fixture-cache-key
+
+    - name: Restore cached fixtures
+      id: fixture-cache
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: |
+          Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult
+          Tests/XCTestHTMLReportTests/Resources/SanityResults.xcresult
+          Tests/XCTestHTMLReportTests/Resources/RetryResults.xcresult
+        key: ${{ steps.fixture-key.outputs.key }}
+
+    - name: Generate test fixtures
+      if: steps.fixture-cache.outputs.cache-hit != 'true'
+      run: ./prepareTestResults.sh
+
+    # Only TestResults is rendered, so only TestResults has to be here. A cache
+    # hit that restored nothing would otherwise publish an empty report.
+    - name: Verify fixture
+      run: |
+        plist="Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult/Info.plist"
+        if [ ! -f "$plist" ]; then
+          echo "::error::missing or incomplete fixture: TestResults.xcresult"
+          exit 1
+        fi
+
+    # Release, because the demo should be the binary users are handed rather
+    # than a debug build that merely renders the same bytes.
+    - name: Build
+      run: swift build -c release --product xchtmlreport
+
+    # `-i` inlines attachments as base64, yielding one self-contained ~9 MB
+    # index.html. The default linking mode would emit 460 KB whose src
+    # attributes point back into the .xcresult bundle; publishing that would
+    # mean 404ing every screenshot, video and log on the demo site.
+    #
+    # TestResults is the richest fixture on purpose — failures, retries,
+    # screenshots, screen recordings, and attachment filenames full of quotes
+    # and angle brackets. The demo showing red tests is the point: the failure
+    # UI is what people come here to look at.
+    - name: Render demo report
+      run: |
+        mkdir -p _site
+        .build/release/xchtmlreport -i \
+          -o _site \
+          Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      with:
+        path: _site
+
+  # Split out so the macOS runner is released before the deploy waits on
+  # Pages, and because deploy-pages needs write scopes the build has no use for.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
