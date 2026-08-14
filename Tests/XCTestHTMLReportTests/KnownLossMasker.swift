@@ -94,20 +94,24 @@ enum KnownLossMasker {
             // preceding lines. Anchoring on the icon span also keeps the rule
             // from ever touching a non-attachment `<p>`.
             //
-            // `(?:left )?` because A2 (#439) made the row a flex line and
-            // dropped the `left` float class from the type icon. The optional
-            // group rather than a straight deletion: the anchor then matches
-            // a report rendered by either revision, and since the rule is
-            // still anchored on `<p class="attachment…">` above it, widening
-            // it here cannot reach a `<p>` it did not already reach. The
-            // replacement takes the whole name *line*, so it is indifferent
-            // to the name having gained a `<span class="row-name">` wrapper —
-            // both backends emit the wrapper, only the name inside it differs.
-            let namedLines = replace(
-                html,
-                #"(<p class="attachment[^"]*">\n\s*<span class="icon (?:left )?[a-z-]*icon"[^\n]*></span>\n)[^\n]*\n"#,
-                with: "$1ATTACHMENT_NAME\n"
-            )
+            // The type icon's `left` float class is gone: A2 (#439) made the
+            // row a flex line. Deleted from the anchor rather than made
+            // optional. The masker only ever sees two renders of the *same*
+            // build — `DifferentialTests` compares two readers of one binary,
+            // `RunSummaryTests` uses the durations rule — so an anchor that
+            // also matched a pre-A2 report would widen the rule to buy a
+            // cross-revision property that nothing in the repo consumes.
+            //
+            // The replacement is anchored on the `row-name` wrapper A2 added
+            // and takes only the text inside it, not the whole line. The
+            // entry declares that attachment display *names* diverge; the
+            // wrapper markup around them is not part of that claim and stays
+            // compared, so a future divergence in the wrapper itself cannot
+            // hide under an entry that never covered it.
+            let nameInsideWrapper = #"(<p class="attachment[^"]*">\n"#
+                + #"\s*<span class="icon [a-z-]*icon"[^\n]*></span>\n"#
+                + #"\s*<span class="row-name">)[^<]*(</span>)"#
+            let namedLines = replace(html, nameInsideWrapper, with: "$1ATTACHMENT_NAME$2")
             // One divergence, two sites since #462: the same display name is
             // also the `alt` of every attachment-derived image. Masking only
             // the text line would let the `alt` reintroduce the difference

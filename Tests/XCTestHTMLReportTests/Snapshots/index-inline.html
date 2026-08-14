@@ -237,11 +237,13 @@
       --color-bg-sidebar: #232327;
       --color-bg-group-header: #202024;
 
-      /* The tree's own surfaces. The activities panel is *darker* than the
-         page rather than lighter, which is the inversion of the light
-         theme and is what makes an expanded test read as recessed under
-         its row instead of floating above it — the same relationship the
-         summary band has to its cards. */
+      /* The tree's own surfaces. The activities panel is *lighter* than the
+         page here and *darker* than it in light, because white has no room
+         above it and this ground has little worth reading below it: each
+         theme steps the panel in the direction it actually has. What
+         carries the meaning is that it steps at all — one value off the
+         page is what makes an expanded test's steps read as their own
+         region under the row rather than as more tree. */
       --color-row-hover: #25252A;
       --color-bg-activities: #1D1D21;
       --color-fail-tint: #3A2226;
@@ -886,13 +888,29 @@
   }
 
   /* Rows are indented by their container's padding, so a row's own box
-     starts at the indent and its background would too. `--row-bleed` paints
-     that background back out to the left edge with a horizontal shadow;
-     `.tests` is a scroll container, so it clips there. A shadow is ink
-     overflow rather than scrollable overflow, so nothing here widens the
-     page — the 375px probe covers that.
+     starts at the indent and its background would too. `--row-bleed` is how
+     far that background is carried back out into the gutter the indentation
+     spent; `.tests` is a scroll container, so it clips there. The mockup
+     does this — its failure tint and its expanded-test band both run to the
+     card's edge, under the disclosure column rather than starting after it.
 
-     Only the three row kinds that sit *in* the tree override it. Activity
+     A strip painted by `::before`, not an outer `box-shadow`. A shadow is
+     the whole border box translated, so an offset far enough left to clear
+     any indentation drags the box's *right* edge that far left with it: at
+     `-100vw` the shadow lands entirely at `x <= 0`, outside the viewport
+     and outside the container that clips it, and paints nothing at all. An
+     offset small enough to still overlap the row is one that a deep enough
+     tree or a narrow enough pane outruns. `right: 100%` has no such
+     arithmetic — the strip begins where the row begins and runs left for as
+     far as it is told, at every depth and every width.
+
+     `background-color: inherit`, so hover, selection and a suite heading's
+     own ground each reach the gutter by the same declaration that paints
+     the row, and a fourth state would too. Leftward overflow is unreachable
+     in a left-to-right scroll container, so nothing here widens the page —
+     the 375px probe covers that.
+
+     Only the three row kinds that sit *in* the tree get a strip. Activity
      and attachment rows deliberately do not: they live inside the
      activities panel, whose inset background and gutter rule are the thing
      that says "this belongs to the test above", and a row bleeding past
@@ -901,17 +919,33 @@
   .test-summary > p,
   .test-summary-group > p,
   .iteration > p {
-    --row-bleed: -100vw;
+    --row-bleed: 100vw;
+    position: relative;
+  }
+
+  /* `bottom: -1px`, not `0`: an absolutely positioned child is laid out
+     against its containing block's *padding* box, so `0` would stop the
+     strip one hairline short of the row's own background and leave a bright
+     seam under every selected row. The 1px is the row's `border-bottom`
+     above. */
+  .test-summary > p::before,
+  .test-summary-group > p::before,
+  .iteration > p::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: -1px;
+    right: 100%;
+    width: var(--row-bleed);
+    background-color: inherit;
   }
 
   .list-item:hover {
     background-color: var(--color-row-hover);
-    box-shadow: var(--row-bleed) 0 0 var(--color-row-hover);
   }
 
   .test-summary-group > p {
     background-color: var(--color-bg-group-header);
-    box-shadow: var(--row-bleed) 0 0 var(--color-bg-group-header);
     font-weight: var(--font-weight-medium);
   }
 
@@ -1127,15 +1161,16 @@
      selected row leaves it selected rather than tinting it. */
   .list-item.selected {
     background-color: var(--color-accent);
-    box-shadow: var(--row-bleed) 0 0 var(--color-accent);
     color: var(--color-on-accent);
   }
 
   /* Summary header (#439, redesign A1).
 
-     Everything from here to the media query is new, and nothing below the
-     header was restyled: the tree, the panes and the filter pills are byte
-     for byte what they were. A2 restyles the tree; A3 the filters.
+     Everything from here to the media query is the header's own. A1 landed
+     it without restyling anything else; A2 has since restyled the tree, in
+     the block above, and the filter pills are still A3's. So a rule about a
+     row or a pill belongs where that thing is styled, not here — this block
+     stays the header's or it stops being findable.
 
      The band is a flex item of #content, capped at half the viewport so a
      run with a long failure digest can never push the tree off the screen —
