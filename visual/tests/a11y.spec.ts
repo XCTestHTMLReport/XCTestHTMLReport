@@ -18,8 +18,61 @@ const reportURL = pathToFileURL(resolve(__dirname, '../fixtures/report.html')).h
 // question gets logged for a human to weigh.
 const GATING_IMPACTS: string[] = ['critical', 'serious'];
 
+// A rule that only fires on a page in a particular state is only as good as
+// that state. `scrollable-region-focusable` — the rule that caught the tests
+// tree needing a `tabindex` (#439, A2) — analyses a region only if it actually
+// overflows, and before A2's taller rows this fixture cleared the default
+// viewport by seven pixels. The rule was live in the spec and blind in fact,
+// and nothing said so: the gate went green either way.
+//
+// Two things are needed to close that, and asserting the overflow is only the
+// second of them.
+//
+// First the layout has to settle, because this fixture's does not settle on
+// `load`. It carries four `img.screenshot-tail` in the tree, all `loading=
+// "lazy"` and all pointing into a `.xcresult` that is not there. A deferred
+// image box is 2px until its load is attempted and 20px once it has failed and
+// the broken-image placeholder takes its place, so the tree measures 373px or
+// 426px depending on whether four loads happened to resolve first — 0px of
+// overflow or 53px, from the same file. Under a parallel run it was the wrong
+// one about a fifth of the time, which means axe was analysing a tree with no
+// scrollable region at all on those runs and this gate could not have caught a
+// missing `tabindex` if it tried.
+//
+// Then assert. Waiting alone would leave the seven-pixel problem intact, and
+// asserting alone would just make a real race into a flaky test.
+async function settleImages(page: import('@playwright/test').Page) {
+  await page.waitForFunction(() => [...document.images]
+    .filter((img) => img.getClientRects().length > 0)
+    .every((img) => img.complete));
+}
+
+async function treeGeometryAtAxeViewport(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const tree = document.querySelector('.run.active .tests');
+    if (!tree) return null;
+    return {
+      overflow: tree.scrollHeight - tree.clientHeight,
+      scrollHeight: tree.scrollHeight,
+      clientHeight: tree.clientHeight,
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+      rows: tree.querySelectorAll('p.list-item').length,
+    };
+  });
+}
+
 test('reports no critical or serious accessibility violations', async ({ page }) => {
   await page.goto(reportURL);
+  await settleImages(page);
+
+  const tree = await treeGeometryAtAxeViewport(page);
+  expect(tree, 'the fixture must render a tests pane for axe to analyse').not.toBeNull();
+  expect(
+    tree!.overflow,
+    'the tests pane must overflow at the axe viewport, or scrollable-region-focusable is '
+      + `not exercised and this gate cannot speak to it — measured ${JSON.stringify(tree)}`,
+  ).toBeGreaterThan(0);
+
   const results = await new AxeBuilder({ page }).analyze();
 
   const gating = results.violations.filter((v) => GATING_IMPACTS.includes(v.impact ?? ''));
