@@ -51,6 +51,11 @@ jobs:
   # window between discovery and scheduling).
   discover:
     runs-on: ubuntu-latest
+    # Advisory beta machinery must never redden the run. The drift job already
+    # survives a failed discover (!cancelled() + the hard-coded fallback
+    # matrix); this closes the one remaining path where beta-only plumbing
+    # could fail the workflow.
+    continue-on-error: true
     permissions:
       contents: read
     outputs:
