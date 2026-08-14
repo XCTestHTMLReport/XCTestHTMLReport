@@ -222,33 +222,51 @@ public struct Summary {
     ///
     /// Call-site checks catch failures XCResultKit surfaces as `nil`. They do
     /// not catch failures in *nested* decoding, where a parent object still
-    /// decodes but a child field comes back empty. The observable symptom is an
-    /// attachment whose payload resolved to no content, so check for that
-    /// directly. Attachments that never had a payload are skipped: their
-    /// content is empty by construction, not through degradation (#387).
+    /// decodes but a child field comes back empty. The observable symptoms are
+    /// an attachment whose payload resolved to no content and a run whose log
+    /// reference resolved to no content, so check for both directly.
+    /// Attachments that never had a payload and runs that never had a log
+    /// reference are skipped: their content is empty by construction, not
+    /// through degradation (#387, #386).
     ///
-    /// Idempotent across sequential calls: repeated calls do not duplicate
-    /// faults. Dedup keys on `Attachment.faultDescription`, which assumes
-    /// `allAttachments` is stable for this value's lifetime — it is, since
-    /// `runs` is a `let`. Not safe to call concurrently with itself: the
-    /// read of `faults` and the subsequent `record` are separately
-    /// synchronized, not atomic as a unit.
+    /// One fault per distinct detail, however many times it is reached: both
+    /// within a single pass and across repeated calls. The sets are seeded
+    /// from what is already recorded and then grown as this pass records, so
+    /// passing the same bundle twice — two runs on one device, two copies of
+    /// one unresolved attachment — yields one entry rather than two
+    /// indistinguishable ones. Dedup keys on `Attachment.faultDescription`
+    /// and `Run.logFaultDescription`, which assume `allAttachments` and `runs`
+    /// are stable for this value's lifetime — they are, since `runs` is a
+    /// `let`. Not safe to call concurrently with itself: the read of `faults`
+    /// and the subsequent `record` are separately synchronized, not atomic as
+    /// a unit.
     public func validate() {
-        let alreadyFlagged = Set(
-            faultCollector.faults
-                .filter { $0.kind == .unresolvedAttachment }
-                .map(\.detail)
+        let recorded = faultCollector.faults
+        var flaggedAttachments = Set(
+            recorded.filter { $0.kind == .unresolvedAttachment }.map(\.detail)
+        )
+        var flaggedLogs = Set(
+            recorded.filter { $0.kind == .unresolvedLog }.map(\.detail)
         )
 
         for attachment in allAttachments {
             guard attachment.failedToResolve else {
                 continue
             }
-            let detail = attachment.faultDescription
-            guard !alreadyFlagged.contains(detail) else {
+            guard flaggedAttachments.insert(attachment.faultDescription).inserted else {
                 continue
             }
-            faultCollector.record(.unresolvedAttachment, detail)
+            faultCollector.record(.unresolvedAttachment, attachment.faultDescription)
+        }
+
+        for run in runs {
+            guard run.logFailedToResolve else {
+                continue
+            }
+            guard flaggedLogs.insert(run.logFaultDescription).inserted else {
+                continue
+            }
+            faultCollector.record(.unresolvedLog, run.logFaultDescription)
         }
     }
 }

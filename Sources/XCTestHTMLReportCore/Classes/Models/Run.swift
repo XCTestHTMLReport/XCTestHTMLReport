@@ -13,6 +13,10 @@ struct Run: HTML {
     let runDestination: RunDestination
     let testSummaries: [TestSummary]
     let logContent: RenderingContent
+    /// The reference this run's log content was resolved from, kept so that a
+    /// failure to resolve it can be reported against something identifiable —
+    /// the same reason `Attachment` keeps `payloadId`.
+    let logReference: String?
     var status: Status {
         if let _ = testSummaries.first(where: { $0.status == .failure }) {
             return .failure
@@ -68,6 +72,8 @@ struct Run: HTML {
             destination: run.destination,
             identifierPath: identifierPath
         )
+
+        logReference = run.logReference
 
         // TODO: (Pierre Felgines) 02/10/2019 Use only emittedOutput from logs objects
         // For now XCResultKit do not handle logs
@@ -130,6 +136,43 @@ struct Run: HTML {
         testSummaries = summaries
             .sorted { ($0.value.testName, $0.key) < ($1.value.testName, $1.key) }
             .map(\.value)
+    }
+
+    /// Whether this run represents a failure to resolve its log.
+    ///
+    /// A run with no log reference has nothing to resolve: its log content is
+    /// `.none` by construction, which is not degradation — the same rule
+    /// `Attachment.failedToResolve` applies to an attachment that never had a
+    /// payload (#387). Only a reference that existed and produced no content
+    /// is a genuine failure (#386).
+    ///
+    /// This is a post-condition, not a substitute for the call-site checks in
+    /// the payload providers: those name the *cause* (`.logExportFailed`),
+    /// this catches the *symptom* whatever the cause, including the failures
+    /// a call site cannot see. The motivating one is legacy: XCResultKit
+    /// decodes `actionResult.logRef` tolerantly, so a log reference that
+    /// exists in the bundle but fails to decode arrives here as `nil` and is
+    /// indistinguishable from an absent one. Distinguishing them would mean
+    /// re-reading the raw invocation-record JSON, which XCResultKit keeps
+    /// internal (`getRootJson` is not public).
+    var logFailedToResolve: Bool {
+        guard logReference != nil else {
+            return false
+        }
+        guard case .none = logContent else {
+            return false
+        }
+        return true
+    }
+
+    /// How this run's log is named in a `Fault` detail.
+    ///
+    /// The run destination, not the reference: the reference is
+    /// backend-internal (a CAS id on legacy, a `--type` selector on modern),
+    /// so naming the fault after it would make one degradation read
+    /// differently on each backend. The display name is the same fact on both.
+    var logFaultDescription: String {
+        "log for run \(runDestination.name)"
     }
 
     private var logSource: String? {
