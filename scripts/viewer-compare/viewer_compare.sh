@@ -229,11 +229,18 @@ fi
 
 # --- xcode -----------------------------------------------------------------
 
+XCODE_STATUS=0
 if [ "$SKIP_XCODE" -eq 0 ]; then
     echo
     echo "viewer-compare: handing the screen to Xcode — do not use the machine until this finishes"
     echo
-    "${HERE}/capture_xcode.sh" --bundle "$BUNDLE_COPY" --out "$OUT" ${XCODE_ARGS[@]+"${XCODE_ARGS[@]}"}
+    # Deliberately not under `set -e`. The Xcode half is the half that fails —
+    # a denied permission, an Xcode that never finished indexing — and it fails
+    # AFTER our side has already been captured. Aborting here would throw away
+    # the manifest, which is the one artefact that would have said which Xcode
+    # refused and what was captured before it did. Write the manifest, then
+    # carry the failure out in the exit status.
+    "${HERE}/capture_xcode.sh" --bundle "$BUNDLE_COPY" --out "$OUT" ${XCODE_ARGS[@]+"${XCODE_ARGS[@]}"} || XCODE_STATUS=$?
 fi
 
 # --- manifest --------------------------------------------------------------
@@ -247,5 +254,11 @@ python3 "${HERE}/make_manifest.py" \
     --invocation "$INVOCATION"
 
 echo
+if [ "$XCODE_STATUS" -ne 0 ]; then
+    echo "viewer-compare: the Xcode half failed (exit ${XCODE_STATUS}); our side and the manifest are still in"
+    echo "  ${OUT}"
+    exit "$XCODE_STATUS"
+fi
+
 echo "viewer-compare: done"
 echo "  ${OUT}"
