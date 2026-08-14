@@ -175,6 +175,6 @@ knowing are:
 To re-derive the tree after an Xcode update:
 
 ```sh
-osascript scripts/viewer-compare/xcode_ui.applescript rows 1
+osascript scripts/viewer-compare/xcode_ui.applescript rows TestResults.xcresult
 osascript -l JavaScript scripts/viewer-compare/xcode_windows.js
 ```
