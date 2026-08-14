@@ -195,7 +195,7 @@ prompt_step() {
 echo "capture_xcode: opening ${BUNDLE_NAME} in Xcode"
 open -a Xcode "$BUNDLE"
 
-WIN_INDEX=""
+loaded=0
 deadline=$((SECONDS + OPEN_TIMEOUT))
 while [ "$SECONDS" -lt "$deadline" ]; do
     found="$(ui find "$BUNDLE_NAME")"
@@ -209,7 +209,7 @@ while [ "$SECONDS" -lt "$deadline" ]; do
         '' | *[!0-9]*) ;;
         *)
             if [ "$rows" -ge 2 ]; then
-                WIN_INDEX="${found%%|*}"
+                loaded=1
                 break
             fi
             ;;
@@ -219,7 +219,7 @@ while [ "$SECONDS" -lt "$deadline" ]; do
     sleep 2
 done
 
-if [ -z "$WIN_INDEX" ]; then
+if [ "$loaded" -ne 1 ]; then
     echo "capture_xcode.sh: Xcode never showed a loaded report for ${BUNDLE_NAME} within ${OPEN_TIMEOUT}s" >&2
     echo "  (a very large bundle can index for longer — retry with --open-timeout)" >&2
     exit 1
@@ -229,7 +229,13 @@ note "report window found after $((OPEN_TIMEOUT - (deadline - SECONDS)))s"
 # Xcode keeps loading the editor after the navigator is populated.
 sleep "$SETTLE"
 
-pinned="$(ui pin "$WIN_INDEX" "$ORIGIN_X" "$ORIGIN_Y" "$WIDTH" "$HEIGHT")"
+pinned="$(ui pin "$BUNDLE_NAME" "$ORIGIN_X" "$ORIGIN_Y" "$WIDTH" "$HEIGHT")"
+case "$pinned" in
+ERR*)
+    echo "capture_xcode.sh: could not pin the report window: ${pinned#ERR|}" >&2
+    exit 1
+    ;;
+esac
 IFS='|' read -r got_x got_y got_w got_h <<<"$pinned"
 if [ "$got_w" != "$WIDTH" ] || [ "$got_h" != "$HEIGHT" ]; then
     note "WARNING: asked for ${WIDTH}x${HEIGHT}, Xcode settled at ${got_w}x${got_h} — filenames still say ${WIDTH}, the manifest records the truth"
@@ -284,7 +290,7 @@ for scheme in light dark; do
     for view in summary tests logs; do
         how="automated"
         if [ "$MANUAL" -eq 0 ]; then
-            result="$(ui select "$WIN_INDEX" "$view")"
+            result="$(ui select "$BUNDLE_NAME" "$view")"
         else
             result="ERR|--manual requested"
         fi
@@ -307,7 +313,7 @@ for scheme in light dark; do
 
     if [ "$WITH_TESTS_ALL" -eq 1 ]; then
         if [ "$MANUAL" -eq 0 ]; then
-            ui select "$WIN_INDEX" tests >/dev/null || true
+            ui select "$BUNDLE_NAME" tests >/dev/null || true
             sleep "$SETTLE"
         fi
         if prompt_step "In the Tests view, open the leftmost filter ('Failed Tests (N)') and choose 'All Tests (N)', in ${scheme} appearance."; then

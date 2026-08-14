@@ -7,9 +7,17 @@
 --   osascript xcode_ui.applescript get-appearance
 --   osascript xcode_ui.applescript set-appearance dark|light
 --   osascript xcode_ui.applescript find <bundle-basename>
---   osascript xcode_ui.applescript pin <winIndex> <x> <y> <w> <h>
---   osascript xcode_ui.applescript select <winIndex> summary|tests|logs
---   osascript xcode_ui.applescript rows <winIndex>
+--   osascript xcode_ui.applescript pin <bundle-basename> <x> <y> <w> <h>
+--   osascript xcode_ui.applescript select <bundle-basename> summary|tests|logs
+--   osascript xcode_ui.applescript rows <bundle-basename>
+--
+-- Everything addresses the window by the bundle it is showing, never by a
+-- window index the caller resolved earlier. System Events numbers windows by
+-- z-order, `select` has to bring Xcode forward to send keystrokes, and a run
+-- that left a window open on a same-named bundle puts a second candidate in the
+-- list — so an index captured a step ago can name a different window by the
+-- time it is used. Re-resolving inside each command removes that race instead
+-- of narrowing it.
 --
 -- Every command prints one line. Failures print "ERR|<reason>" and exit 0, so
 -- the caller decides whether to fall back to a guided manual step rather than
@@ -74,32 +82,40 @@ end setAppearance
 -- so the frontmost match is the right one.
 --
 -- Prints "idx|x|y|w|h|rowCount".
-on findReportWindow(bundleName)
+on windowIndexFor(bundleName)
 	tell application "System Events" to tell process "Xcode"
 		repeat with i from 1 to (count of windows)
 			try
-				set w to window i
-				set ol to outline 1 of scroll area 1 of group 1 of w
+				set ol to outline 1 of scroll area 1 of group 1 of window i
 				set rws to rows of ol
 				if (count of rws) > 0 then
-					if my rowLabel(item 1 of rws) is bundleName then
-						set p to position of w
-						set s to size of w
-						return (i as string) & "|" & (item 1 of p as string) & "|" & (item 2 of p as string) & "|" & (item 1 of s as string) & "|" & (item 2 of s as string) & "|" & ((count of rws) as string)
-					end if
+					if my rowLabel(item 1 of rws) is bundleName then return i
 				end if
 			end try
 		end repeat
 	end tell
-	return "ERR|no Xcode window whose report navigator starts with " & bundleName
+	return 0
+end windowIndexFor
+
+on findReportWindow(bundleName)
+	set i to my windowIndexFor(bundleName)
+	if i is 0 then return "ERR|no Xcode window whose report navigator starts with " & bundleName
+	tell application "System Events" to tell process "Xcode"
+		set w to window i
+		set p to position of w
+		set s to size of w
+		set n to count of (rows of (outline 1 of scroll area 1 of group 1 of w))
+		return (i as string) & "|" & (item 1 of p as string) & "|" & (item 2 of p as string) & "|" & (item 1 of s as string) & "|" & (item 2 of s as string) & "|" & (n as string)
+	end tell
 end findReportWindow
 
 -- Prints "x|y|w|h" as the window actually ended up. The caller compares that
 -- against what it asked for: Xcode refuses sizes below its own minimum, and a
 -- silently smaller window would put the two sides at different logical widths
 -- while every filename still claimed 1440.
-on pinWindow(idx, px, py, pw, ph)
-	set theIndex to idx as integer
+on pinWindow(bundleName, px, py, pw, ph)
+	set theIndex to my windowIndexFor(bundleName)
+	if theIndex is 0 then return "ERR|no report window for " & bundleName & " to pin"
 	tell application "System Events" to tell process "Xcode"
 		set w to window theIndex
 		set position of w to {px as integer, py as integer}
@@ -110,8 +126,9 @@ on pinWindow(idx, px, py, pw, ph)
 	end tell
 end pinWindow
 
-on listRows(idx)
-	set theIndex to idx as integer
+on listRows(bundleName)
+	set theIndex to my windowIndexFor(bundleName)
+	if theIndex is 0 then return "ERR|no report window for " & bundleName
 	tell application "System Events" to tell process "Xcode"
 		set ol to outline 1 of scroll area 1 of group 1 of window theIndex
 		set out to ""
@@ -133,10 +150,14 @@ end listRows
 -- treats as a real navigation — and it only lands when Xcode is frontmost,
 -- which is why this activates first and why the harness cannot share the
 -- machine with someone else's typing while it runs.
-on selectView(idx, mode)
-	set theIndex to idx as integer
+on selectView(bundleName, mode)
+	-- Activate FIRST, then resolve: bringing Xcode forward is what can reorder
+	-- the window list, so an index resolved before this point is exactly the
+	-- one that goes stale.
 	tell application "Xcode" to activate
 	delay 0.8
+	set theIndex to my windowIndexFor(bundleName)
+	if theIndex is 0 then return "ERR|no report window for " & bundleName & " to select " & mode & " in"
 	tell application "System Events" to tell process "Xcode"
 		set ol to outline 1 of scroll area 1 of group 1 of window theIndex
 		set rws to rows of ol

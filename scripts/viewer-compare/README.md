@@ -94,7 +94,7 @@ is how to iterate when only one side needs re-shooting.
 
 A timestamped directory under `.viewer-compare/` (git-ignored):
 
-```
+```text
 .viewer-compare/20260814T203000Z/
 ├── manifest.json            # the point of the run — see below
 ├── report/                  # the rendered report, plus a copy of the bundle
