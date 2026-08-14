@@ -110,7 +110,8 @@ command, and an inventory of every shot with its view, viewport, appearance,
 pixel dimensions, SHA-256, and whether a human drove it. A comparison page can
 be regenerated from any run directory using nothing else.
 
-Runs are a few hundred MB each (the bundle copy dominates). Delete old ones.
+A run over the repository fixture is about 64 MB, nearly all of it the bundle
+copy — it scales with the bundle, not with the number of shots. Delete old ones.
 
 ## What is automated, and what is not
 
