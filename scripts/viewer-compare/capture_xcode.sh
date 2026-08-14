@@ -142,19 +142,38 @@ if ! /usr/bin/xcode-select -p >/dev/null 2>&1; then
     exit 1
 fi
 
-# One accessibility call before anything else, so a missing permission fails
-# here with the fix rather than fifty lines later as a mystery.
+# One UI-element read before anything else, so a missing permission fails here
+# with the fix rather than fifty lines later as a mystery. It has to be a UI
+# read specifically: the appearance commands below go through System Events'
+# scripting properties, which Automation alone can do, so probing with those
+# would wave through a terminal that lacks Accessibility — and the run would
+# then die in the wait loop, where a denied UI call is indistinguishable from a
+# report that has not finished loading.
+ax_probe="$(ui check-accessibility)"
+case "$ax_probe" in
+OK*) ;;
+*)
+    cat >&2 <<EOF
+capture_xcode.sh: cannot read another app's UI through System Events
+  ${ax_probe#ERR|}
+
+Both grants below are for the program running this script — your terminal app,
+not Xcode — in System Settings > Privacy & Security:
+
+  Accessibility   "not allowed assistive access" (-25211) means this one
+  Automation      "Not authorized to send Apple events" (-1743) means this one
+
+Screen Recording, also for your terminal app, is needed later for screencapture.
+EOF
+    exit 1
+    ;;
+esac
+
 appearance_before="$(ui get-appearance)"
 case "$appearance_before" in
 light | dark) ;;
 *)
-    cat >&2 <<EOF
-capture_xcode.sh: cannot drive System Events ($appearance_before)
-
-Grant Accessibility permission to the program running this script (your
-terminal app), in System Settings > Privacy & Security > Accessibility, then
-run it again. Screen Recording permission is needed too, for screencapture.
-EOF
+    echo "capture_xcode.sh: cannot read the system appearance: ${appearance_before#ERR|}" >&2
     exit 1
     ;;
 esac
@@ -196,11 +215,12 @@ echo "capture_xcode: opening ${BUNDLE_NAME} in Xcode"
 open -a Xcode "$BUNDLE"
 
 loaded=0
+last_err=""
 deadline=$((SECONDS + OPEN_TIMEOUT))
 while [ "$SECONDS" -lt "$deadline" ]; do
     found="$(ui find "$BUNDLE_NAME")"
     case "$found" in
-    ERR*) ;;
+    ERR*) last_err="${found#ERR|}" ;;
     *)
         rows="${found##*|}"
         # The bundle row alone means the window exists but the report tree has
@@ -221,6 +241,9 @@ done
 
 if [ "$loaded" -ne 1 ]; then
     echo "capture_xcode.sh: Xcode never showed a loaded report for ${BUNDLE_NAME} within ${OPEN_TIMEOUT}s" >&2
+    if [ -n "$last_err" ]; then
+        echo "  (last window lookup: ${last_err})" >&2
+    fi
     echo "  (a very large bundle can index for longer — retry with --open-timeout)" >&2
     exit 1
 fi

@@ -42,14 +42,19 @@ CI", and the first person to add a `playwright test` glob would pick it up.
 - macOS with Xcode installed (verified against Xcode 26.2).
 - `node` and `python3` on `PATH`. Nothing else to install: Playwright is
   borrowed from [`visual/`](../../visual), and the first run does its `npm ci`.
-- Two permissions, both for **whatever program runs the script** — your terminal
-  app, not Xcode — in System Settings → Privacy & Security:
+- Three permissions, all for **whatever program runs the script** — your
+  terminal app, not Xcode — in System Settings → Privacy & Security:
   - **Accessibility**, to drive Xcode's UI.
   - **Screen Recording**, for `screencapture`.
+  - **Automation → System Events**, which macOS asks for at the first run.
 
-  Without Accessibility the run stops immediately and says so. Without Screen
-  Recording you get black or empty PNGs, which is the more confusing failure —
-  check one Xcode shot before trusting a run.
+  Accessibility and Automation are separate grants and the run needs both, so
+  the preflight probes Accessibility the only way that distinguishes them: a
+  no-op read of another app's UI elements, which is what that grant covers.
+  Missing either one stops the run before it opens anything, with the OS error
+  that says which grant to go fix. Without Screen Recording you get black or
+  empty PNGs, which is the more confusing failure — check one Xcode shot before
+  trusting a run.
 - A fixture bundle. The default is the repository's own:
 
   ```sh

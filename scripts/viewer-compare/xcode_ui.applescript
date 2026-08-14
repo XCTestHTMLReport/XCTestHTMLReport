@@ -4,6 +4,7 @@
 -- accessibility paths this depends on — which are the part that breaks when
 -- Xcode ships a new report viewer — are all in one place to re-derive.
 --
+--   osascript xcode_ui.applescript check-accessibility
 --   osascript xcode_ui.applescript get-appearance
 --   osascript xcode_ui.applescript set-appearance dark|light
 --   osascript xcode_ui.applescript find <bundle-basename>
@@ -23,14 +24,18 @@
 -- the caller decides whether to fall back to a guided manual step rather than
 -- dying on a `set -e` trip.
 --
--- Requires Accessibility permission for whatever runs osascript (Terminal,
--- iTerm, the editor's shell — the prompt names it). Xcode 26.2 verified.
+-- Requires two separate grants for whatever runs osascript (Terminal, iTerm,
+-- the editor's shell — the prompt names it): Automation, to talk to System
+-- Events at all, and Accessibility, for every UI-element read below.
+-- `check-accessibility` is the probe for the second one. Xcode 26.2 verified.
 
 on run argv
 	if (count of argv) < 1 then return "ERR|usage: xcode_ui.applescript <command> [args]"
 	set cmd to item 1 of argv
 	try
-		if cmd is "get-appearance" then
+		if cmd is "check-accessibility" then
+			return checkAccessibility()
+		else if cmd is "get-appearance" then
 			return getAppearance()
 		else if cmd is "set-appearance" then
 			return setAppearance(item 2 of argv)
@@ -48,6 +53,35 @@ on run argv
 		return "ERR|" & msg
 	end try
 end run
+
+-- Accessibility and Automation are independently grantable, and the appearance
+-- handlers below need only Automation: `appearance preferences` is a scripting
+-- property of System Events, not a UI element. Everything else in this file
+-- reads UI elements — windows, outlines, rows — which is the part Accessibility
+-- gates. So a caller that checks its permissions by calling `get-appearance`
+-- learns nothing about the grant it actually depends on.
+--
+-- This is that check: one read of another process's UI-element tree, no side
+-- effect, nothing typed, nothing brought forward. The Dock is the target
+-- because it is always running in a GUI login session and has no windows to
+-- enumerate; the count is thrown away, only the error matters. Without the
+-- grant this returns macOS's own "not allowed assistive access" (-25211);
+-- without Automation it returns "Not authorized to send Apple events" (-1743),
+-- and the caller's message names both.
+on checkAccessibility()
+	tell application "System Events"
+		try
+			set windowCount to count of (windows of application process "Dock")
+		on error msg
+			-- Asked only after the read has already failed, so a machine with
+			-- no Dock is not reported as a permission problem and a permission
+			-- problem is never reported as a missing Dock.
+			if not (exists application process "Dock") then return "ERR|no Dock process — not a GUI login session?"
+			return "ERR|" & msg
+		end try
+	end tell
+	return "OK|" & (windowCount as string) & " Dock windows"
+end checkAccessibility
 
 -- Xcode's report viewer has no appearance of its own; it follows the system,
 -- which is why the harness moves the whole machine between shots and puts the
