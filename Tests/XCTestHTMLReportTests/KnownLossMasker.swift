@@ -93,9 +93,19 @@ enum KnownLossMasker {
             // between the `<p>` and the name — so the anchor spans both
             // preceding lines. Anchoring on the icon span also keeps the rule
             // from ever touching a non-attachment `<p>`.
+            //
+            // `(?:left )?` because A2 (#439) made the row a flex line and
+            // dropped the `left` float class from the type icon. The optional
+            // group rather than a straight deletion: the anchor then matches
+            // a report rendered by either revision, and since the rule is
+            // still anchored on `<p class="attachment…">` above it, widening
+            // it here cannot reach a `<p>` it did not already reach. The
+            // replacement takes the whole name *line*, so it is indifferent
+            // to the name having gained a `<span class="row-name">` wrapper —
+            // both backends emit the wrapper, only the name inside it differs.
             let namedLines = replace(
                 html,
-                #"(<p class="attachment[^"]*">\n\s*<span class="icon left [a-z-]*icon"[^\n]*></span>\n)[^\n]*\n"#,
+                #"(<p class="attachment[^"]*">\n\s*<span class="icon (?:left )?[a-z-]*icon"[^\n]*></span>\n)[^\n]*\n"#,
                 with: "$1ATTACHMENT_NAME\n"
             )
             // One divergence, two sites since #462: the same display name is
