@@ -28,6 +28,12 @@ permissions:
 # Pages has exactly one live deployment, so overlapping runs would race to be
 # last writer. Queue instead of cancelling: a merge that lands mid-run should
 # still publish, just after the run ahead of it.
+#
+# GitHub keeps at most one *pending* run per group even with
+# cancel-in-progress: false, so a release deploy waiting behind a merge run can
+# be cancelled by the next merge and report cancelled. Nothing is lost — the
+# store already holds the version and the next merge republishes it — and
+# `gh workflow run "Demo Site" --ref main` fixes it immediately.
 concurrency:
   group: pages
   cancel-in-progress: false

@@ -3,6 +3,11 @@ name: Demo Site (release)
 # Publishes a permanent render for each stable release under /v/<tag>/, so the
 # site can answer "what did the report look like in 3.0" and not only "what
 # does it look like right now".
+#
+# Version skew is inherent here: on a tag push GitHub runs the workflow files as
+# they existed *at the tag*, while `render-ref: main` means the sources and
+# scripts/assemble_site.py come from main. A future change to the assembler's
+# CLI can therefore break releases cut before that change.
 on:
   push:
     tags:
@@ -94,7 +99,7 @@ jobs:
         cd store
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add "v/$TAG/index.html" versions.json
+        git add "v/$TAG" versions.json
         git commit -m "Publish demo report for $TAG"
         git push
 
