@@ -83,8 +83,16 @@ jobs:
       env:
         TAG: ${{ github.ref_name }}
       run: |
+        # Copy the whole render, not just index.html: `-i` yields one
+        # self-contained file today, but a render that ever emitted a sibling
+        # asset would otherwise be published half-complete, and the truncation
+        # guard only checks index.html so it would not notice. Clearing the
+        # directory first is what makes "a re-run overwrites" literally true —
+        # a plain copy would leave behind files an earlier render produced and
+        # this one no longer does.
+        rm -rf "store/v/$TAG"
         mkdir -p "store/v/$TAG"
-        cp render/index.html "store/v/$TAG/index.html"
+        cp -R render/. "store/v/$TAG/"
         python3 - "$TAG" <<'PY'
         import json, sys
         tag = sys.argv[1]
@@ -100,7 +108,16 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add "v/$TAG" versions.json
-        git commit -m "Publish demo report for $TAG"
+        # A re-run of an already-published tag can stage nothing. The render is
+        # rebuilt from freshly generated fixtures, so it almost never matches
+        # the stored one byte for byte — but if it ever did, a bare `git commit`
+        # would exit nonzero and take `deploy` down with it. Nothing staged
+        # means the store is already correct, which is success, not failure.
+        if git diff --cached --quiet; then
+          echo "store already up to date for $TAG"
+        else
+          git commit -m "Publish demo report for $TAG"
+        fi
         git push
 
   # Reuses pages.yml wholesale rather than duplicating assembly and deploy.
