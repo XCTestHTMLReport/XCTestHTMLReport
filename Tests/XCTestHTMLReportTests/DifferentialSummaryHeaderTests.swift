@@ -138,8 +138,8 @@ extension DifferentialTests {
     private func assertLeafDurationsAgree(
         fixture: String, legacy: Summary, modern: Summary
     ) -> Int {
-        let legacyLeaves = comparableLeaves(of: legacy)
-        let modernLeaves = comparableLeaves(of: modern)
+        let legacyLeaves = keyedByIdentifier(comparableLeaves(of: legacy), fixture)
+        let modernLeaves = keyedByIdentifier(comparableLeaves(of: modern), fixture)
         XCTAssertFalse(
             legacyLeaves.isEmpty,
             "\(fixture): no leaves left to compare — the exclusion is too broad"
@@ -193,15 +193,34 @@ extension DifferentialTests {
         return repeatedLeaves
     }
 
-    /// Every leaf whose duration the two backends are expected to agree on,
-    /// keyed by identifier — so, all of them but #477's.
-    private func comparableLeaves(of summary: Summary) -> [String: Test] {
-        Dictionary(
-            summary.runs.flatMap(\.allTests)
-                .filter { !$0.identifier.hasPrefix(Self.divergentDurationIdentifier) }
-                .map { ($0.identifier, $0) },
-            uniquingKeysWith: { first, _ in first }
+    /// Every leaf whose duration the two backends are expected to agree on —
+    /// so, all of them but #477's.
+    private func comparableLeaves(of summary: Summary) -> [Test] {
+        summary.runs.flatMap(\.allTests)
+            .filter { !$0.identifier.hasPrefix(Self.divergentDurationIdentifier) }
+    }
+
+    /// The same leaves keyed for comparison, failing rather than dropping if
+    /// two of them share an identifier.
+    ///
+    /// They cannot today: every fixture is one test plan on one destination,
+    /// so `runs` has one element. The moment that stops being true — the same
+    /// plan run on two devices — the identifier alone stops being unique, and
+    /// a `uniquingKeysWith` that keeps the first would quietly compare one of
+    /// the two and report parity for both. That is the class of vacuous
+    /// assertion this whole test exists to avoid, so it is asserted rather
+    /// than assumed: a multi-run fixture will fail here and whoever adds it
+    /// puts the run into the key.
+    private func keyedByIdentifier(_ leaves: [Test], _ fixture: String) -> [String: Test] {
+        let keyed = Dictionary(
+            leaves.map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first }
         )
+        XCTAssertEqual(
+            keyed.count, leaves.count,
+            "\(fixture): two leaves share an identifier, so keying on it "
+                + "compares only one of them — put the run in the key"
+        )
+        return keyed
     }
 
     /// Only `TestCase` carries repetitions; a leaf that is not one — an empty
