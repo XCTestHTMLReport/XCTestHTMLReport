@@ -795,7 +795,8 @@ struct HTMLTemplates
       margin-right: -4px;
     }
 
-    #right-sidebar h2 {
+    #right-sidebar h2,
+    #file-attachment {
       color: var(--color-text-placeholder);
       font-weight: var(--font-weight-regular);
       font-size: var(--font-size-xl);
@@ -972,9 +973,10 @@ struct HTMLTemplates
         padding-bottom: 50vh;
       }
 
-      /* Both the placeholder and the file-download link are `h2`s the
-         desktop sheet centres absolutely; in a bottom sheet they flow. */
-      #right-sidebar h2 {
+      /* The placeholder and the file-download link are both centred
+         absolutely by the desktop sheet; in a bottom sheet they flow. */
+      #right-sidebar h2,
+      #file-attachment {
         position: static;
         width: auto;
         margin: var(--space-sm);
@@ -1004,30 +1006,30 @@ struct HTMLTemplates
         </ul>
       </header>
       <div id=\"container\">
-        <div id=\"left-sidebar\" class=\"sidebar\">
+        <nav id=\"left-sidebar\" class=\"sidebar\" aria-label=\"Devices\">
           <div class=\"resizer\"></div>
-          <h4 id=\"device-header\">Devices</h4>
+          <h2 id=\"device-header\">Devices</h2>
           <ul id=\"info-sections\">
             <li class=\"section\">
               [[DEVICES]]
             </li>
           </ul>
           <div id=\"report-issue\"><a href=\"https://github.com/TitouanVanBelle/XCTestHTMLReport/blob/master/CONTRIBUTING.md#reporting-issues\">Report an issue</a></div>
-        </div>
+        </nav>
 
-        <div id=\"main-content\">
+        <main id=\"main-content\">
           [[RUNS]]
-        </div>
+        </main>
 
-        <div id=\"right-sidebar\" class=\"sidebar\">
+        <aside id=\"right-sidebar\" class=\"sidebar\" aria-label=\"Attachment preview\">
           <div class=\"resizer\"></div>
           <h2>No Selected Attachment</h2>
-          <img src=\"\" class=\"displayed-screenshot\" id=\"screenshot\" loading=\"lazy\"/>
-          <img src=\"\" class=\"displayed-gif\" id=\"gif\" loading=\"lazy\"/>
-          <iframe id=\"text-attachment\" src=\"\" loading=\"lazy\"></iframe>
-          <h2 id=\"file-attachment\"><a target=\"_blank\"/></h2>
+          <img src=\"\" class=\"displayed-screenshot\" id=\"screenshot\" alt=\"\" loading=\"lazy\"/>
+          <img src=\"\" class=\"displayed-gif\" id=\"gif\" alt=\"\" loading=\"lazy\"/>
+          <iframe id=\"text-attachment\" src=\"\" title=\"Selected attachment\" loading=\"lazy\"></iframe>
+          <p id=\"file-attachment\"><a target=\"_blank\"></a></p>
           <video class=\"displayed-video\" controls src=\"\" id=\"video\" preload=\"none\"/>
-        </div>
+        </aside>
         <div class=\"clear\"></div>
       </div>
     </div>
@@ -1311,6 +1313,7 @@ struct HTMLTemplates
       var image = document.getElementById('screenshot-'+filename);
       screenshot.style.display = \"block\";
       screenshot.src = image.src;
+      screenshot.alt = image.alt;
     }
 
     function showVideo(filename) {
@@ -1334,6 +1337,7 @@ struct HTMLTemplates
     var gf = document.getElementById('gif-'+filename);
     gif.style.display = \"block\";
     gif.src = gf.src;
+    gif.alt = gf.alt;
     gif.play();
     }
     
@@ -1490,7 +1494,7 @@ struct HTMLTemplates
           <li class=\"selected\">All Messages</li>
         </ul>
       </div>
-      <iframe id=\"logs-iframe\" src=\"[[LOG_SOURCE]]\" loading=\"lazy\"></iframe>
+      <iframe id=\"logs-iframe\" src=\"[[LOG_SOURCE]]\" title=\"Run log\" loading=\"lazy\"></iframe>
     </div>
   </div>
   """
@@ -1580,7 +1584,7 @@ struct HTMLTemplates
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
     <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot(this.getAttribute('data'))\"></span>
-    <img class=\"screenshot\" src=\"[[SOURCE]]\" id=\"screenshot-[[FILENAME]]\" loading=\"lazy\"/>
+    <img class=\"screenshot\" src=\"[[SOURCE]]\" id=\"screenshot-[[FILENAME]]\" alt=\"[[NAME]]\" loading=\"lazy\"/>
   </p>
   """
 
@@ -1589,7 +1593,7 @@ struct HTMLTemplates
     <span class="icon left screenshot-icon" style="margin-left: [[PADDING]]px"></span>
     [[NAME]]
   <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showGif(this.getAttribute('data'))\"></span>
-    <img class=\"gif\" src=\"[[SOURCE]]\" id=\"gif-[[FILENAME]]\" loading=\"lazy\"/>
+    <img class=\"gif\" src=\"[[SOURCE]]\" id=\"gif-[[FILENAME]]\" alt=\"[[NAME]]\" loading=\"lazy\"/>
   </p>
   """
 

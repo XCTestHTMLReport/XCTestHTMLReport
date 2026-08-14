@@ -45,13 +45,18 @@ struct ScreenshotFlowAttachment: HTML {
     let className: String
 
     var htmlTemplate: String {
-        "<img class=\"\(className)\" src=\"[[SRC]]\" id=\"screenshot-[[FILENAME]]\" loading=\"lazy\"/>"
+        "<img class=\"\(className)\" src=\"[[SRC]]\" id=\"screenshot-[[FILENAME]]\" "
+            + "alt=\"[[NAME]]\" loading=\"lazy\"/>"
     }
 
     var htmlPlaceholderValues: [String: String] {
         [
             "SRC": (attachment.source ?? "").stringByEscapingXMLChars,
             "FILENAME": attachment.filename.stringByEscapingXMLChars,
+            // The display name, not the file name: a real `.xcresult` names
+            // its payloads with an 80-character opaque id, and reading that
+            // aloud is worse than the missing `alt` this replaces.
+            "NAME": attachment.displayName.stringByEscapingXMLChars,
         ]
     }
 }
