@@ -10,7 +10,7 @@ import XCTest
 @testable import XCTestHTMLReportCore
 
 final class DifferentialTests: XCTestCase {
-    private static let fixtures = ["TestResults", "SanityResults", "RetryResults"]
+    static let fixtures = ["TestResults", "SanityResults", "RetryResults"]
 
     /// Linking-mode summaries and their normalized renders, one per
     /// fixture-and-backend. Rendering is deterministic for a given backend
@@ -39,7 +39,7 @@ final class DifferentialTests: XCTestCase {
         return try JSONDecoder().decode(AllowList.self, from: Data(contentsOf: url))
     }
 
-    private func summary(_ resource: String, _ backend: ResultBackend) throws -> Summary {
+    func summary(_ resource: String, _ backend: ResultBackend) throws -> Summary {
         let key = "\(resource)|\(backend.rawValue)"
         if let cached = Self.summaries[key] {
             return cached
@@ -82,7 +82,7 @@ final class DifferentialTests: XCTestCase {
     /// modern reader: the differential would then compare the modern backend
     /// against itself and report parity. `resolve()` returns
     /// `.legacyUnavailable` instead of substituting, and this asserts on that.
-    private func requireBothBackends() throws {
+    func requireBothBackends() throws {
         switch ResultBackend.legacy.resolve() {
         case .legacyUnavailable:
             throw XCTSkip(

@@ -701,6 +701,45 @@ still normalizes — against the hex-digest pattern, not the UUID one. A regex
 written for RFC-4122 silently matches nothing after #430 and the differential
 degrades to comparing raw identifiers, which fails on every run.
 
+### Repetition durations are measured independently — measured (2026-08-14)
+
+Answer 8 converges *summing*: `TestCase.duration` sums its iterations under
+both readers, so neither backend can disagree about how a repeated case's
+total is assembled. It does not — and cannot — converge the inputs. The two
+formats report the same repetition from their own measurement, at microsecond
+scale, and those values are not always the same number.
+
+`RetryTests/testRetryOnFailure()` (two repetitions), across three
+`prepareTestResults.sh` generations of `RetryResults.xcresult`:
+
+| generation | legacy | modern | Δ |
+| --- | --- | --- | --- |
+| #476's review | 0.14027798s | 0.14065396s | 376µs |
+| 2026-08-14 01:21 | 0.60440397s | 0.60440397s | 0 |
+| 2026-08-14 11:43 | 0.18024814s | 0.18039226s | 144µs |
+
+The last generation localises it: the whole gap sits in repetition 0
+(0.12885606s legacy against 0.12900018s modern) while repetition 1 is
+bit-identical. Sibling leaves in the same bundle — `testJustPass()`,
+`testJustFail()`, `testInUnknownState()` — agree exactly in every generation.
+
+**This is a property of the formats, not a bug, and it is not #477.** #477 is
+structural and closable: legacy sums a parameterized case's argument
+executions and modern does not, so one of the two can be changed to match.
+Here there is nothing to change — the arithmetic already agrees, and a
+renderer cannot make two independent measurements of the same repetition
+round to the same microsecond. Exact equality is not something either format
+promises for a repetition duration, so the differential must not assert it.
+
+Consequence for the harness: cross-backend duration comparison is exact for
+leaves the run executed once, and holds repeated leaves to a per-repetition
+tolerance instead — 1ms per repetition in
+`DifferentialTests.testSummaryHeaderNumbersAgreeAcrossBackends`, about five
+times the largest per-repetition divergence measured above, since a bound
+that only clears one generation's number is not a bound. The repetition
+*count* stays an exact assertion, so a dropped repetition cannot hide inside
+the tolerance that count sizes.
+
 ### The differential test
 
 `Tests/XCTestHTMLReportTests/DifferentialTests.swift`, for each of

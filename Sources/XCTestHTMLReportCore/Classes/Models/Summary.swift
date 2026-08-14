@@ -305,6 +305,12 @@ extension Summary: HTML {
         return [
             "DEVICES": runs.map(\.runDestination.html).joined(),
             "RESULT_CLASS": resultClass,
+            // Fully rendered before it gets here, so the header's own
+            // placeholders are gone by the time this dictionary is applied.
+            // That matters because the substitution walks an unordered
+            // dictionary: a value still carrying `[[N_OF_TESTS]]` would be
+            // filled or not depending on iteration order.
+            "RUN_SUMMARY": RunSummary(runs: runs).html,
             "RUNS": runs.map(\.html).joined(),
             "TITLE": title.stringByEscapingXMLChars,
         ]
