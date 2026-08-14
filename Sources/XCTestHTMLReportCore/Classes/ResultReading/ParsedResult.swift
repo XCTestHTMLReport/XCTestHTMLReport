@@ -56,20 +56,27 @@ public struct ParsedGroup {
     public let children: [ParsedNode]
 }
 
-/// The truncation signals `Summary.validate()` reads (#478). They live here,
-/// on the shared model, rather than in either reader: one implementation over
-/// the structure both backends produce is what makes the two agree by
-/// construction instead of by allow-list — the same argument
+/// The truncation signal `Summary.validate()` reads (#478). It lives here, on
+/// the shared model, rather than in either reader, so there is one
+/// implementation rather than two to keep in step — the same argument
 /// `ParsedActivity.interleavingFailureRows` makes for failure-row ordering.
+///
+/// One implementation is not by itself a guarantee that both backends behave
+/// alike: shared code over unequal input still diverges, which is how the
+/// withdrawn `emptyPlannedTestable` managed to fire on legacy only. What makes
+/// this one agree is that the node it keys on was measured on both readers,
+/// from the same bundle, and is re-measured on every toolchain by
+/// `SystemFailureCanaryTests`.
 extension ParsedGroup {
     /// The group Apple files host-app and system failures under.
     ///
     /// Not a heuristic reading of a message: it is the node's own name, and
     /// both formats spell it identically at the same position in the tree.
-    /// Measured, not assumed — a crash bundle was reproduced on Xcode 26.2 by
-    /// trapping in the host app's `didFinishLaunchingWithOptions`, and both
-    /// readers put out a group whose `name` and `identifier` are
-    /// `System Failures`, directly under the testable.
+    /// Measured, not assumed — `prepareTestResults.sh` generates
+    /// `CrashResults.xcresult` by trapping in the host app's
+    /// `didFinishLaunchingWithOptions`, and both readers put out a group whose
+    /// `name` and `identifier` are `System Failures`, directly under the
+    /// testable.
     ///
     /// The group is the marker rather than its rows precisely because the rows
     /// are where the two backends stop agreeing: modern carries the crash row
@@ -79,6 +86,27 @@ extension ParsedGroup {
     /// `subtests` decodes — so legacy sees the bucket empty. Keying on the
     /// bucket makes the rule fire on both; keying on the row would have made it
     /// fire only on modern.
+    ///
+    /// Two consequences of keying on a display name, both accepted knowingly:
+    ///
+    /// - **A rename disarms the rule silently.** The bucket is a plain test
+    ///   suite on both surfaces — modern's node is
+    ///   `{"name": "System Failures", "nodeType": "Test Suite"}`, legacy's an
+    ///   ordinary `ActionTestSummaryGroup` — so nothing structural
+    ///   distinguishes it from a user's own suite, and there is no other
+    ///   surface to detect it on today. If Apple renames it, healthy fixtures
+    ///   go on passing and nothing reddens. That is what
+    ///   `SystemFailureCanaryTests` is for: it asserts a freshly generated
+    ///   crash bundle still contains this literal, on both readers, so the
+    ///   rename fails the suite on the toolchain that introduces it — and the
+    ///   `toolchain-drift` beta leg reaches that toolchain before a release
+    ///   does. The literal appears in no binary and no `.strings` table under
+    ///   `Xcode.app`; it is written into the bundle at run time, which is weak
+    ///   evidence it is not localized, and no evidence at all that it is
+    ///   permanent.
+    /// - **A user suite named `System Failures` faults.** Contrived, and it
+    ///   costs that user one `--lenient` run, which is the cheaper side of the
+    ///   trade against missing a real crash.
     static let systemFailureName = "System Failures"
 
     /// Every test row in this group's subtree, at any depth.
@@ -113,10 +141,6 @@ extension ParsedGroup {
 }
 
 extension ParsedTestable {
-    var allTestCases: [ParsedTestCase] {
-        groups.flatMap(\.allTestCases)
-    }
-
     var systemFailureGroups: [ParsedGroup] {
         groups.flatMap(\.systemFailureGroups)
     }

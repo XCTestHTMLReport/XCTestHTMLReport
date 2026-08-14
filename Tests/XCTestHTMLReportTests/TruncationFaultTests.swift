@@ -1,7 +1,7 @@
 //
 //  TruncationFaultTests.swift
 //
-//  The two faults that catch a run which stopped early (#478).
+//  The fault that catches a run which stopped early (#478).
 //
 //  On the Xcode 27 beta the sample app trapped at launch, `SampleAppUnitTests`
 //  never ran, and `xchtmlreport` rendered 10 of 21 tests, printed "Report
@@ -9,17 +9,22 @@
 //  silently dropping 57% of the suite is precisely what the fault machinery
 //  exists to prevent.
 //
-//  Both signals are read off `ParsedResult`, the model *both* readers produce,
-//  so there is one implementation and it cannot drift between backends — the
-//  same seam `unresolvedLog` uses. The shapes were not guessed: the crash was
-//  reproduced on Xcode 26.2 stable by trapping in the host app's
-//  `didFinishLaunchingWithOptions`, and both backends were dumped. They agree
-//  exactly, which is what makes a name-keyed rule defensible here:
+//  The signal is read off `ParsedResult`, the model *both* readers produce, so
+//  there is one implementation — the same seam `unresolvedLog` uses. One
+//  implementation is not the same as one behaviour, which is why the second
+//  half of this file exists: `testSelectedTargetWithNoTestRowsIsNotAFault`
+//  guards the shape a withdrawn second fault kind got wrong. The name this rule
+//  keys on is re-measured against the live toolchain by
+//  `SystemFailureCanaryTests`; these tests pin the logic over synthetic input.
+//
+//  The crash shapes below were not guessed. `prepareTestResults.sh` reproduces
+//  the crash by trapping in the host app's `didFinishLaunchingWithOptions`, and
+//  both backends read the resulting bundle as:
 //
 //    legacy  ActionTestSummaryGroup name='System Failures'
-//              └ ActionTestSummary  name='SampleApp (43043) encountered an error'
+//              └ (empty — the crash row is an ActionTestSummary, not decoded)
 //    modern  Test Suite            name='System Failures'
-//              └ Test Case         name='SampleApp (43043) encountered an error'
+//              └ Test Case         name='SampleApp (1669) encountered an error'
 //
 
 import XCTest
@@ -78,67 +83,11 @@ final class TruncationFaultTests: XCTestCase {
         summary.faults.filter { $0.kind == kind }.map(\.detail)
     }
 
-    // MARK: An empty but planned testable
-
-    func testTestableWithNoTestRowsIsAFault() {
-        // The #478 shape: the target is in the bundle — it was planned, it was
-        // meant to run — and produced nothing.
-        let summary = validatedSummary([run(testables: [
-            ParsedTestable(targetName: "SampleAppUITests", groups: [
-                group("FirstSuite", [testCase("testOne()")]),
-            ]),
-            ParsedTestable(targetName: "SampleAppUnitTests", groups: []),
-        ])])
-
-        XCTAssertEqual(
-            details(summary, .emptyPlannedTestable), ["SampleAppUnitTests"],
-            "A testable present in the bundle with no test rows must be reported"
-        )
-    }
-
-    func testTestableWhoseGroupsAreAllEmptyIsAFault() {
-        // The other way the same loss arrives: the group survived, its rows
-        // did not. The beta's `--json` showed exactly this — `"children": []`.
-        let summary = validatedSummary([run(testables: [
-            ParsedTestable(targetName: "SampleAppUnitTests", groups: [
-                group("SwiftTestingSuite", []),
-            ]),
-        ])])
-
-        XCTAssertEqual(details(summary, .emptyPlannedTestable), ["SampleAppUnitTests"])
-    }
-
-    func testDeeplyNestedTestRowsAreNotAFault() {
-        // The counter has to see through nesting, or every suite-inside-a-suite
-        // target would be reported as empty.
-        let summary = validatedSummary([run(testables: [
-            ParsedTestable(targetName: "SampleAppUnitTests", groups: [
-                group("All tests", [.group(group("Outer", [
-                    .group(group("Inner", [testCase("testDeep()")])),
-                ]))]),
-            ]),
-        ])])
-
-        XCTAssertEqual(details(summary, .emptyPlannedTestable), [])
-    }
-
-    func testRunWithNoTestablesAtAllIsNotAFault() {
-        // The cardinal rule. A bundle that legitimately contains no testable
-        // — `-only-testing` prunes unselected targets from the document on both
-        // backends, which is why SanityResults and RetryResults carry one
-        // testable and not three — is structural absence, not degradation.
-        // Only a target that IS there and produced nothing is a loss (#387).
-        let summary = validatedSummary([run(testables: [])])
-
-        XCTAssertEqual(details(summary, .emptyPlannedTestable), [])
-    }
-
     // MARK: A host-app / system-failure crash row
 
     func testModernShapeOfACrashedRunFaults() {
         // The shape the modern reader produced for the reproduced crash: the
-        // bucket carries the row, so the testable is not empty and only the
-        // system-failure signal fires.
+        // bucket carries the row, and the row names the fault.
         let summary = validatedSummary([run(testables: [
             ParsedTestable(targetName: "SampleAppUnitTests", groups: [
                 group("System Failures", [
@@ -152,7 +101,6 @@ final class TruncationFaultTests: XCTestCase {
             ["SampleAppUnitTests: SampleApp (43043) encountered an error"],
             "A system-failure row is direct evidence the run did not complete"
         )
-        XCTAssertEqual(details(summary, .emptyPlannedTestable), [])
     }
 
     func testLegacyShapeOfACrashedRunFaults() {
@@ -160,8 +108,9 @@ final class TruncationFaultTests: XCTestCase {
         // XCResultKit does not decode the crash row (it is an
         // `ActionTestSummary`, not an `ActionTestMetadata`), so the bucket
         // arrives empty. Keying the rule on the bucket rather than on its rows
-        // is what makes this fault too — and an empty bucket also means the
-        // testable holds no test rows, so both signals fire, each truthfully.
+        // is the whole reason this bundle faults on both readers — and it is
+        // what the two backends' fault details differing does *not* mean:
+        // each names the most specific thing its own document holds.
         let summary = validatedSummary([run(testables: [
             ParsedTestable(targetName: "SampleAppUnitTests", groups: [
                 group("System Failures", []),
@@ -169,7 +118,6 @@ final class TruncationFaultTests: XCTestCase {
         ])])
 
         XCTAssertEqual(details(summary, .systemFailure), ["SampleAppUnitTests: System Failures"])
-        XCTAssertEqual(details(summary, .emptyPlannedTestable), ["SampleAppUnitTests"])
     }
 
     func testNestedSystemFailureGroupIsFound() {
@@ -201,17 +149,60 @@ final class TruncationFaultTests: XCTestCase {
         XCTAssertEqual(details(summary, .systemFailure), [])
     }
 
+    // MARK: What a missing target is not
+
+    func testSelectedTargetWithNoTestRowsIsNotAFault() {
+        // The counterexample that withdrew a second fault kind. An earlier
+        // revision flagged any testable holding zero test rows as
+        // `emptyPlannedTestable`. This is that shape — and it is what an
+        // ordinary `-skip-testing:Target/SuiteA -skip-testing:Target/SuiteB`
+        // leaves behind on the legacy reader, which keeps a zero-row
+        // `Selected tests` group where the modern node tree prunes the bundle
+        // node entirely. Quarantining a flaky suite and sharding a target
+        // across CI jobs both produce it, on the default reader, on a run where
+        // every test that was planned to run ran. Faulting it made exit 3 mean
+        // less, not more.
+        //
+        // Whole-target loss is caught before the tool sees a bundle, by the
+        // per-bundle floors in `scripts/verify_fixtures.sh`; a target lost to a
+        // launch trap is caught here, by the system-failure bucket that comes
+        // with it.
+        let summary = validatedSummary([run(testables: [
+            ParsedTestable(targetName: "SampleAppUITests", groups: [
+                group("Selected tests", [testCase("testOne()")]),
+            ]),
+            ParsedTestable(targetName: "SampleAppUnitTests", groups: [
+                group("Selected tests", []),
+            ]),
+        ])])
+
+        XCTAssertEqual(
+            summary.faults, [],
+            "A selected target with no rows is a skip filter, not degradation"
+        )
+    }
+
+    func testRunWithNoTestablesAtAllIsNotAFault() {
+        // The cardinal rule. A bundle that legitimately contains no testable
+        // — `-only-testing` prunes unselected targets from the document on both
+        // backends, which is why SanityResults and RetryResults carry one
+        // testable and not three — is structural absence, not degradation
+        // (#387).
+        let summary = validatedSummary([run(testables: [])])
+
+        XCTAssertEqual(summary.faults, [])
+    }
+
     // MARK: Shared post-conditions
 
     func testTruncationFaultsAreNotDuplicatedAcrossRepeatedValidation() {
         // `validate()` is idempotent for every other fault kind it records; a
-        // second call must not double these either.
+        // second call must not double this one either.
         let summary = Summary(
             parsedRuns: [run(testables: [
                 ParsedTestable(targetName: "SampleAppUnitTests", groups: [
                     group("System Failures", [testCase("SampleApp (1) encountered an error")]),
                 ]),
-                ParsedTestable(targetName: "SampleAppUITests", groups: []),
             ])],
             payloads: SyntheticResult.payloads,
             renderingMode: .linking,
@@ -223,7 +214,7 @@ final class TruncationFaultTests: XCTestCase {
 
         summary.validate()
         let afterFirst = summary.faults
-        XCTAssertEqual(afterFirst.count, 2, "One empty testable and one system failure")
+        XCTAssertEqual(afterFirst.count, 1, "One system failure")
 
         summary.validate()
 
@@ -233,9 +224,9 @@ final class TruncationFaultTests: XCTestCase {
         )
     }
 
-    /// Every fixture, through every backend the toolchain can run, must produce
-    /// neither fault. These are healthy bundles; a rule that fires on them is a
-    /// rule that makes exit 3 meaningless.
+    /// Every healthy fixture, through every backend the toolchain can run, must
+    /// produce no system failure. These are healthy bundles; a rule that fires
+    /// on them is a rule that makes exit 3 meaningless.
     func testHealthyFixturesProduceNoTruncationFaultsOnEitherBackend() throws {
         var backends: [ResultBackend] = [.modern]
         if case .use(.legacy) = ResultBackend.legacy.resolve() {
@@ -257,10 +248,6 @@ final class TruncationFaultTests: XCTestCase {
                 )
                 summary.validate()
 
-                XCTAssertEqual(
-                    details(summary, .emptyPlannedTestable), [],
-                    "\(fixture) on \(backend.rawValue): healthy bundle reported an empty testable"
-                )
                 XCTAssertEqual(
                     details(summary, .systemFailure), [],
                     "\(fixture) on \(backend.rawValue): healthy bundle reported a system failure"

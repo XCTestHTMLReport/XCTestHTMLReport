@@ -329,6 +329,7 @@ jobs:
           Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult
           Tests/XCTestHTMLReportTests/Resources/SanityResults.xcresult
           Tests/XCTestHTMLReportTests/Resources/RetryResults.xcresult
+          Tests/XCTestHTMLReportTests/Resources/CrashResults.xcresult
         key: ${{ steps.fixture-key.outputs.key }}
 
     # The bundles themselves, whenever this leg found anything wrong.
@@ -360,6 +361,13 @@ jobs:
     # continue-on-error (the cache save) failed first. Generation failing
     # outright can leave no bundle at all, so the upload tolerates finding
     # nothing rather than adding a red step of its own.
+    #
+    # Same six steps `Report drift` reads, but only their `failure` outcome —
+    # a narrower set than the one that files an issue, which also treats a
+    # `skipped` legacy probe or fixture step as a fault worth reporting. That
+    # difference is deliberate: those outcomes mean the step never ran, so
+    # there is no bundle behind them to attach. Widening this to match would
+    # only ever upload a stale or empty directory.
     - name: Upload fixtures on drift
       if: >-
         ${{ !cancelled() && (steps.legacy.outcome == 'failure'

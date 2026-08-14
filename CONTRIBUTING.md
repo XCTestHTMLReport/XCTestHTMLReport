@@ -60,10 +60,18 @@ full of tests, just not the ones hosted in the app.
 ./scripts/verify_fixtures.sh   # asserts each bundle holds its expected test count
 ```
 
-It knows the shape of each of the three fixtures (21, 1 and 4 tests), so a
-bundle that generated partially is rejected by name and count rather than
-waved through. Adding or removing sample-app tests moves those numbers: update
-the table at the top of the script in the same commit.
+It knows the shape of each fixture (21, 1 and 4 tests for the three healthy
+ones), so a bundle that generated partially is rejected by name and count
+rather than waved through. Adding or removing sample-app tests moves those
+numbers: update the table at the top of the script in the same commit.
+
+The fourth bundle, `CrashResults.xcresult`, is a broken run on purpose: the
+script sets `XCHR_TRAP_AT_LAUNCH`, the sample app traps in
+`didFinishLaunchingWithOptions`, and `SampleAppUnitTests` — hosted in that app
+— dies with it. `SystemFailureCanaryTests` reads it to check that Apple still
+calls the resulting group `System Failures`, which is the only handle the
+`systemFailure` fault has. Expect one failing `xcodebuild` invocation during
+generation; that is the fixture being made, not a problem.
 
 Regenerate fixtures after upgrading Xcode; `.xcresult` contents change between
 Xcode versions.

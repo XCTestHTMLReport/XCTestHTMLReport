@@ -28,7 +28,7 @@
 # healthy count for a bundle whose expected shape is 10. So the floor is
 # per bundle, below.
 #
-# Takes bundle paths as arguments, defaulting to the three CI fixtures. Every
+# Takes bundle paths as arguments, defaulting to the four CI fixtures. Every
 # bundle is checked before exiting, so one run names every offender rather than
 # stopping at the first.
 set -euo pipefail
@@ -49,14 +49,26 @@ set -euo pipefail
 #   SanityResults  1 = -only-testing:SampleAppUITests/FirstSuite/testOne
 #   RetryResults   4 = -only-testing:SampleAppUITests/RetryTests, whose four
 #                      methods merge their repetitions into four rows
+#   CrashResults   1 = the `System Failures` row from a host app that trapped
+#                      at launch. Deliberately weak: this bundle is a broken
+#                      run on purpose, so the floor only asserts that
+#                      generation wrote something rather than a stub, and
+#                      SystemFailureCanaryTests asserts the shape — a trap that
+#                      stopped firing yields a healthy 12-row bundle, which no
+#                      floor can reject.
 #
-# A bundle not named here — anything passed as an argument by a human — keeps
-# the original `> 0` assertion, since this script cannot know its shape.
+# Matched on the file's base name, so this table also claims any bundle a human
+# passes as an argument that happens to share one of these names: a personal
+# TestResults.xcresult is held to 21. The alternative — matching the fixture
+# directory too — would stop `verify_fixtures.sh path/to/copy/TestResults.xcresult`
+# from checking the thing the caller almost certainly meant. Anything named
+# something else keeps a plain `> 0`, since this script cannot know its shape.
 expected_minimum() {
     case "$1" in
     TestResults.xcresult) echo 21 ;;
     SanityResults.xcresult) echo 1 ;;
     RetryResults.xcresult) echo 4 ;;
+    CrashResults.xcresult) echo 1 ;;
     *) echo 1 ;;
     esac
 }
@@ -69,6 +81,7 @@ else
         "${resources}/TestResults.xcresult"
         "${resources}/SanityResults.xcresult"
         "${resources}/RetryResults.xcresult"
+        "${resources}/CrashResults.xcresult"
     )
 fi
 
