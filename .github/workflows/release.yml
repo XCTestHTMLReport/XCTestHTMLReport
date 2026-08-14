@@ -25,6 +25,7 @@ jobs:
     outputs:
       prerelease: ${{ steps.metadata.outputs.prerelease }}
       version: ${{ steps.metadata.outputs.version }}
+      base_version: ${{ steps.metadata.outputs.base_version }}
 
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,11 +53,17 @@ jobs:
         else
           VERSION="0.0.0-dryrun"
         fi
-        # `rc` tags carry no hyphen, so a `contains(github.ref, '-')` test
-        # never fired for them and release candidates shipped as full releases.
+        # `rc` tags carry no hyphen in the X.Y.ZrcN form this repo uses, so a
+        # `contains(github.ref, '-')` test never fired for them and release
+        # candidates shipped as full releases.
         if [[ "$VERSION" == *rc* ]]; then PRERELEASE=true; else PRERELEASE=false; fi
+        # Release notes are kept per X.Y.Z, so every candidate publishes the
+        # same document as the final release and the two cannot drift:
+        # 4.0.0rc1 and 4.0.0 both resolve to docs/release-notes/4.0.0.md.
+        BASE="${VERSION%%rc*}"
         {
           echo "version=${VERSION}"
+          echo "base_version=${BASE}"
           echo "prerelease=${PRERELEASE}"
           echo "bin_path=.build/universal/release/xchtmlreport"
           echo "archive_name=xchtmlreport-${VERSION}.zip"
@@ -142,6 +149,16 @@ jobs:
       contents: write
 
     steps:
+    # Sparse and credential-free: the only thing this job wants from the tree
+    # is the release-notes document. On a tag push the checkout is the tag, so
+    # a release always publishes the notes as they stood at the commit it was
+    # cut from rather than whatever main says today.
+    - name: Check out the release notes
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+        sparse-checkout: docs/release-notes
+
     - name: Download
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       # Both are given explicitly because the default layout is not stable and
@@ -154,6 +171,48 @@ jobs:
         name: application
         path: application
 
+    - name: Compose the release body
+      id: notes
+      env:
+        NOTES_FILE: docs/release-notes/${{ needs.build.outputs.base_version }}.md
+        PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        TAG: ${{ github.ref_name }}
+        # The archive the build job actually produced, so the banner names the
+        # asset that is really attached rather than a second guess at it.
+        ARCHIVE: xchtmlreport-${{ needs.build.outputs.version }}.zip
+      run: |
+        # Not every version has a hand-written document, and a missing one is
+        # not a reason to fail a release that is already built and notarized —
+        # it falls back to the generated notes alone.
+        if [[ ! -f "$NOTES_FILE" ]]; then
+          echo "::notice::no notes at ${NOTES_FILE}; publishing generated notes alone"
+          echo "have_notes=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        # A candidate says so at the top of its own release page, where nobody
+        # can miss it. The banner is generated per tag rather than written into
+        # the document, because the document is shared with the final release.
+        if [[ "$PRERELEASE" == "true" ]]; then
+          {
+            echo "> [!IMPORTANT]"
+            echo "> **${TAG} is a release candidate**, published as a pre-release."
+            echo "> \`brew install xctesthtmlreport\` and"
+            echo "> \`mint install XCTestHTMLReport/XCTestHTMLReport\` keep resolving to the"
+            echo "> latest stable release, so this one is opt-in:"
+            echo ">"
+            echo "> \`\`\`bash"
+            echo "> mint install XCTestHTMLReport/XCTestHTMLReport@${TAG}"
+            echo "> \`\`\`"
+            echo ">"
+            echo "> Or download \`${ARCHIVE}\` below: a signed, notarized universal binary."
+            echo
+          } > release-body.md
+        else
+          : > release-body.md
+        fi
+        cat "$NOTES_FILE" >> release-body.md
+        echo "have_notes=true" >> "$GITHUB_OUTPUT"
+
     - name: Release
       # The GitHub CLI is preinstalled on the runner and does everything the
       # third-party release action was doing here, so the one job that handles
@@ -161,12 +220,13 @@ jobs:
       # a third party. Reported as superfluous by zizmor.
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # This job deliberately has no checkout, so gh cannot work out which
-        # repository it is talking to from a git remote.
+        # The checkout above is sparse and has no credentials, so gh cannot
+        # work out which repository it is talking to from a git remote.
         GH_REPO: ${{ github.repository }}
         # Through the environment rather than interpolated into the script.
         TAG: ${{ github.ref_name }}
         PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        HAVE_NOTES: ${{ steps.notes.outputs.have_notes }}
       # --verify-tag because `gh release create` otherwise invents a tag from
       # the default branch when the one it is given does not exist. The tag is
       # what triggered this run, so that can only ever mean something is wrong.
@@ -181,8 +241,19 @@ jobs:
       # re-run button should be able to do. Failed runs need no cleanup — with
       # assets, gh creates the release as a draft, uploads, then publishes, and
       # deletes the draft if any of that fails.
+      #
+      # --generate-notes stays even when a hand-written document exists: gh
+      # *prepends* --notes-file to the generated notes rather than replacing
+      # them, so the release body reads as the curated document followed by
+      # the automatic changelog and contributor list.
+      #
+      # --prerelease is what keeps a candidate off "Latest". GitHub never
+      # promotes a pre-release, so no --latest=false is needed alongside it.
       run: |
         args=(--generate-notes --verify-tag)
+        if [[ "$HAVE_NOTES" == "true" ]]; then
+          args+=(--notes-file release-body.md)
+        fi
         if [[ "$PRERELEASE" == "true" ]]; then
           args+=(--prerelease)
         fi
