@@ -229,18 +229,23 @@ public struct Summary {
     /// reference are skipped: their content is empty by construction, not
     /// through degradation (#387, #386).
     ///
-    /// Idempotent across sequential calls: repeated calls do not duplicate
-    /// faults. Dedup keys on `Attachment.faultDescription` and
-    /// `Run.logFaultDescription`, which assume `allAttachments` and `runs` are
-    /// stable for this value's lifetime — they are, since `runs` is a `let`.
-    /// Not safe to call concurrently with itself: the read of `faults` and the
-    /// subsequent `record` are separately synchronized, not atomic as a unit.
+    /// One fault per distinct detail, however many times it is reached: both
+    /// within a single pass and across repeated calls. The sets are seeded
+    /// from what is already recorded and then grown as this pass records, so
+    /// passing the same bundle twice — two runs on one device, two copies of
+    /// one unresolved attachment — yields one entry rather than two
+    /// indistinguishable ones. Dedup keys on `Attachment.faultDescription`
+    /// and `Run.logFaultDescription`, which assume `allAttachments` and `runs`
+    /// are stable for this value's lifetime — they are, since `runs` is a
+    /// `let`. Not safe to call concurrently with itself: the read of `faults`
+    /// and the subsequent `record` are separately synchronized, not atomic as
+    /// a unit.
     public func validate() {
         let recorded = faultCollector.faults
-        let flaggedAttachments = Set(
+        var flaggedAttachments = Set(
             recorded.filter { $0.kind == .unresolvedAttachment }.map(\.detail)
         )
-        let flaggedLogs = Set(
+        var flaggedLogs = Set(
             recorded.filter { $0.kind == .unresolvedLog }.map(\.detail)
         )
 
@@ -248,22 +253,20 @@ public struct Summary {
             guard attachment.failedToResolve else {
                 continue
             }
-            let detail = attachment.faultDescription
-            guard !flaggedAttachments.contains(detail) else {
+            guard flaggedAttachments.insert(attachment.faultDescription).inserted else {
                 continue
             }
-            faultCollector.record(.unresolvedAttachment, detail)
+            faultCollector.record(.unresolvedAttachment, attachment.faultDescription)
         }
 
         for run in runs {
             guard run.logFailedToResolve else {
                 continue
             }
-            let detail = run.logFaultDescription
-            guard !flaggedLogs.contains(detail) else {
+            guard flaggedLogs.insert(run.logFaultDescription).inserted else {
                 continue
             }
-            faultCollector.record(.unresolvedLog, detail)
+            faultCollector.record(.unresolvedLog, run.logFaultDescription)
         }
     }
 }

@@ -54,11 +54,17 @@ class ResultFile {
     /// behind, and an attachment with no bytes carries no payload reference at
     /// all (#387) — so an empty file is a failed export, not an empty payload.
     ///
+    /// A directory is rejected outright rather than measured: a directory's
+    /// reported size is its own bookkeeping, not a payload's, so a size test
+    /// alone would pass one. `exportPayload(id:)` always exports
+    /// `ExportType.file`, so a directory here is not a payload of ours.
+    ///
     /// Not private so a test can pin the empty-file arm, which no reachable
     /// input produces.
     static func exportProducedPayload(at url: URL) -> Bool {
         guard
             let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+            (attributes[.type] as? FileAttributeType) == .typeRegular,
             let size = (attributes[.size] as? NSNumber)?.uint64Value
         else {
             return false
@@ -111,7 +117,7 @@ extension ResultFile: PayloadProviding {
             // payload id, so a file already there *is* this payload and our
             // export producing nothing is not a degradation. Without this the
             // check above would turn #449 back into spurious faults.
-            if fileManager.fileExists(atPath: destination.path) {
+            if Self.exportProducedPayload(at: destination) {
                 return relativeUrl.appendingPathComponent(resolvedName)
             }
             Logger.warning("Can't export payload with id \(reference)")
@@ -130,7 +136,7 @@ extension ResultFile: PayloadProviding {
             // second `xchtmlreport` over the same bundle, for instance): if the
             // payload is sitting at the destination, it was exported, and this
             // move losing the race is not a degradation.
-            if fileManager.fileExists(atPath: destination.path) {
+            if Self.exportProducedPayload(at: destination) {
                 return relativeUrl.appendingPathComponent(resolvedName)
             }
             Logger
@@ -150,22 +156,29 @@ extension ResultFile: PayloadProviding {
         lock.lock()
         defer { lock.unlock() }
 
-        guard let savedURL = file.exportPayload(id: reference),
-              Self.exportProducedPayload(at: savedURL)
-        else {
-            Logger.warning("Can't export payload with id \(reference)")
-            faultCollector.record(.payloadExportFailed, "payload id \(reference)")
-            return nil
-        }
+        let exported = file.exportPayload(id: reference)
         // Unlike `exportPayload(reference:fileName:)`, which moves the temp
         // file into the bundle, this one only reads it — so every inline
         // export used to leave a full copy behind at
         // `NSTemporaryDirectory()/<id>`, which for screen recordings is tens
         // of megabytes per run. `ModernPayloadStore` cleans up its export
-        // directory for the same reason. It also keeps the check above
+        // directory for the same reason. It also keeps the check below
         // honest: nothing survives to satisfy it on a later, failed export of
         // the same id.
-        defer { try? FileManager.default.removeItem(at: savedURL) }
+        //
+        // Registered before the guard, so a half-made file an unsuccessful
+        // export left behind is cleaned up too.
+        defer {
+            if let exported {
+                try? FileManager.default.removeItem(at: exported)
+            }
+        }
+
+        guard let savedURL = exported, Self.exportProducedPayload(at: savedURL) else {
+            Logger.warning("Can't export payload with id \(reference)")
+            faultCollector.record(.payloadExportFailed, "payload id \(reference)")
+            return nil
+        }
         do {
             return try Data(contentsOf: savedURL)
         } catch {

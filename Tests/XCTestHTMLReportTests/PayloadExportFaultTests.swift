@@ -55,13 +55,18 @@ final class PayloadExportFaultTests: XCTestCase {
 
         let empty = directory.appendingPathComponent("empty")
         let populated = directory.appendingPathComponent("populated")
+        let folder = directory.appendingPathComponent("folder")
         try Data().write(to: empty)
         try Data("payload".utf8).write(to: populated)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 
         XCTAssertFalse(
             ResultFile.exportProducedPayload(at: directory.appendingPathComponent("missing"))
         )
         XCTAssertFalse(ResultFile.exportProducedPayload(at: empty))
+        // A directory reports a nonzero size of its own, so rejecting it takes
+        // more than the size test.
+        XCTAssertFalse(ResultFile.exportProducedPayload(at: folder))
         XCTAssertTrue(ResultFile.exportProducedPayload(at: populated))
     }
 
