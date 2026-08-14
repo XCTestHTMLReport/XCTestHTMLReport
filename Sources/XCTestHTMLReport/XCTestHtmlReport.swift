@@ -24,7 +24,9 @@ struct HtmlOptions: ParsableArguments {
     @Option(
         name: .shortAndLong,
         parsing: .next,
-        help: ArgumentHelp("Output directory, defaults to the first provided xcresult"),
+        help: ArgumentHelp(
+            "Output directory (created if missing), defaults to the first provided xcresult"
+        ),
         completion: .directory
     )
     var output: String?
@@ -133,6 +135,8 @@ struct XCTestHtmlReport: ParsableCommand {
 
         Logger.substep("Writing report to \(path)")
 
+        try createOutputDirectory(at: path)
+
         let faultCollector = FaultCollector()
         let summary = Summary(
             resultPaths: summaryOptions.finalResults,
@@ -210,6 +214,33 @@ struct XCTestHtmlReport: ParsableCommand {
 
         Logger.error("Exiting non-zero. Pass --lenient to ignore faults.")
         throw ExitCode(3)
+    }
+
+    /// Called up front, before any parsing, rendering or attachment exporting.
+    ///
+    /// Until #446 a missing output directory surfaced only at the final
+    /// `write(toFile:)` — minutes in, as ArgumentParser's `The file
+    /// "index.html" doesn't exist.`, which names the wrong file and arrives
+    /// after the work is done (in linking mode, after payloads have already
+    /// been exported into the bundle). Creating it is what every CLI this one
+    /// sits next to does, and it is a no-op when the directory already exists,
+    /// which is the overwhelmingly common case.
+    ///
+    /// A directory that genuinely cannot be created — no write permission on
+    /// the parent, a file in the way — is a usage error, not a degraded
+    /// report: `ValidationError` exits 64 like the tool's other usage errors
+    /// rather than 3, which is reserved for collected faults.
+    private func createOutputDirectory(at path: String) throws {
+        do {
+            try FileManager.default.createDirectory(
+                atPath: path,
+                withIntermediateDirectories: true
+            )
+        } catch {
+            throw ValidationError(
+                "Could not create output directory \(path): \(error.localizedDescription)"
+            )
+        }
     }
 
     func validate() throws {

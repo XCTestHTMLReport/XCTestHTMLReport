@@ -143,4 +143,93 @@ final class CliTests: XCTestCase {
 
         XCTAssertEqual(status, 0, "--lenient restores 2.x exit behaviour")
     }
+
+    /// A scratch directory unique to the calling test, removed when it ends.
+    private func makeScratchDirectory(
+        _ name: String = #function
+    ) throws -> URL {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("xchr-\(name)-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        addTeardownBlock {
+            // Restore write permission first: the unwritable-output test drops
+            // it on a subdirectory, and removeItem cannot unlink through it.
+            let contents = FileManager.default.enumerator(atPath: root.path)?
+                .allObjects as? [String] ?? []
+            for entry in contents {
+                try? FileManager.default.setAttributes(
+                    [.posixPermissions: 0o755],
+                    ofItemAtPath: root.appendingPathComponent(entry).path
+                )
+            }
+            try? FileManager.default.removeItem(at: root)
+        }
+        return root
+    }
+
+    /// #446: the tool used to render the whole report and only then fail on
+    /// `write(toFile:)`, surfacing as `The file "index.html" doesn't exist.`
+    /// A missing output directory is created, like every comparable CLI does.
+    func testNonexistentNestedOutputDirectoryIsCreated() throws {
+        let testResultsUrl = try XCTUnwrap(testResultsUrl)
+        let output = try makeScratchDirectory()
+            .appendingPathComponent("nested/report/dir")
+
+        let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(
+            args: ["--output", output.path, testResultsUrl.path]
+        )
+
+        XCTAssertEqual(
+            status, 0,
+            "exited \(status).\nstdout:\n\(maybeStdOut ?? "")\nstderr:\n\(maybeStdErr ?? "")"
+        )
+        XCTAssertTrue(
+            FileManager.default
+                .fileExists(atPath: output.appendingPathComponent("index.html").path),
+            "index.html was not written to the created output directory"
+        )
+    }
+
+    /// The other half of #446: when the directory genuinely cannot be created,
+    /// say so — naming the path — and say it before minutes of parsing rather
+    /// than after. This is a usage error (exit 64, the code every other
+    /// `ValidationError` in this tool produces), never a report-degradation
+    /// fault (exit 3).
+    func testUnwritableOutputDirectoryFailsFastNamingThePath() throws {
+        try XCTSkipIf(getuid() == 0, "root bypasses directory permissions")
+        let testResultsUrl = try XCTUnwrap(testResultsUrl)
+
+        let readOnly = try makeScratchDirectory().appendingPathComponent("read-only")
+        try FileManager.default.createDirectory(
+            at: readOnly,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o555]
+        )
+        let output = readOnly.appendingPathComponent("report")
+
+        let (status, maybeStdOut, maybeStdErr) = try xchtmlreportCmd(
+            args: ["--verbose", "--output", output.path, testResultsUrl.path]
+        )
+
+        XCTAssertEqual(
+            status, 64,
+            "An unusable --output is a usage error, not a degraded report (3)"
+        )
+
+        let stdErr = try XCTUnwrap(maybeStdErr)
+        try XCTAssertContains(stdErr, "Could not create output directory")
+        try XCTAssertContains(stdErr, output.path)
+
+        // Fail *fast*: the old behaviour reached the write only after building
+        // the report, so this must not have got as far as rendering.
+        let stdOut = maybeStdOut ?? ""
+        XCTAssertFalse(
+            stdOut.contains("Building HTML"),
+            "Rendering ran before the output directory was checked:\n\(stdOut)"
+        )
+        XCTAssertFalse(
+            stdErr.contains("index.html"),
+            "Still blaming index.html for a missing output directory:\n\(stdErr)"
+        )
+    }
 }

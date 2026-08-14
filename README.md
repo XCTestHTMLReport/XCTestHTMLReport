@@ -213,8 +213,11 @@ and are still only visible as messages on stderr. See
 [#378](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/378) and the
 follow-on work it tracks.
 
-Exit 1 covers failures to write the output — for example `-o` pointing at a
-directory that does not exist.
+Exit 1 covers failures to write the output. A missing `-o` directory is not one of
+them: it is created for you, intermediate components included, before any parsing
+or rendering starts. A directory that cannot be created — no write permission on
+the parent, or a file in the way — is an argument error (64), reported up front and
+naming the path.
 
 The report is still written when faults occur. To restore the pre-3.0 behaviour and
 always exit 0 on faults, pass `--lenient`. `--lenient` does not affect exit 1 or 64.

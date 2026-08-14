@@ -133,15 +133,17 @@ jobs:
     # not degradation. A clean exit against a bundle produced by this exact
     # toolchain is the whole assertion. The exit code is captured as a step
     # output so the drift report can tell those two failures apart.
-    # `mkdir -p` first: xchtmlreport does not create the --output directory
-    # and fails late with a misleading error when it is missing (#444).
+    #
+    # No `mkdir -p` here: #445 added one to stop a missing --output directory
+    # from being misreported as toolchain drift, and #446 fixed the tool to
+    # create the directory itself. Pointing at an uncreated path is now part
+    # of what this step asserts — restoring the mkdir would hide a regression.
     - name: Run xchtmlreport against a fresh bundle
       id: tool
       if: steps.build.outcome == 'success' && steps.fixtures.outcome == 'success'
       continue-on-error: true
       timeout-minutes: 15
       run: |
-        mkdir -p "$RUNNER_TEMP/drift-report"
         exit_code=0
         swift run xchtmlreport \
           Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult \
