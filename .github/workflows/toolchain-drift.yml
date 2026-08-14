@@ -39,17 +39,16 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: toolchain-drift
-
 jobs:
   # Decides which legs run, on a free ubuntu runner in ~10s. It exists so a
   # retired preview label can never park a macOS job in the queue: `runs-on`
   # with an unknown GitHub-hosted label does not fail fast, it waits for a
-  # self-hosted runner that will never arrive — and because `concurrency` above
-  # is workflow-level, that queued job would hold the group and delay the next
-  # *stable* run. Deciding the label before any macOS job is requested makes
-  # that failure mode unreachable.
+  # self-hosted runner that will never arrive, and a job that sits queued holds
+  # its concurrency group. Deciding the label against a live source before any
+  # macOS job is requested is the first of the two defences; the per-channel
+  # concurrency group on `drift` below is the second, for the cases discovery
+  # cannot see (a stale `XCODE_BETA_RUNNER` pin, or an image retired in the
+  # window between discovery and scheduling).
   discover:
     runs-on: ubuntu-latest
     permissions:
@@ -137,6 +136,15 @@ jobs:
     # A beta failure annotates the run; it does not redden it. The stable leg
     # keeps its `exit 1` → red run behaviour untouched.
     continue-on-error: ${{ matrix.experimental }}
+    # Serialised per channel rather than per workflow. Two drift runs must not
+    # overlap — each boots a simulator, regenerates every fixture and writes the
+    # cache — but a group shared with the beta leg would hand it the one lever
+    # it must never have over the stable signal. A job requesting a label
+    # GitHub does not serve sits queued instead of failing, and while it sits
+    # it holds its group; scoping the group to `matrix.channel` keeps that
+    # blast radius inside the beta leg no matter how the label went stale.
+    concurrency:
+      group: toolchain-drift-${{ matrix.channel }}
     strategy:
       # Without this a failing beta leg would cancel the stable one mid-run.
       fail-fast: false
@@ -402,9 +410,19 @@ jobs:
 
         # Scoped to this leg's label, so the beta leg can never comment on,
         # reopen or resolve the stable `drift` issue — the one alarm whose
-        # trustworthiness the whole design is protecting.
+        # trustworthiness the whole design is protecting. Nothing here ever
+        # applies both labels, but a human might, so the beta leg also skips
+        # anything carrying `drift` rather than trusting that it never happens.
+        # Deliberately one-directional: promoting a beta finding to a real
+        # regression by adding `drift` to it should let the *stable* leg adopt
+        # that issue, not make it file a duplicate.
+        if [ "$CHANNEL" = "beta" ]; then
+          select_issue='map(select([.labels[].name] | index("drift") | not)) | .[0].number // empty'
+        else
+          select_issue='.[0].number // empty'
+        fi
         open_issue="$(gh issue list --repo "$REPO" --label "$ISSUE_LABEL" --state open \
-          --json number --jq '.[0].number // empty')"
+          --json number,labels --jq "$select_issue")"
 
         if [ "${#faults[@]}" -eq 0 ]; then
           echo "No drift detected."
