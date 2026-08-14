@@ -111,19 +111,26 @@ jobs:
       id: fixtures
       continue-on-error: true
       timeout-minutes: 90
-      run: |
-        ./prepareTestResults.sh
-        for bundle in TestResults SanityResults RetryResults; do
-          plist="Tests/XCTestHTMLReportTests/Resources/${bundle}.xcresult/Info.plist"
-          if [ ! -f "$plist" ]; then
-            echo "::error::missing or incomplete fixture: ${bundle}.xcresult"
-            exit 1
-          fi
-        done
+      run: ./prepareTestResults.sh
+
+    # A separate step from generation on purpose. `prepareTestResults.sh`
+    # tolerates failing tests (`|| true`), which also swallows a simulator
+    # disappearing mid-run: xcodebuild still leaves a stub .xcresult behind and
+    # the script exits 0. Verifying separately keeps "generation blew up" and
+    # "generation produced empty bundles" as distinguishable faults in the
+    # report below, and everything downstream — the suite, the render, and the
+    # cache save — now hangs off this step rather than off generation, so a
+    # stub can neither produce confusing downstream failures nor be saved under
+    # a key test.yml would restore (#454).
+    - name: Verify fresh fixtures
+      id: verify
+      if: steps.fixtures.outcome == 'success'
+      continue-on-error: true
+      run: ./scripts/verify_fixtures.sh
 
     - name: Run test suite
       id: tests
-      if: steps.fixtures.outcome == 'success'
+      if: steps.verify.outcome == 'success'
       continue-on-error: true
       timeout-minutes: 45
       run: swift test -v
@@ -140,7 +147,7 @@ jobs:
     # of what this step asserts — restoring the mkdir would hide a regression.
     - name: Run xchtmlreport against a fresh bundle
       id: tool
-      if: steps.build.outcome == 'success' && steps.fixtures.outcome == 'success'
+      if: steps.build.outcome == 'success' && steps.verify.outcome == 'success'
       continue-on-error: true
       timeout-minutes: 15
       run: |
@@ -161,8 +168,13 @@ jobs:
     # this workflow restores from the cache. The key was computed by the
     # shared action before generation, so it matches test.yml's clean-tree
     # restore key exactly.
+    #
+    # Gated on the verify step, not on generation: this is the one place a stub
+    # bundle would do lasting damage, poisoning every PR run that hits the key
+    # until it rotates (#454). Verify only runs when generation succeeded, so
+    # its success implies both.
     - name: Save fixtures to cache
-      if: steps.fixture-key.outcome == 'success' && steps.fixtures.outcome == 'success'
+      if: steps.fixture-key.outcome == 'success' && steps.verify.outcome == 'success'
       uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: |
@@ -188,6 +200,7 @@ jobs:
         LEGACY: ${{ steps.legacy.outcome }}
         BUILD: ${{ steps.build.outcome }}
         FIXTURES: ${{ steps.fixtures.outcome }}
+        VERIFY: ${{ steps.verify.outcome }}
         TESTS: ${{ steps.tests.outcome }}
         TOOL: ${{ steps.tool.outcome }}
         TOOL_EXIT: ${{ steps.tool.outputs.exit_code }}
@@ -208,6 +221,9 @@ jobs:
           faults+=("Fixture generation (\`prepareTestResults.sh\`) failed on this toolchain.")
         elif [ "$FIXTURES" = "skipped" ]; then
           faults+=("Run aborted before fixture generation — a setup step failed; see the run log.")
+        fi
+        if [ "$VERIFY" = "failure" ]; then
+          faults+=("Fixture generation reported success but produced a bundle with no test data — the run log names it. Usually the runner's simulator went away mid-run and \`xcodebuild\` left a stub \`.xcresult\` behind (#454). Nothing was saved to the fixture cache, and the signals below were skipped because they would only have failed confusingly against the stub.")
         fi
         if [ "$TESTS" = "failure" ]; then
           faults+=("\`swift test\` failed against freshly generated fixtures.")
@@ -231,6 +247,7 @@ jobs:
           echo "| legacy xcresulttool marker | ${LEGACY} |"
           echo "| swift build | ${BUILD} |"
           echo "| fixture generation | ${FIXTURES} |"
+          echo "| fixtures contain test data | ${VERIFY} |"
           echo "| swift test | ${TESTS} |"
           echo "| xchtmlreport clean exit | ${TOOL} |"
         } > "$RUNNER_TEMP/summary.md"

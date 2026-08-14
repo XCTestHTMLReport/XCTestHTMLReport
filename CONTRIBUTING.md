@@ -50,6 +50,15 @@ swift test
 `prepareTestResults.sh` picks the newest available iPhone simulator automatically.
 No credentials or secrets are required for this part.
 
+If a simulator goes away mid-run, `xcodebuild` can leave an `.xcresult` behind
+that looks complete but holds no tests, and the suite then fails with a
+confusing error. `scripts/verify_fixtures.sh` — the same gate CI runs — catches
+that in a second:
+
+```bash
+./scripts/verify_fixtures.sh   # asserts each bundle actually contains tests
+```
+
 Regenerate fixtures after upgrading Xcode; `.xcresult` contents change between
 Xcode versions.
 

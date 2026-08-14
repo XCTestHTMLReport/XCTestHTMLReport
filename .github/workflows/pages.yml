@@ -86,15 +86,17 @@ jobs:
       if: steps.fixture-cache.outputs.cache-hit != 'true'
       run: ./prepareTestResults.sh
 
-    # Only TestResults is rendered, so only TestResults has to be here. A cache
-    # hit that restored nothing would otherwise publish an empty report.
-    - name: Verify fixture
-      run: |
-        plist="Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult/Info.plist"
-        if [ ! -f "$plist" ]; then
-          echo "::error::missing or incomplete fixture: TestResults.xcresult"
-          exit 1
-        fi
+    # All three bundles, not just the one rendered below: the post-job save
+    # writes the same three paths under the key test.yml restores from, so a
+    # stub Sanity or Retry bundle slipping through here would poison every PR
+    # run until the key rotates (#454). Failing here also stops that save — the
+    # cache action's post step runs under `post-if: success()` — and stops the
+    # render, since a cache hit that restored an empty bundle would otherwise
+    # publish an empty demo. The same script test.yml, toolchain-drift.yml and
+    # pages-release.yml call, so the four gates cannot drift apart; the script
+    # itself explains why presence alone is not evidence.
+    - name: Verify fixtures
+      run: ./scripts/verify_fixtures.sh
 
     # Release, because the demo should be the binary users are handed rather
     # than a debug build that merely renders the same bytes.
