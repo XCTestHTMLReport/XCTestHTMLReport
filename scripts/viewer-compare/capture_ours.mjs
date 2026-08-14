@@ -115,7 +115,7 @@ async function probe(page) {
 
 const browser = await chromium.launch({ headless: true });
 const shots = [];
-let probes = {};
+const probes = {};
 
 for (const combo of COMBOS) {
     const tag = `${combo.width}-${combo.scheme}`;

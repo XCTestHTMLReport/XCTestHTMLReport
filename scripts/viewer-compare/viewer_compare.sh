@@ -16,6 +16,11 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "${HERE}/../.." && pwd)"
 
+# Captured before the parse loop below shifts it all away. The manifest records
+# this, and "which flags was that run given" is most of what a reader wants from
+# a run directory that does not match the one next to it.
+INVOCATION="viewer_compare.sh $*"
+
 FIXTURE="${REPO}/Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult"
 OUT=""
 RESULT_READER=""
@@ -91,8 +96,6 @@ while [ "$#" -gt 0 ]; do
         ;;
     esac
 done
-
-INVOCATION="viewer_compare.sh $*"
 
 if [ "$(uname)" != "Darwin" ]; then
     echo "viewer_compare.sh: macOS only — the comparison needs Xcode's own viewer" >&2
