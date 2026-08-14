@@ -21,23 +21,36 @@
 //    and zero on the other.
 //
 //    Summing leaves does not make the total backend-identical, and this file
-//    does not pretend otherwise. One leaf diverges — a parameterized Swift
-//    Testing case, where legacy sums the argument executions and modern
-//    reports the node's own value (measured on CI's TestResults:
-//    `parameterizedAddition(value:)` at 0.001268s legacy against 0.000423s
-//    modern, carrying a 0.85ms difference into a 5.04s total). That is the
-//    same divergence the `durations` entry already declares, so the total is
-//    rendered `Duration (5.04s)` — parenthesised, in the shape that rule
-//    normalises — rather than in a shape that would leave a declared loss
-//    unmasked and fail the differential intermittently, on whichever runner
-//    happened to be slow enough to cross a rounding boundary.
+//    does not pretend otherwise. Two leaf-level divergences reach it, and they
+//    are different in kind:
 //
-//    The root cause is fixable and predates this header: answer 8 of the
-//    migration design already solved the identical problem for *repetitions*
-//    by summing in the renderer, and nobody applied it to *arguments* when
-//    answer 6 added them. See the follow-up issue named in
-//    `DifferentialTests.testSummaryHeaderNumbersAgreeAcrossBackends`; when it
-//    lands, this paragraph and that test's exclusion both come out.
+//    1. *Structural, and fixable.* A parameterized Swift Testing case, where
+//       legacy sums the argument executions and modern reports the node's own
+//       value (measured on CI's TestResults: `parameterizedAddition(value:)`
+//       at 0.001268s legacy against 0.000423s modern, carrying a 0.85ms
+//       difference into a 5.04s total). This one predates the header: answer 8
+//       of the migration design already solved the identical problem for
+//       *repetitions* by summing in the renderer, and nobody applied it to
+//       *arguments* when answer 6 added them. The follow-up issue named in
+//       `DifferentialTests.testSummaryHeaderNumbersAgreeAcrossBackends` closes
+//       it, and takes that test's by-name exclusion out with it.
+//
+//    2. *Measurement, and permanent.* A leaf the run repeated can differ by
+//       microseconds, because the two formats measure and report the same
+//       repetition independently — 144µs on `RetryTests/testRetryOnFailure()`
+//       in one fixture generation, 0 in another, all of it in a single
+//       repetition. The summing is already common to both readers, so there is
+//       nothing here to converge. The migration spec records it as a measured
+//       format property under Verification.
+//
+//    Either one alone is why the total is rendered `Duration (5.04s)` —
+//    parenthesised, in the shape the `durations` rule normalises — rather than
+//    in a shape that would leave a declared loss unmasked and fail the
+//    differential intermittently, on whichever runner happened to be slow
+//    enough to cross a rounding boundary. Note it follows that closing the
+//    issue in (1) does **not** free the total to be written in any shape: (2)
+//    keeps the masked shape necessary for as long as a repeated test can land
+//    in a report.
 //
 //  `ParsedRun` carries no run date, so the header states a duration and no
 //  start time. Deriving one from the earliest activity timestamp — which the
