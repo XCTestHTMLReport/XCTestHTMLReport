@@ -12,12 +12,20 @@ Usage: assemble_site.py <site-dir>
 import html
 import json
 import os
+import re
 import shutil
 import sys
 
 # 1 GB is the documented Pages site limit. Failing at 800 MB turns the ceiling
 # into a CI failure with headroom instead of a rejected deployment.
 MAX_BYTES = 800 * 1024 * 1024
+
+# pages-release.yml's tag glob only ever writes MAJOR.MINOR.PATCH, so anything
+# else means the manifest was written by something other than this design.
+# Rejecting it here is what keeps a hostile or hand-edited versions.json from
+# reaching the filesystem or the generated hrefs, and what makes the listing's
+# integer sort total rather than a crash.
+VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 
 
 def fail(message):
@@ -36,9 +44,16 @@ def directory_size(path):
 def render_listing(versions):
     """A minimal static index. Deliberately depends on nothing in the report
     templates, so template changes never churn it."""
+    # versions.json stays in publication order — the manifest records what
+    # happened. The page sorts by version instead, because a maintenance release
+    # on an older line is published last and would otherwise sit at the top,
+    # where a reader reads it as "the latest version".
+    ordered = sorted(
+        versions, key=lambda v: tuple(int(p) for p in v.split(".")), reverse=True
+    )
     items = "\n".join(
         f'      <li><a href="./{html.escape(v)}/">{html.escape(v)}</a></li>'
-        for v in versions
+        for v in ordered
     )
     return f"""<!doctype html>
 <html lang="en">
@@ -90,6 +105,19 @@ def main():
     if not isinstance(versions, list) or any(not isinstance(v, str) for v in versions):
         fail(f"{manifest} must be a flat array of version strings")
 
+    malformed = [v for v in versions if not VERSION.fullmatch(v)]
+    if malformed:
+        fail(
+            f"{manifest} declares {len(malformed)} entr(ies) that are not "
+            f"MAJOR.MINOR.PATCH: {', '.join(malformed)}"
+        )
+
+    # publish-version dedupes before it writes, so a repeat means the manifest
+    # did not come from it. The listing would render the version twice.
+    duplicates = sorted({v for v in versions if versions.count(v) > 1})
+    if duplicates:
+        fail(f"{manifest} lists {', '.join(duplicates)} more than once")
+
     # Truncation guard. Every declared version must exist on disk. A version
     # that vanished between the store and the artifact would otherwise deploy
     # as a green run that quietly dropped it.
@@ -115,9 +143,15 @@ def main():
             f"{', '.join(undeclared)}"
         )
 
-    os.makedirs(version_dir, exist_ok=True)
-    with open(os.path.join(version_dir, "index.html"), "w", encoding="utf-8") as handle:
-        handle.write(render_listing(versions))
+    # Routed through fail() like every other failure here: a raw traceback in
+    # the log would be the one place an operator gets no ::error:: annotation.
+    listing = os.path.join(version_dir, "index.html")
+    try:
+        os.makedirs(version_dir, exist_ok=True)
+        with open(listing, "w", encoding="utf-8") as handle:
+            handle.write(render_listing(versions))
+    except OSError as error:
+        fail(f"could not write {listing}: {error}")
 
     size = directory_size(site)
     if size > MAX_BYTES:
