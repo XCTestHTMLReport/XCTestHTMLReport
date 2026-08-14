@@ -31,3 +31,6 @@ visual/node_modules
 visual/test-results
 visual/playwright-report
 visual/fixtures
+
+# Byte-compiled by Python whenever a module under scripts/ is imported.
+__pycache__/
