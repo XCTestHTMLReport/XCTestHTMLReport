@@ -312,6 +312,13 @@ for scheme in light dark; do
         fi
         if prompt_step "In the Tests view, open the leftmost filter ('Failed Tests (N)') and choose 'All Tests (N)', in ${scheme} appearance."; then
             shoot "tests" "$scheme" "-all" "manual" || true
+            # Xcode keeps the filter across an appearance switch, so leaving it
+            # on All would make the NEXT appearance's plain `tests` shot show a
+            # different view from this one's — two shots named as a light/dark
+            # pair that are not comparable.
+            if ! prompt_step "Set that filter back to 'Failed Tests (N)', so the remaining shots stay comparable."; then
+                note "WARNING: Tests filter left on All Tests after ${scheme}; later tests shots may not match"
+            fi
         else
             note "skipped xcode tests-all ${scheme}"
         fi
