@@ -1579,7 +1579,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
-    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot('[[FILENAME]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot(this.getAttribute('data'))\"></span>
     <img class=\"screenshot\" src=\"[[SOURCE]]\" id=\"screenshot-[[FILENAME]]\" loading=\"lazy\"/>
   </p>
   """
@@ -1588,7 +1588,7 @@ struct HTMLTemplates
   <p class="attachment list-item">
     <span class="icon left screenshot-icon" style="margin-left: [[PADDING]]px"></span>
     [[NAME]]
-  <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showGif('[[FILENAME]]')\"></span>
+  <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showGif(this.getAttribute('data'))\"></span>
     <img class=\"gif\" src=\"[[SOURCE]]\" id=\"gif-[[FILENAME]]\" loading=\"lazy\"/>
   </p>
   """
@@ -1597,7 +1597,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left video-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
-    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showVideo('[[FILENAME]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showVideo(this.getAttribute('data'))\"></span>
     <video class=\"video\" controls src=\"[[SOURCE]]\" id=\"video-[[FILENAME]]\" preload=\"none\"/>
   </p>
   """
@@ -1606,7 +1606,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
-    <span class=\"icon preview-icon\" data=\"[[SOURCE]]\" onclick=\"showText('[[SOURCE]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[SOURCE]]\" onclick=\"showText(this.getAttribute('data'))\"></span>
   </p>
   """
 
@@ -1614,7 +1614,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon left text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     [[NAME]]
-    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showLinkAttachment('[[FILENAME]]')\"></span>
+    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showLinkAttachment(this.getAttribute('data'))\"></span>
     <a class=\"file-attachment-link\" href=\"[[SOURCE]]\" id=\"file-attachment-[[FILENAME]]\"></a>
   </p>
   """

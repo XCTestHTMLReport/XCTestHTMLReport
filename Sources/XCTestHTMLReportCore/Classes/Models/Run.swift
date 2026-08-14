@@ -150,7 +150,7 @@ struct Run: HTML {
     var htmlPlaceholderValues: [String: String] {
         [
             "DEVICE_IDENTIFIER": runDestination.targetDevice.uniqueIdentifier,
-            "LOG_SOURCE": logSource ?? "",
+            "LOG_SOURCE": (logSource ?? "").stringByEscapingXMLChars,
             "N_OF_TESTS": String(numberOfTests),
             "N_OF_PASSED_TESTS": String(numberOfPassedTests),
             "N_OF_SKIPPED_TESTS": String(numberOfSkippedTests),

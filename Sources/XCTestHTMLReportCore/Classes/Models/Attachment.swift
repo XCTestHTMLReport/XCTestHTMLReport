@@ -304,9 +304,9 @@ struct Attachment: HTML {
     var htmlPlaceholderValues: [String: String] {
         [
             "PADDING": String(padding),
-            "SOURCE": source ?? "",
-            "FILENAME": filename,
-            "NAME": displayName,
+            "SOURCE": (source ?? "").stringByEscapingXMLChars,
+            "FILENAME": filename.stringByEscapingXMLChars,
+            "NAME": displayName.stringByEscapingXMLChars,
         ]
     }
 }

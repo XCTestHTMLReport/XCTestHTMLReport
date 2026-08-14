@@ -8,6 +8,22 @@
 
 import Foundation
 
+/// Values are substituted into the template verbatim, so escaping is the
+/// conformer's job and every placeholder falls into exactly one of three
+/// cases:
+///
+/// - **Leaf text** — a title, a file name, a device name, a source path.
+///   Escape it with `stringByEscapingXMLChars`. It is written straight into
+///   an attribute or a text node, and anything from an `.xcresult` is
+///   ultimately test-author controlled.
+/// - **Rendered markup** — a child's `html`, an icon's `iconHTML`. Escaping
+///   it would turn the report into a page of its own source. Pass it through.
+/// - **Opaque, by construction** — an `IdentifierPath.identifier` (a hex
+///   digest), a count, a CSS class from an enum. Escaping is a no-op.
+///
+/// Nothing here can enforce that split, so a new placeholder needs the
+/// author to say which case it is. `HTMLEscapingTests` pins the first and
+/// second; the third is pinned at `IdentifierPath.identifier`.
 protocol HTML {
     var htmlTemplate: String { get }
     var htmlPlaceholderValues: [String: String] { get }
