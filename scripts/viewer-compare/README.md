@@ -69,6 +69,14 @@ headlessly, then hands the screen to Xcode for its side.
 appearance, and types into whatever is frontmost. Do not use the keyboard while
 it runs. It puts the appearance back when it finishes, including on Ctrl-C.
 
+It deliberately closes nothing, so report windows accumulate across runs — one
+per run, all showing a bundle with the same filename. That is handled (the
+harness addresses windows by the bundle they show, and takes the frontmost
+match), but you will want to close them yourself eventually. Do it by hand:
+System Events intermittently reports an **empty name for project windows too**,
+so a script that closes every untitled Xcode window will happily close the
+project you had open.
+
 Useful variations:
 
 ```sh
