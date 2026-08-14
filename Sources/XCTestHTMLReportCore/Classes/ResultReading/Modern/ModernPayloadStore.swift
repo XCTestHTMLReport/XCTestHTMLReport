@@ -132,20 +132,6 @@ final class ModernPayloadStore: PayloadProviding {
     private var fileNamesByUUID: [String: String] = [:]
     private var exportAttempted = false
 
-    /// The new format has no `emittedOutput`, so the run log is rendered from
-    /// the structured `messages` instead, keeping the legacy indentation shape.
-    private static func format(_ section: LogSection, depth: Int = 0) -> String {
-        let indent = String(repeating: "\t", count: depth)
-        var lines = ["\(indent)-------- \(section.title ?? "") --------"]
-        for message in section.messages ?? [] {
-            lines.append("\(indent)\(message.title ?? message.shortTitle ?? "")")
-        }
-        for subsection in section.subsections ?? [] {
-            lines.append(format(subsection, depth: depth + 1))
-        }
-        return lines.joined(separator: "\n")
-    }
-
     private func sourceURL(for uuid: String) -> URL? {
         ensureExported()
         lock.lock()
@@ -205,7 +191,7 @@ final class ModernPayloadStore: PayloadProviding {
             let section = try client.json(
                 ["get", "log", "--type", reference], as: LogSection.self
             )
-            return Self.format(section)
+            return section.runLogSection.formatted()
         } catch {
             Logger.warning("Can't get logs (\(reference)): \(error)")
             faultCollector.record(.logExportFailed, "log \(reference)")

@@ -136,4 +136,16 @@ struct LogSection: Decodable {
     let result: String?
     let messages: [LogMessage]?
     let subsections: [LogSection]?
+
+    /// The backend-neutral shape the exporter formats. `messages` is the log
+    /// on this side of the format boundary, and — since the legacy document
+    /// describes the same tree with the same messages — on the other side
+    /// too, which is what lets the two exports be byte-identical (#480).
+    var runLogSection: RunLogSection {
+        RunLogSection(
+            title: title ?? "",
+            messages: (messages ?? []).map { $0.title ?? $0.shortTitle ?? "" },
+            subsections: (subsections ?? []).map(\.runLogSection)
+        )
+    }
 }

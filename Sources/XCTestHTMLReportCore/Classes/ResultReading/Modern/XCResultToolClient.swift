@@ -54,8 +54,44 @@ enum XCResultToolError: Error, CustomStringConvertible, LocalizedError {
 protocol XCResultToolInvoking {
     func run(_ arguments: [String]) throws -> Data
     func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T
+    /// As `run`, minus the pinned `--schema-version`.
+    ///
+    /// `get --legacy` does not advertise that flag: the legacy document
+    /// carries its own `_type` envelope in place of a versioned schema. Its
+    /// only caller is the legacy run-log reader, which the modern backend
+    /// never reaches.
+    func runUnversioned(_ arguments: [String]) throws -> Data
     /// Identifies the bundle in log messages.
     var bundleDescription: String { get }
+}
+
+extension XCResultToolInvoking {
+    /// Test fakes answer from a fixture table and have no opinion about which
+    /// flags the real client would append, so they inherit this rather than
+    /// each restating it.
+    func runUnversioned(_ arguments: [String]) throws -> Data {
+        try run(arguments)
+    }
+
+    func jsonUnversioned<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
+        try decoded(runUnversioned(arguments), reporting: arguments, as: type)
+    }
+}
+
+/// Decodes what a subcommand answered with, naming the subcommand if it will
+/// not decode. Free rather than a protocol extension: `json` and
+/// `jsonUnversioned` differ only in which `run` they call, and this is the
+/// half they share — no conformer has any business overriding it.
+private func decoded<T: Decodable>(
+    _ data: Data,
+    reporting reported: [String],
+    as type: T.Type
+) throws -> T {
+    do {
+        return try JSONDecoder().decode(type, from: data)
+    } catch {
+        throw XCResultToolError.decodingFailed(arguments: reported, underlying: error)
+    }
 }
 
 // MARK: - XCResultToolClient
@@ -118,12 +154,29 @@ struct XCResultToolClient: XCResultToolInvoking {
     }
 
     func run(_ arguments: [String]) throws -> Data {
+        try execute(
+            arguments + ["--path", bundleURL.path, "--schema-version", Self.schemaVersion],
+            reporting: arguments
+        )
+    }
+
+    func runUnversioned(_ arguments: [String]) throws -> Data {
+        try execute(arguments + ["--path", bundleURL.path], reporting: arguments)
+    }
+
+    func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
+        try decoded(run(arguments), reporting: arguments, as: type)
+    }
+
+    // MARK: Private
+
+    /// `reporting` is what a failure names, so the diagnosis quotes the
+    /// subcommand the caller asked for rather than the path and version flags
+    /// appended above.
+    private func execute(_ arguments: [String], reporting reported: [String]) throws -> Data {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        process.arguments = ["xcresulttool"] + arguments + [
-            "--path", bundleURL.path,
-            "--schema-version", Self.schemaVersion,
-        ]
+        process.arguments = ["xcresulttool"] + arguments
 
         let out = Pipe()
         let err = Pipe()
@@ -146,20 +199,11 @@ struct XCResultToolClient: XCResultToolInvoking {
 
         guard process.terminationStatus == 0 else {
             throw XCResultToolError.executionFailed(
-                arguments: arguments,
+                arguments: reported,
                 status: process.terminationStatus,
                 stderr: String(data: errorData, encoding: .utf8) ?? ""
             )
         }
         return outputData
-    }
-
-    func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
-        let data = try run(arguments)
-        do {
-            return try JSONDecoder().decode(type, from: data)
-        } catch {
-            throw XCResultToolError.decodingFailed(arguments: arguments, underlying: error)
-        }
     }
 }

@@ -18,16 +18,22 @@ class ResultFile {
     let url: URL
     private let relativeUrl: URL
     private let file: XCResultFile
+    /// The run log is read straight from `xcresulttool` rather than through
+    /// XCResultKit — `LegacyRunLogDocument` documents why. Injectable so a
+    /// test can fail that one subcommand on demand, the same seam the modern
+    /// backend already uses.
+    private let toolClient: XCResultToolInvoking
     let faultCollector: FaultCollector
 
     private let payloadLockTable = DispatchQueue(label: "com.xchtmlreport.payload-lock-table")
     private var payloadLocks: [String: NSLock] = [:]
 
-    init(url: URL, faultCollector: FaultCollector) {
+    init(url: URL, faultCollector: FaultCollector, toolClient: XCResultToolInvoking? = nil) {
         self.url = url
         self.faultCollector = faultCollector
         relativeUrl = URL(fileURLWithPath: url.lastPathComponent)
         file = XCResultFile(url: url)
+        self.toolClient = toolClient ?? XCResultToolClient(bundleURL: url)
     }
 
     // MARK: - Public
@@ -193,16 +199,15 @@ extension ResultFile: PayloadProviding {
     }
 
     func exportLogs(reference: String, fileName: String) -> URL? {
-        guard let logSection = file.getLogs(id: reference) else {
-            Logger.warning("Can't get logs with id \(reference)")
-            faultCollector.record(.logExportFailed, "log id \(reference)")
+        guard let text = runLogText(reference: reference) else {
+            // `runLogText` already named the cause.
             return nil
         }
         let url = url.appendingPathComponent(fileName)
         let fileManager = FileManager.default
         do {
             try? fileManager.removeItem(at: url)
-            try logSection.formatEmittedOutput().write(to: url, atomically: true, encoding: .utf8)
+            try text.write(to: url, atomically: true, encoding: .utf8)
             return relativeUrl.appendingPathComponent(fileName)
         } catch {
             Logger.warning("Can't write output to \(url). \(error.localizedDescription)")
@@ -214,38 +219,31 @@ extension ResultFile: PayloadProviding {
     }
 
     func exportLogsData(reference: String) -> Data? {
-        guard let logSection = file.getLogs(id: reference) else {
-            Logger.warning("Can't get logs with id \(reference)")
+        runLogText(reference: reference)?.data(using: .utf8)
+    }
+
+    // MARK: Private
+
+    /// The run log, formatted by the same code the modern backend formats
+    /// its own document with, so one bundle exports one log whichever reader
+    /// read it (#480).
+    ///
+    /// `--legacy` unconditionally: `ResultBackend.resolve()` only ever hands
+    /// out this reader on a toolchain that offers the legacy commands, and on
+    /// those `get` refuses to run without the flag. A toolchain that has
+    /// dropped them fails here as a fault, which is the same thing every other
+    /// XCResultKit call in this file would do.
+    private func runLogText(reference: String) -> String? {
+        do {
+            let document = try toolClient.jsonUnversioned(
+                ["get", "--legacy", "--id", reference, "--format", "json"],
+                as: LegacyRunLogDocument.self
+            )
+            return document.runLogSection.formatted()
+        } catch {
+            Logger.warning("Can't get logs with id \(reference). \(error.localizedDescription)")
             faultCollector.record(.logExportFailed, "log id \(reference)")
             return nil
         }
-        return logSection.formatEmittedOutput().data(using: .utf8)
-    }
-}
-
-// MARK: EmittableOutput
-
-extension ActivityLogUnitTestSection: EmittableOutput {
-    /// Recursively collect emitted output from each subsection, adding an additional indent to each
-    /// nested log
-    /// This is how test steps are formatted in Xcode, including the repeated log lines
-    func formatEmittedOutput() -> String {
-        "-------- \(title) --------\n" +
-            (emittedOutput ?? "") +
-            subsections
-            .compactMap {
-                "\t" + $0.formatEmittedOutput()
-                    .split(separator: "\n")
-                    .joined(separator: "\n\t")
-            }
-            .joined(separator: "\n")
-    }
-}
-
-extension ActivityLogSection: EmittableOutput {
-    func formatEmittedOutput() -> String {
-        "\(title)\n\n" + subsections
-            .compactMap { $0.formatEmittedOutput() }
-            .joined(separator: "\n")
     }
 }
