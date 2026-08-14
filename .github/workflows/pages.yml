@@ -11,6 +11,16 @@ on:
   # pages-release.yml calls this after writing a version into the store, so
   # assembly and deployment exist in exactly one place.
   workflow_call:
+    inputs:
+      render-ref:
+        description: >-
+          Ref whose source is rendered into the site root. Callers must pass
+          `main`. A called workflow inherits the CALLER's event context, so a
+          release run would otherwise rebuild `/` from the tag and roll the
+          demo back until the next merge.
+        type: string
+        required: false
+        default: ''
 
 # Read-only by default; the deploy job widens this for itself alone.
 permissions:
@@ -29,6 +39,9 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
+        # Empty on push and workflow_dispatch, where github.sha is the
+        # triggering commit and already correct.
+        ref: ${{ inputs.render-ref || github.sha }}
         persist-credentials: false
 
     # The version store, checked out read-only. Its renders are immutable and
