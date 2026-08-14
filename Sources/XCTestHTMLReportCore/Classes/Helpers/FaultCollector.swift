@@ -20,6 +20,12 @@ public struct Fault: Equatable {
         /// `Summary.validate()` after the model is assembled, which catches
         /// nested decode failures that the call sites below cannot see.
         case unresolvedAttachment
+        /// A run's log reference survived parsing but resolved to no content,
+        /// so the report ships without that run's log. The log analogue of
+        /// `unresolvedAttachment`, found by `Summary.validate()` for the same
+        /// reason (#386). A run carrying no log reference at all is structural
+        /// absence, not degradation, and is never flagged.
+        case unresolvedLog
         /// The activity tree for a test could not be read, so the test appears
         /// in the report with no activities. A genuine read failure, distinct
         /// from a backend that structurally cannot provide a field.
