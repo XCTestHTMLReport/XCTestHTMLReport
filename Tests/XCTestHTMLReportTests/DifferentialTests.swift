@@ -295,6 +295,54 @@ final class DifferentialTests: XCTestCase {
         }
     }
 
+    /// The summary header's two derived numbers, on the model rather than
+    /// through the render — the same reason
+    /// `testXCTestCaseDurationsAgreeAcrossBackends` exists.
+    ///
+    /// The duration sits one regex away from the `durations` mask, which
+    /// normalises the parenthesised `(1.23s)` form the tree uses: a header
+    /// that ever adopted that form would have its divergence masked away
+    /// silently. It sums *leaf* tests, which agree. Groups do not and cannot
+    /// — `durationInSeconds` is null on every suite node in the modern
+    /// format, which is exactly what that allow-list entry declares.
+    func testSummaryHeaderNumbersAgreeAcrossBackends() throws {
+        try requireBothBackends()
+        for fixture in Self.fixtures {
+            let legacy = try summary(fixture, .legacy)
+            let modern = try summary(fixture, .modern)
+
+            let legacyHeader = RunSummary(runs: legacy.runs)
+            let modernHeader = RunSummary(runs: modern.runs)
+
+            XCTAssertGreaterThan(
+                legacyHeader.duration, 0,
+                "\(fixture): a zero total would make the comparison vacuous"
+            )
+            XCTAssertEqual(
+                legacyHeader.duration, modernHeader.duration, accuracy: 0.0005,
+                "\(fixture): the header's run duration differs between backends"
+            )
+
+            // Rendered, not field by field: it is the two-decimal string that
+            // reaches the page, and it is the string the differential holds.
+            XCTAssertEqual(
+                legacyHeader.duration.formattedSeconds,
+                modernHeader.duration.formattedSeconds,
+                "\(fixture): the header's rendered duration differs between backends"
+            )
+
+            XCTAssertEqual(
+                legacyHeader.tally.buckets.map { "\($0.label) \($0.count)" },
+                modernHeader.tally.buckets.map { "\($0.label) \($0.count)" },
+                "\(fixture): the header's status buckets differ between backends"
+            )
+            XCTAssertEqual(
+                legacyHeader.tally.total, legacy.runs.flatMap(\.allTests).count,
+                "\(fixture): the buckets must account for every test"
+            )
+        }
+    }
+
     func testAttachmentPayloadsAreByteIdenticalAcrossBackends() throws {
         try requireBothBackends()
 

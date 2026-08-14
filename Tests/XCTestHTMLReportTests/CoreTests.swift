@@ -100,8 +100,12 @@ final class CoreTests: XCTestCase {
                 all - skipped - 2,
                 "Every remaining test lands in exactly one bucket, except the " +
                     "two `Expected Failure` cases (testExpectedFailure and " +
-                    "knownIssue) — `Status` folds them to `.unknown`, so today " +
-                    "they are counted in no header bucket at all; see #439"
+                    "knownIssue). These are the per-run *filter pills*, which " +
+                    "#439's A1 did not touch: they still offer five buckets " +
+                    "and an expected failure matches none of them. The summary " +
+                    "header added by A1 does count them — see " +
+                    "`testSummaryHeaderAccountsForExpectedFailures` below — so " +
+                    "the two readings disagree until A3 rebuilds the filters"
             )
             XCTAssertGreaterThanOrEqual(
                 failed, 6,
@@ -109,6 +113,48 @@ final class CoreTests: XCTestCase {
                     "a lower count means failures are being lost"
             )
         }
+    }
+
+    /// The summary header's counts, on the real fixture rather than the
+    /// synthetic one `RunSummaryTests` pins exactly.
+    ///
+    /// The split cannot be asserted — the bundles are regenerated on every run
+    /// — but two properties can: the buckets partition the tests, and the two
+    /// deliberate `Expected Failure` cases land in a bucket rather than
+    /// nowhere. Before #439 they landed nowhere, which is the gap this
+    /// header closes.
+    func testSummaryHeaderAccountsForExpectedFailures() throws {
+        let testResultsUrl = try XCTUnwrap(testResultsUrl)
+        let summary = Summary(
+            resultPaths: [testResultsUrl.path],
+            renderingMode: .linking,
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5
+        )
+
+        let document = try SwiftSoup.parse(summary.html)
+        let legend = try document.select("ul.summary-legend li").array()
+        var counted = 0
+        var expected = 0
+        for row in legend {
+            let count = try Int(row.select(".legend-count").text()) ?? 0
+            counted += count
+            if try row.text().hasPrefix("Expected failures") {
+                expected = count
+            }
+        }
+
+        let total = try Int(document.select(".donut-center strong").text())
+        XCTAssertEqual(
+            counted, total,
+            "the legend's buckets must add up to the run's test count"
+        )
+        XCTAssertEqual(
+            expected, 2,
+            "testExpectedFailure and knownIssue are the sample sources' two "
+                + "deliberate expected failures; before #439 they were counted "
+                + "in no bucket at all"
+        )
     }
 
     /// Swift Testing (`import Testing`, `@Test`) results are recorded

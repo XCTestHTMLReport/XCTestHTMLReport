@@ -46,11 +46,44 @@
     --status-skipped: #6E6E73;
     --status-unknown: #6E6E73;
     --status-expected: #9A6400;
+    /* Mixed is the one status the tree draws from two tokens rather than
+       one — half passed, half failed, because that is what it means. A
+       14px ring arc and a 10px legend swatch are too small to read a split
+       at, so the summary header (#439, A1) paints mixed in a single hue of
+       its own instead, chosen not to collide with any other status. The
+       tree's split diamond is unchanged; both readings still say "some of
+       each", one by geometry and one by being neither green nor red. */
+    --status-mixed: #8944AB;
 
     /* Colour — surfaces */
     --color-surface: #FFF;
     --color-bg-sidebar: #F2F2F2;
     --color-bg-group-header: #F6F6F6;
+
+    /* Colour — the summary header (#439, A1). A band with cards on it,
+       which is one more surface level than the rest of the report has, so
+       these are their own tokens rather than reuses. Values are Apple's
+       grouped-background pairing; the dark block below is the primary one
+       (this direction is dark-first) and light is its inversion.
+
+       Every text pairing these introduce was computed before it was used;
+       the table is in the PR body. The tightest are muted text on the
+       striped digest row — 6.97:1 light, 5.11:1 dark — and the accent the
+       digest's jump buttons use, 5.33:1 light, 6.50:1 dark. The status
+       fills the ring and the bars paint clear the 3:1 non-text floor
+       against the card by 4.21:1 (passed, light) at worst.
+
+       --color-summary-border and --color-donut-track do not clear 3:1 and
+       are not meant to: a card edge and the ring's empty groove carry no
+       information the arcs and the legend do not already carry in colour
+       *and* in text, and 1.4.11 scopes the floor to graphics you must
+       perceive to understand the content. Raising them to 3:1 would draw
+       the heavy outline the rest of the sheet already avoids. */
+    --color-bg-summary: #ECECEE;
+    --color-summary-card: #FFF;
+    --color-summary-card-alt: #F7F7F9;
+    --color-summary-border: #D2D2D7;
+    --color-donut-track: #E3E3E8;
 
     /* Colour — borders */
     --color-border-strong: #BBB;
@@ -144,10 +177,23 @@
       --status-skipped: #9A9AA2;
       --status-unknown: #9A9AA2;
       --status-expected: #D9A038;
+      --status-mixed: #C89AF5;
 
       --color-surface: #161619;
       --color-bg-sidebar: #232327;
       --color-bg-group-header: #202024;
+
+      /* The summary header's own surfaces. The card is the same value as
+         the sidebar, which is deliberate: it is the lightest ground in the
+         dark theme, so every status token was already sized against it and
+         the header inherits those measurements unchanged (5.61 skipped to
+         6.74 expected). The band beneath the cards is darker than the page
+         so the cards read as raised, the way Xcode's do. */
+      --color-bg-summary: #19191C;
+      --color-summary-card: #232327;
+      --color-summary-card-alt: #2A2A2F;
+      --color-summary-border: #3A3A40;
+      --color-donut-track: #3A3A40;
 
       --color-border-strong: #3A3A40;
       --color-border-medium: #33333A;
@@ -201,6 +247,11 @@
        two rows never wrap on their own — the pills that do wrap live in
        .tests-header, not here. */
     min-height: 70px;
+    /* A flex item shrinks by default, and #439's summary band made that
+       visible: in a short window the header shrank below its content and
+       `overflow: hidden` on the body clipped the digest. The band caps its
+       own height at 50vh, so refusing to shrink cannot starve the tree. */
+    flex: none;
   }
 
   #info-sections ul {
@@ -838,6 +889,262 @@
     color: var(--color-on-accent);
   }
 
+  /* Summary header (#439, redesign A1).
+
+     Everything from here to the media query is new, and nothing below the
+     header was restyled: the tree, the panes and the filter pills are byte
+     for byte what they were. A2 restyles the tree; A3 the filters.
+
+     The band is a flex item of #content, capped at half the viewport so a
+     run with a long failure digest can never push the tree off the screen —
+     the digest scrolls inside itself rather than growing without bound. */
+  #run-summary {
+    background-color: var(--color-bg-summary);
+    border-bottom: 1px solid var(--color-border-strong);
+    padding: var(--space-sm) var(--space-sm) 12px;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
+  .summary-card {
+    background-color: var(--color-summary-card);
+    border: 1px solid var(--color-summary-border);
+    border-radius: 10px;
+    /* So the striped digest rows are clipped by the rounded corner rather
+       than squaring it off. */
+    overflow: hidden;
+  }
+
+  .summary-card + .summary-card {
+    margin-top: var(--space-sm);
+  }
+
+  .summary-card > h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-summary-border);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .summary-meta {
+    margin-left: auto;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-regular);
+  }
+
+  .summary-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 20px;
+    padding: 12px;
+  }
+
+  /* One class per status drives all three readings of it — the ring's arc,
+     the bar's segment and the legend's swatch — by setting `color` and
+     letting `currentColor` do the rest. A stroke, a fill and a background
+     from one declaration, which is also why the dark block has to override
+     nothing here. */
+  .status-tint-succeeded { color: var(--status-passed); }
+  .status-tint-failed { color: var(--status-failed); }
+  .status-tint-skipped { color: var(--status-skipped); }
+  .status-tint-mixed { color: var(--status-mixed); }
+  .status-tint-unknown { color: var(--status-unknown); }
+  .status-tint-expected-failure { color: var(--status-expected); }
+
+  /* The ring and its label share one grid cell, which centres the label
+     without positioning it. */
+  .donut {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 108px;
+    height: 108px;
+  }
+
+  .donut > * {
+    grid-area: 1 / 1;
+  }
+
+  .donut-ring {
+    width: 108px;
+    height: 108px;
+  }
+
+  .donut-track {
+    fill: none;
+    stroke: var(--color-donut-track);
+    stroke-width: 12;
+  }
+
+  .donut-seg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 12;
+  }
+
+  .donut-center {
+    text-align: center;
+    line-height: 1.15;
+  }
+
+  .donut-center strong {
+    display: block;
+    font-size: var(--font-size-title);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .donut-center small {
+    display: block;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+
+  .summary-legend {
+    flex: 0 1 auto;
+    min-width: 170px;
+    font-size: var(--font-size-sm);
+  }
+
+  .summary-legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+  }
+
+  .legend-swatch {
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
+    border-radius: var(--radius-sm);
+    background-color: currentColor;
+    flex: none;
+  }
+
+  .legend-count {
+    margin-left: auto;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .device-bars {
+    flex: 1 1 300px;
+    min-width: 240px;
+  }
+
+  .device-bars-head {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--color-summary-border);
+  }
+
+  .device-row {
+    padding: 6px 0;
+  }
+
+  .device-row-name {
+    display: block;
+    font-size: var(--font-size-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .device-row-os {
+    color: var(--color-text-muted);
+  }
+
+  /* An SVG rather than nested divs so no width lands in a `style`
+     attribute: the segments are `<rect>`s in a 0-100 user space, which is
+     the same arithmetic the ring's dash lengths use. `border-radius` on the
+     element clips them, and the track shows through wherever a run produced
+     no tests at all. */
+  .segbar {
+    display: block;
+    width: 100%;
+    height: 8px;
+    margin: var(--space-xs) 0 2px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background-color: var(--color-donut-track);
+  }
+
+  .segbar rect {
+    fill: currentColor;
+  }
+
+  .device-row-tally {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+  }
+
+  .failure-digest {
+    font-size: var(--font-size-sm);
+    max-height: 168px;
+    overflow-y: auto;
+  }
+
+  .failure-digest li {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    align-items: baseline;
+    padding: 6px 12px;
+  }
+
+  .failure-digest li:nth-child(even) {
+    background-color: var(--color-summary-card-alt);
+  }
+
+  .failure-digest .icon {
+    margin: 0;
+    align-self: center;
+  }
+
+  .digest-body {
+    min-width: 0;
+  }
+
+  /* A real <button>, so the digest is reachable and operable from the
+     keyboard, wearing a link's clothes. */
+  .digest-jump {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: var(--font-weight-medium);
+    color: var(--color-accent-text);
+    text-align: left;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+  }
+
+  .digest-jump:hover {
+    text-decoration: underline;
+  }
+
+  .digest-jump:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  .digest-message {
+    display: block;
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .digest-suite {
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
   /* Narrow screens (#439).
 
      Everything above this point is the desktop layout, untouched: this
@@ -980,6 +1287,57 @@
       max-height: 40vh;
       object-fit: contain;
     }
+
+    /* Summary header, narrow (#439, A1). The three columns of the summary
+       grid stack on their own — `flex-wrap` and the device bars' 300px
+       basis already do that — so this only tightens the spacing and shrinks
+       the ring, which at 108px would otherwise eat a third of a 375px row. */
+    /* 40vh, not the desktop 50: the title band and the Tests/Logs row are a
+       fixed cost, and on an 812px phone a half-viewport band left the tree
+       with less than the summary above it. */
+    #run-summary {
+      padding: 6px;
+      max-height: 40vh;
+    }
+
+    .summary-grid {
+      gap: 12px;
+      padding: var(--space-sm);
+    }
+
+    .donut,
+    .donut-ring {
+      width: 84px;
+      height: 84px;
+    }
+
+    .summary-legend {
+      min-width: 140px;
+    }
+
+    .device-bars {
+      flex-basis: 100%;
+    }
+
+    /* The suite drops under the message rather than off the page: it is the
+       column the mockup deletes at this width, but it is also the only
+       thing telling two same-named tests apart. */
+    .failure-digest li {
+      grid-template-columns: auto 1fr;
+    }
+
+    .failure-digest .digest-suite {
+      grid-column: 2;
+      white-space: normal;
+    }
+
+    /* One scroller, not two. On a phone the band's own cap is always the
+       binding one, so a second scroll region nested inside it would only
+       ever swallow the gesture that was meant for the band. */
+    .failure-digest {
+      max-height: none;
+      overflow-y: visible;
+    }
   }
 
   </style>
@@ -993,6 +1351,48 @@
         <h1>XCTestHTMLReport</h1>
         <div class="clear"></div>
       </div>
+      <section id="run-summary" aria-labelledby="run-summary-heading">
+      <div class="summary-card">
+        <h2 id="run-summary-heading">
+          <span class="icon failure"></span>
+          Tests
+          <span class="summary-meta">Ran for 9.00s · 1 device</span>
+        </h2>
+        <div class="summary-grid">
+          <div class="donut">
+            <svg class="donut-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+              <circle class="donut-track" cx="60" cy="60" r="48"></circle>
+              <circle class="donut-seg status-tint-succeeded" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="0.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-failed" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="-20.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-skipped" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="-40.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-mixed" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="-60.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-expected-failure" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="-80.0000" transform="rotate(-90 60 60)"></circle>
+            </svg>
+            <span class="donut-center"><strong>5</strong><small>Tests</small></span>
+          </div>
+          <ul class="summary-legend">
+            <li><span class="legend-swatch status-tint-succeeded"></span>Passed <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-failed"></span>Failed <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-skipped"></span>Skipped <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-mixed"></span>Mixed <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-expected-failure"></span>Expected failures <span class="legend-count">1</span></li>
+          </ul>
+          <div class="device-bars">
+            <p class="device-bars-head">Devices &amp; Configurations</p>
+            <div class="device-row">
+              <span class="device-row-name">Synthetic Device <span class="device-row-os">1.0</span></span>
+              <svg class="segbar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="status-tint-succeeded" x="0.0000" y="0" width="20.0000" height="8"></rect><rect class="status-tint-failed" x="20.0000" y="0" width="20.0000" height="8"></rect><rect class="status-tint-skipped" x="40.0000" y="0" width="20.0000" height="8"></rect><rect class="status-tint-mixed" x="60.0000" y="0" width="20.0000" height="8"></rect><rect class="status-tint-expected-failure" x="80.0000" y="0" width="20.0000" height="8"></rect></svg>
+              <span class="device-row-tally">1 passed, 1 failed, 1 skipped, 1 mixed, 1 expected failure</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <h2>Test Failures <span class="summary-meta">1 failure</span></h2>
+        <ul class="failure-digest">
+          <li>
+            <span class="icon failure"></span>
+            <span class="digest-body">
+              <button type="button" class="digest-jump" data-target="4abdbdaebf10baf0f23017525cf4a9be">testFails()</button>
+              <span class="digest-message">Synthetic.swift:42: assertion failed</span>
+            </span>
+            <span class="digest-suite">Synthetic</span>
+          </li>
+        </ul>
+      </div>
+    </section>
       <ul id="test-log-toolbar" class="toolbar centered-toolbar toggle-toolbar">
         <li class="selected" onclick="showTests(this);">Tests</li>
         <li onclick="showLogs(this);">Logs</li>
@@ -1805,6 +2205,81 @@
 
   document.querySelectorAll('.device-info')[0].classList.add("selected");
   document.querySelectorAll('.run')[0].classList.add("active");
+
+  // Failure digest (#439, A1). Each row's button carries the failing test's
+  // element id in `data-target`; nothing about the test reaches a script
+  // context, which is the shape #463 left behind.
+  //
+  // The digest lists every run's failures, but only one run is in the
+  // layout at a time, so a jump has four things to undo before the row is
+  // on screen: the Logs tab, a non-active run, a filter that hid the row,
+  // and the collapsed disclosure it sits behind.
+  var digestButtons = document.querySelectorAll('.digest-jump');
+  for (var d = 0; d < digestButtons.length; d++) {
+    digestButtons[d].addEventListener('click', digestJump, false);
+  }
+
+  function digestJump(e) {
+    var uuid = e.currentTarget.getAttribute('data-target'),
+        // A test with one iteration hangs its rows off `activities-`; a
+        // retried one off `iterations-`. Both ids come from the same uuid,
+        // and the outer row is the nearest .test-summary either way.
+        disclosure = document.getElementById('activities-' + uuid)
+                  || document.getElementById('iterations-' + uuid);
+    if (!disclosure) {
+      return;
+    }
+
+    var row = disclosure.closest('.test-summary');
+    if (!row) {
+      return;
+    }
+
+    var testsTab = document.querySelector('#test-log-toolbar li');
+    if (testsTab && !testsTab.classList.contains('selected')) {
+      showTests(testsTab);
+    }
+
+    activateRunContaining(row);
+
+    // The filter writes `display: none` onto the element itself, and its
+    // group as well. Clearing both un-hides this one row without resetting
+    // the filter the reader chose.
+    row.style.display = 'block';
+    var group = row.closest('.test-summary-group');
+    if (group) {
+      group.style.display = 'block';
+    }
+
+    disclosure.style.display = 'block';
+    var chevron = row.querySelector('.drop-down-icon');
+    if (chevron) {
+      chevron.classList.add('dropped');
+    }
+
+    var listItem = row.querySelector('.list-item');
+    if (listItem) {
+      selectListItem(listItem);
+    }
+    row.scrollIntoView({ block: 'start' });
+  }
+
+  // `.run` elements and `.device-info` cards are rendered from one list of
+  // runs, in order, so the nth card selects the nth run. Going through
+  // selectDevice rather than toggling the classes here keeps one definition
+  // of what "active" means.
+  function activateRunContaining(el) {
+    var run = el.closest('.run');
+    if (!run || run.classList.contains('active')) {
+      return;
+    }
+    var runs = Array.prototype.slice.call(document.querySelectorAll('.run')),
+        cards = document.querySelectorAll('.device-info'),
+        index = runs.indexOf(run);
+    if (index >= 0 && cards[index]) {
+      selectDevice(run.id.replace('device_', ''), cards[index]);
+    }
+  }
 
   </script>
 </body>
