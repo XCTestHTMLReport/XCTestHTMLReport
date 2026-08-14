@@ -34,3 +34,8 @@ visual/fixtures
 
 # Byte-compiled by Python whenever a module under scripts/ is imported.
 __pycache__/
+
+# Capture runs from scripts/viewer-compare. Each run is a few hundred MB of
+# PNGs and a copy of the fixture; they are local evidence, not repository
+# content (see scripts/viewer-compare/README.md).
+/.viewer-compare
