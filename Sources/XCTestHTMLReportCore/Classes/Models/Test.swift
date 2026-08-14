@@ -202,7 +202,7 @@ extension TestGroup {
     var htmlPlaceholderValues: [String: String] {
         [
             "UUID": uuid,
-            "TITLE": title,
+            "TITLE": title.stringByEscapingXMLChars,
             "DURATION": duration.formattedSeconds,
             "ICON_CLASS": status.cssClass,
             "ITEM_CLASS": nodeKind.cssClass,
@@ -312,7 +312,7 @@ extension TestCase {
             let iteration = iterations[0]
             return [
                 "UUID": uuid,
-                "TITLE": title,
+                "TITLE": title.stringByEscapingXMLChars,
                 "DURATION": duration.formattedSeconds,
                 "ICON_CLASS": status.cssClass,
                 "ITEM_CLASS": nodeKind.cssClass,
@@ -325,7 +325,7 @@ extension TestCase {
         } else {
             return [
                 "UUID": uuid,
-                "TITLE": title,
+                "TITLE": title.stringByEscapingXMLChars,
                 "DURATION": duration.formattedSeconds,
                 "ICON_CLASS": status.cssClass,
                 "ITEM_CLASS": nodeKind.cssClass,

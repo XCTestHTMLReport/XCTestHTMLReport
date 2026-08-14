@@ -59,10 +59,10 @@ struct RunDestination: HTML {
     var htmlPlaceholderValues: [String: String] {
         [
             "DEVICE_RESULT": status.iconHTML,
-            "DEVICE_NAME": name,
+            "DEVICE_NAME": name.stringByEscapingXMLChars,
             "DEVICE_IDENTIFIER": targetDevice.uniqueIdentifier,
-            "DEVICE_MODEL": targetDevice.model,
-            "DEVICE_OS": targetDevice.osVersion,
+            "DEVICE_MODEL": targetDevice.model.stringByEscapingXMLChars,
+            "DEVICE_OS": targetDevice.osVersion.stringByEscapingXMLChars,
         ]
     }
 }

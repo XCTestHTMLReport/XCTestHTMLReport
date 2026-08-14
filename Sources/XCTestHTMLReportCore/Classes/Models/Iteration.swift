@@ -66,7 +66,7 @@ extension Iteration {
     var htmlPlaceholderValues: [String: String] {
         [
             "UUID": uuid,
-            "TITLE": "Iteration \(iterationNumber ?? 0)",
+            "TITLE": "Iteration \(iterationNumber ?? 0)".stringByEscapingXMLChars,
             "DURATION": duration.formattedSeconds,
             "ICON_CLASS": status.cssClass,
             "SCREENSHOT_FLOW": testScreenshotFlow?.screenshots.accumulateHTMLAsString ?? "",

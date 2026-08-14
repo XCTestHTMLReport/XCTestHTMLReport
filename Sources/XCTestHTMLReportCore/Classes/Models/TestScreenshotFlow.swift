@@ -50,8 +50,8 @@ struct ScreenshotFlowAttachment: HTML {
 
     var htmlPlaceholderValues: [String: String] {
         [
-            "SRC": attachment.source ?? "",
-            "FILENAME": attachment.filename,
+            "SRC": (attachment.source ?? "").stringByEscapingXMLChars,
+            "FILENAME": attachment.filename.stringByEscapingXMLChars,
         ]
     }
 }
