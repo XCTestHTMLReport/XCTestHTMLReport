@@ -18,6 +18,7 @@ final class DifferentialTests: XCTestCase {
     /// other assertions held, and halves a suite dominated by `xcresulttool`
     /// subprocess time.
     private static var summaries: [String: Summary] = [:]
+    private static var inlineSummaries: [String: Summary] = [:]
     private static var normalizedRenders: [String: String] = [:]
 
     private struct AllowList: Decodable {
@@ -334,16 +335,25 @@ final class DifferentialTests: XCTestCase {
         }
     }
 
-    private func summaryInline(_ resource: String, _ backend: ResultBackend) throws -> Summary {
+    /// Cached for the same reason the `.linking` summaries are: parsing is
+    /// deterministic per backend, and more than one test now needs the inline
+    /// bytes.
+    func summaryInline(_ resource: String, _ backend: ResultBackend) throws -> Summary {
+        let key = "\(resource)|\(backend.rawValue)"
+        if let cached = Self.inlineSummaries[key] {
+            return cached
+        }
         let url = try XCTUnwrap(
             Bundle.testBundle.url(forResource: resource, withExtension: "xcresult")
         )
-        return Summary(
+        let summary = Summary(
             resultPaths: [url.path],
             renderingMode: .inline,
             downsizeImagesEnabled: false,
             downsizeScaleFactor: 0.5,
             backend: backend
         )
+        Self.inlineSummaries[key] = summary
+        return summary
     }
 }

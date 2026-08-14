@@ -170,4 +170,48 @@ final class LogFaultReportingTests: XCTestCase {
             try XCTAssertContains(combined, "unresolvedLog: log for run ")
         }
     }
+
+    /// `xcresulttool` exits 0 and hands back something that is not a log
+    /// document.
+    private struct UndecodableClient: XCResultToolInvoking {
+        var bundleDescription: String {
+            "Undecodable.xcresult"
+        }
+
+        func run(_: [String]) throws -> Data {
+            Data("[]".utf8)
+        }
+
+        func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
+            try JSONDecoder().decode(type, from: run(arguments))
+        }
+    }
+
+    /// A legacy log document that arrives and cannot be decoded is a fault,
+    /// not an empty log.
+    ///
+    /// The other arm — the subcommand failing outright — is what the test
+    /// above reaches by deleting the object. This one only became reachable
+    /// with #480: the decode used to happen inside XCResultKit, which returned
+    /// `nil` for a failed read and a failed decode alike, and it now happens
+    /// here. An undecodable document must not fall through as a log with no
+    /// sections in it.
+    func testUndecodableLegacyLogIsRecordedAsAFault() {
+        let collector = FaultCollector()
+        let file = ResultFile(
+            // Never opened: every call this test makes goes to the client.
+            url: URL(fileURLWithPath: "/nonexistent/Undecodable.xcresult"),
+            faultCollector: collector,
+            toolClient: UndecodableClient()
+        )
+
+        XCTAssertNil(
+            file.exportLogsData(reference: "log-ref"),
+            "A document that will not decode is not a log"
+        )
+        XCTAssertEqual(
+            collector.faults.map(\.kind), [.logExportFailed],
+            "The report ships without this run's log, so it must not exit 0"
+        )
+    }
 }
