@@ -19,8 +19,7 @@ on:
           release run would otherwise rebuild `/` from the tag and roll the
           demo back until the next merge.
         type: string
-        required: false
-        default: ''
+        required: true
 
 # Read-only by default; the deploy job widens this for itself alone.
 permissions:
