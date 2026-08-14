@@ -62,18 +62,19 @@ jobs:
       if: steps.fixture-cache.outputs.cache-hit != 'true'
       run: ./prepareTestResults.sh
 
-    # Restored or freshly generated, the bundles must actually exist before
-    # the fast path is trusted: a cache hit that restored nothing would
-    # otherwise sail through as a suspiciously quick green run.
+    # Restored or freshly generated, the bundles must actually contain tests
+    # before the fast path is trusted: a cache hit that restored nothing would
+    # otherwise sail through as a suspiciously quick green run, and a stub left
+    # behind by a simulator that vanished mid-generation would fail the suite
+    # below with a confusing error instead of here (#454). The script explains
+    # what it asserts and why presence alone is not enough.
+    #
+    # This must stay ahead of `swift test`, and it is: the cache action's save
+    # runs post-job under `post-if: success()`, so failing here also stops a
+    # stub from being written to the cache under a key every later run would
+    # restore.
     - name: Verify fixtures
-      run: |
-        for bundle in TestResults SanityResults RetryResults; do
-          plist="Tests/XCTestHTMLReportTests/Resources/${bundle}.xcresult/Info.plist"
-          if [ ! -f "$plist" ]; then
-            echo "::error::missing or incomplete fixture: ${bundle}.xcresult"
-            exit 1
-          fi
-        done
+      run: ./scripts/verify_fixtures.sh
 
     - name: Run tests
       run: swift test -v

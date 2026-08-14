@@ -15,9 +15,11 @@ class SampleAppUnitTests: XCTestCase {
     }
 
     /// Records with result `Expected Failure` in the xcresult — a status no
-    /// other fixture test produces. The report currently renders it as
-    /// `.unknown` (blank icon); the redesign's status-icon work needs a real
-    /// case to verify against. See #439.
+    /// other test in `TestResults.xcresult` produces (`RetryTests`, which also
+    /// records one, is skipped from this bundle and lands in
+    /// `RetryResults.xcresult`). The report currently renders it as `.unknown`
+    /// (blank icon); the redesign's status-icon work needs a real case to
+    /// verify against. See #439.
     func testExpectedFailure() {
         XCTExpectFailure("Intentional expected failure for fixture coverage") {
             XCTAssert(false, "This assertion fails inside XCTExpectFailure")
@@ -32,7 +34,12 @@ class SampleAppUnitTests: XCTestCase {
     /// 8×8 solid fill is ~100 bytes of PNG. See #439.
     func testWithPngAttachment() throws {
         let size = CGSize(width: 8, height: 8)
-        let image = UIGraphicsImageRenderer(size: size).image { context in
+        // `UIGraphicsImageRenderer` takes points and defaults to the screen's
+        // scale, so on a Retina simulator the plain `init(size:)` would emit a
+        // 16×16 or 24×24 PNG. Pin scale 1 so the fixture is the 8×8 it claims.
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { context in
             UIColor.systemRed.setFill()
             context.fill(CGRect(origin: .zero, size: size))
         }
