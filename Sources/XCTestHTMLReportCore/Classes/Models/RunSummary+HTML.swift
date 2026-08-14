@@ -19,7 +19,8 @@ extension RunSummary: HTML {
             "N_OF_TESTS": String(tally.total),
             "TESTS_LABEL": tally.total == 1 ? "Test" : "Tests",
             "OVERALL_STATUS_CLASS": Self.iconClass(for: overallStatus),
-            "SUMMARY_META": metaLine,
+            "RUN_DURATION": duration.formattedSeconds,
+            "DEVICES_LABEL": devices.count == 1 ? "1 device" : "\(devices.count) devices",
             "DONUT": donutHTML,
             "LEGEND": tally.buckets.map(Self.legendRow).joined(),
             "DEVICE_BARS": devices.map(Self.deviceRow).joined(),
@@ -37,12 +38,6 @@ extension RunSummary: HTML {
         case .success: return "success"
         default: return "skip"
         }
-    }
-
-    /// "Ran for 1.19s · 2 devices". No start time: `ParsedRun` has no date.
-    private var metaLine: String {
-        let devicesLabel = devices.count == 1 ? "1 device" : "\(devices.count) devices"
-        return "Ran for \(duration.formattedSeconds) · \(devicesLabel)"
     }
 
     /// "12 passed, 6 failed, 1 skipped" — the device bars' visible caption,

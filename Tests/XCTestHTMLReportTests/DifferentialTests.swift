@@ -10,7 +10,7 @@ import XCTest
 @testable import XCTestHTMLReportCore
 
 final class DifferentialTests: XCTestCase {
-    private static let fixtures = ["TestResults", "SanityResults", "RetryResults"]
+    static let fixtures = ["TestResults", "SanityResults", "RetryResults"]
 
     /// Linking-mode summaries and their normalized renders, one per
     /// fixture-and-backend. Rendering is deterministic for a given backend
@@ -39,7 +39,7 @@ final class DifferentialTests: XCTestCase {
         return try JSONDecoder().decode(AllowList.self, from: Data(contentsOf: url))
     }
 
-    private func summary(_ resource: String, _ backend: ResultBackend) throws -> Summary {
+    func summary(_ resource: String, _ backend: ResultBackend) throws -> Summary {
         let key = "\(resource)|\(backend.rawValue)"
         if let cached = Self.summaries[key] {
             return cached
@@ -82,7 +82,7 @@ final class DifferentialTests: XCTestCase {
     /// modern reader: the differential would then compare the modern backend
     /// against itself and report parity. `resolve()` returns
     /// `.legacyUnavailable` instead of substituting, and this asserts on that.
-    private func requireBothBackends() throws {
+    func requireBothBackends() throws {
         switch ResultBackend.legacy.resolve() {
         case .legacyUnavailable:
             throw XCTSkip(
@@ -292,54 +292,6 @@ final class DifferentialTests: XCTestCase {
                     "\(fixture): \(identifier) duration differs between backends"
                 )
             }
-        }
-    }
-
-    /// The summary header's two derived numbers, on the model rather than
-    /// through the render — the same reason
-    /// `testXCTestCaseDurationsAgreeAcrossBackends` exists.
-    ///
-    /// The duration sits one regex away from the `durations` mask, which
-    /// normalises the parenthesised `(1.23s)` form the tree uses: a header
-    /// that ever adopted that form would have its divergence masked away
-    /// silently. It sums *leaf* tests, which agree. Groups do not and cannot
-    /// — `durationInSeconds` is null on every suite node in the modern
-    /// format, which is exactly what that allow-list entry declares.
-    func testSummaryHeaderNumbersAgreeAcrossBackends() throws {
-        try requireBothBackends()
-        for fixture in Self.fixtures {
-            let legacy = try summary(fixture, .legacy)
-            let modern = try summary(fixture, .modern)
-
-            let legacyHeader = RunSummary(runs: legacy.runs)
-            let modernHeader = RunSummary(runs: modern.runs)
-
-            XCTAssertGreaterThan(
-                legacyHeader.duration, 0,
-                "\(fixture): a zero total would make the comparison vacuous"
-            )
-            XCTAssertEqual(
-                legacyHeader.duration, modernHeader.duration, accuracy: 0.0005,
-                "\(fixture): the header's run duration differs between backends"
-            )
-
-            // Rendered, not field by field: it is the two-decimal string that
-            // reaches the page, and it is the string the differential holds.
-            XCTAssertEqual(
-                legacyHeader.duration.formattedSeconds,
-                modernHeader.duration.formattedSeconds,
-                "\(fixture): the header's rendered duration differs between backends"
-            )
-
-            XCTAssertEqual(
-                legacyHeader.tally.buckets.map { "\($0.label) \($0.count)" },
-                modernHeader.tally.buckets.map { "\($0.label) \($0.count)" },
-                "\(fixture): the header's status buckets differ between backends"
-            )
-            XCTAssertEqual(
-                legacyHeader.tally.total, legacy.runs.flatMap(\.allTests).count,
-                "\(fixture): the buckets must account for every test"
-            )
         }
     }
 

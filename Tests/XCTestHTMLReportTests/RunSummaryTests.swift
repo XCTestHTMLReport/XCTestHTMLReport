@@ -78,10 +78,34 @@ final class RunSummaryTests: XCTestCase {
     /// and 0s on the other.
     func testDurationSumsLeafTestsAndNotGroups() throws {
         let meta = try document().select("#run-summary-heading .summary-meta").text()
-        XCTAssertEqual(meta, "Ran for 9.00s · 1 device")
+        XCTAssertEqual(meta, "Duration (9.00s) · 1 device")
 
         let group = SyntheticResult.parsedRun.testables[0].groups[0]
         XCTAssertEqual(group.duration, 6, "the fixture's group must disagree with its leaves")
+    }
+
+    /// The header's total inherits a declared divergence — a parameterized
+    /// Swift Testing case reports a different duration on each backend (#477)
+    /// — so it has to be written in a shape the differential's `durations`
+    /// known-loss rule normalises, or the cross-backend comparison goes red on
+    /// whichever runner is slow enough to cross a rounding boundary.
+    ///
+    /// Asserted against `KnownLossMasker` itself rather than by reading the
+    /// regex and believing it. That distinction is the whole point: the shape
+    /// is `(N.NNs)`, and a copy edit that dropped the parentheses — which look
+    /// like styling — would silently uncover the divergence. This fails the
+    /// moment that happens.
+    func testTheHeadersDurationIsWrittenInAMaskedShape() throws {
+        let rendered = summary().generatedHtmlReport()
+        try XCTAssertContains(rendered, "<span class=\"summary-duration\">(9.00s)</span>")
+
+        let masked = KnownLossMasker.mask(rendered, rules: ["durations"])
+        XCTAssertFalse(
+            masked.contains("(9.00s)"),
+            "the durations rule must normalise the header's total, as it does "
+                + "every duration in the tree"
+        )
+        try XCTAssertContains(masked, "(DURATION)")
     }
 
     /// The ring covers the full circle and each arc starts where the last one

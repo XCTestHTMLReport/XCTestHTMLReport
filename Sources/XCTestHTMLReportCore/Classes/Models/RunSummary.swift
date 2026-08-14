@@ -5,21 +5,39 @@
 //  The Xcode-native summary header (#439, redesign step A1): the outcome
 //  ring, the per-device bars and the failure digest that sit above the tree.
 //
-//  Everything here is *derived*. No reader was touched to build it, and no
-//  field is read that the legacy and modern backends do not agree on — a
-//  divergence would land straight in `DifferentialTests`, whose allow-list
-//  this step deliberately does not grow. Two derivations were measured
-//  against all three fixtures on both backends before being used:
+//  Everything here is *derived*. No reader was touched to build it, and the
+//  differential allow-list is not grown. Two derivations, measured against
+//  all three fixtures on both backends:
 //
 //  - **Counts.** `Status` partitions the leaf tests exactly (passed, failed,
 //    skipped, mixed, expected failure, unknown sum to the total on every
 //    fixture), and the differential already pins four of the six per run.
-//  - **Duration.** The sum of *leaf* test durations agrees to the fourth
-//    decimal on all three fixtures (TestResults 1.1882, SanityResults
-//    0.1059, RetryResults 0.6235). The sum of *group* durations does not,
-//    and cannot: `durationInSeconds` is null on every suite node in the
-//    modern format, which is the standing `durations` allow-list entry. So
-//    the header sums leaves, never groups.
+//    These are compared byte for byte across backends; nothing masks them.
+//
+//  - **Duration.** The sum of *leaf* test durations, never of groups:
+//    `durationInSeconds` is null on every suite node in the modern format,
+//    which is the standing `durations` allow-list entry, so a total that
+//    reached for a group's duration would read a real value on one backend
+//    and zero on the other.
+//
+//    Summing leaves does not make the total backend-identical, and this file
+//    does not pretend otherwise. One leaf diverges — a parameterized Swift
+//    Testing case, where legacy sums the argument executions and modern
+//    reports the node's own value (measured on CI's TestResults:
+//    `parameterizedAddition(value:)` at 0.001268s legacy against 0.000423s
+//    modern, carrying a 0.85ms difference into a 5.04s total). That is the
+//    same divergence the `durations` entry already declares, so the total is
+//    rendered `Duration (5.04s)` — parenthesised, in the shape that rule
+//    normalises — rather than in a shape that would leave a declared loss
+//    unmasked and fail the differential intermittently, on whichever runner
+//    happened to be slow enough to cross a rounding boundary.
+//
+//    The root cause is fixable and predates this header: answer 8 of the
+//    migration design already solved the identical problem for *repetitions*
+//    by summing in the renderer, and nobody applied it to *arguments* when
+//    answer 6 added them. See the follow-up issue named in
+//    `DifferentialTests.testSummaryHeaderNumbersAgreeAcrossBackends`; when it
+//    lands, this paragraph and that test's exclusion both come out.
 //
 //  `ParsedRun` carries no run date, so the header states a duration and no
 //  start time. Deriving one from the earliest activity timestamp — which the

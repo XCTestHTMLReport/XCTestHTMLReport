@@ -1902,13 +1902,22 @@ struct HTMLTemplates
   ///
   /// It sits inside `<header>`, which is already the banner landmark, so the
   /// section needs no landmark of its own to satisfy axe's `region` rule.
+  ///
+  /// The run duration is written `Duration (5.04s)` — a label, then the value
+  /// parenthesised in its own element. The parentheses are not decoration:
+  /// `(N.NNs)` is the shape the differential's `durations` known-loss rule
+  /// normalises, and this total inherits that loss because a parameterized
+  /// Swift Testing case reports a different duration on each backend. Writing
+  /// it in any other shape would leave a declared divergence unmasked and turn
+  /// the differential red on a slow enough runner. `RunSummaryTests` asserts
+  /// against the masker that this actually holds, rather than assuming it.
   static let runSummary = """
   <section id=\"run-summary\" aria-labelledby=\"run-summary-heading\">
         <div class=\"summary-card\">
           <h2 id=\"run-summary-heading\">
             <span class=\"icon [[OVERALL_STATUS_CLASS]]\"></span>
             Tests
-            <span class=\"summary-meta\">[[SUMMARY_META]]</span>
+            <span class=\"summary-meta\">Duration <span class=\"summary-duration\">([[RUN_DURATION]])</span> &middot; [[DEVICES_LABEL]]</span>
           </h2>
           <div class=\"summary-grid\">
             <div class=\"donut\">

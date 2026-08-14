@@ -165,6 +165,110 @@ final class HTMLEscapingTests: XCTestCase {
         )
     }
 
+    /// The summary header (#439, A1) is a second place every hostile leaf
+    /// string reaches markup: the digest carries a test name and an assertion
+    /// message, the device row a destination name and an OS version.
+    ///
+    /// Scoped to `#run-summary` rather than to the whole document on purpose.
+    /// The tree below renders the same strings escaped, so a document-wide
+    /// "contains the escaped form" assertion would pass even if the header
+    /// emitted a raw copy — the very failure mode #463 fixed elsewhere.
+    func testTheSummaryHeaderEscapesEveryHostileValue() throws {
+        let hostile = "\"'<>&"
+        let escaped = "&quot;&apos;&lt;&gt;&amp;"
+        let header = try summaryHeader(in: hostileFailingRunHTML())
+
+        XCTAssertFalse(
+            header.contains(hostile),
+            "a raw hostile string reached the summary header"
+        )
+        for value in ["testHostile\(escaped)()", "Device\(escaped)", "1.0\(escaped)",
+                      "Suite\(escaped)", "assertion\(escaped) failed"]
+        {
+            XCTAssertTrue(
+                header.contains(value),
+                "the header must render '\(value)' — escaped, but present"
+            )
+        }
+    }
+
+    /// The digest hands the page an element id through `data-target` rather
+    /// than through an interpolated `onclick`, so it is not covered by
+    /// `testEveryIdentifierReachingAScriptHandlerIsAHexDigest`. What makes it
+    /// safe is the same property, and it is worth the same tripwire: the
+    /// script looks the value up with `getElementById`, so a name reaching it
+    /// would be a selector built from test-author-controlled text.
+    func testEveryDigestJumpTargetIsAHexDigest() throws {
+        let targets = try attributeValues(named: "data-target", in: hostileFailingRunHTML())
+        XCTAssertFalse(targets.isEmpty, "the fixture must render a failure digest")
+
+        let digest = try NSRegularExpression(pattern: "^[0-9a-f]{32}$")
+        let offenders = targets.filter { value in
+            digest.firstMatch(in: value, range: NSRange(location: 0, length: value.utf16.count))
+                == nil
+        }
+        XCTAssertEqual(offenders, [], "only opaque digests may address a row from the digest")
+    }
+
+    /// The `<section id="run-summary">` element's source, which holds no
+    /// nested `<section>`, so the first close tag after it is its own.
+    private func summaryHeader(in html: String) throws -> String {
+        let open = try XCTUnwrap(
+            html.range(of: "<section id=\"run-summary\""),
+            "the report must render a summary header"
+        )
+        let close = try XCTUnwrap(
+            html.range(of: "</section>", range: open.upperBound ..< html.endIndex)
+        )
+        return String(html[open.lowerBound ..< close.upperBound])
+    }
+
+    /// `hostileRunHTML`'s test passes, so it renders no digest. This is the
+    /// same run with the test failed and its assertion message hostile too.
+    private func hostileFailingRunHTML() -> String {
+        let hostile = "\"'<>&"
+        let failure = ParsedActivity(
+            title: "assertion\(hostile) failed",
+            isFailure: true,
+            start: Date(timeIntervalSince1970: 0),
+            attachments: [],
+            subActivities: []
+        )
+        let group = ParsedGroup(
+            name: "Suite\(hostile)",
+            identifier: "Suite\(hostile)",
+            duration: 1,
+            children: [.testCase(ParsedTestCase(
+                name: "testHostile\(hostile)()",
+                identifier: "Suite\(hostile)/testHostile\(hostile)()",
+                arguments: [],
+                iterations: [SyntheticResult.iteration(
+                    number: nil,
+                    status: .failed,
+                    activities: [failure]
+                )]
+            ))]
+        )
+        let run = ParsedRun(
+            destination: ParsedDestination(
+                displayName: "Device\(hostile)",
+                deviceIdentifier: "identifier\(hostile)",
+                modelName: "Model\(hostile)",
+                operatingSystemVersion: "1.0\(hostile)"
+            ),
+            logReference: SyntheticResult.logReference,
+            testables: [ParsedTestable(targetName: "HostileTests", groups: [group])]
+        )
+        return Summary(
+            parsedRuns: [run],
+            payloads: SyntheticResult.payloads,
+            renderingMode: .linking,
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5,
+            bundleNames: ["Synthetic"]
+        ).generatedHtmlReport()
+    }
+
     /// The guard against over-correcting: values that are already rendered
     /// HTML must pass through the seam untouched, or the whole report
     /// collapses into escaped source text.
