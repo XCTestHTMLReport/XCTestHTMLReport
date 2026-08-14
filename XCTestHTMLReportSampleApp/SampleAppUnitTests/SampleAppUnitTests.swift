@@ -14,12 +14,13 @@ class SampleAppUnitTests: XCTestCase {
         XCTAssert(false, "Test failed")
     }
 
-    /// Records with result `Expected Failure` in the xcresult — a status no
-    /// other test in `TestResults.xcresult` produces (`RetryTests`, which also
-    /// records one, is skipped from this bundle and lands in
-    /// `RetryResults.xcresult`). The report currently renders it as `.unknown`
-    /// (blank icon); the redesign's status-icon work needs a real case to
-    /// verify against. See #439.
+    /// Records with result `Expected Failure` in the xcresult — one of exactly
+    /// two such rows in `TestResults.xcresult`. `SwiftTestingSuite.knownIssue`
+    /// records the other from this same target, so the status has coverage from
+    /// both test frameworks; `RetryTests` records one too, but it is skipped
+    /// from this bundle and lands in `RetryResults.xcresult`. #439 has since
+    /// given the status its own `Status.expectedFailure` and glyph, and
+    /// `CoreTests`' bucket arithmetic subtracts exactly these two.
     func testExpectedFailure() {
         XCTExpectFailure("Intentional expected failure for fixture coverage") {
             XCTAssert(false, "This assertion fails inside XCTExpectFailure")

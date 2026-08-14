@@ -50,13 +50,15 @@ jobs:
     - name: Generate test fixtures
       run: ./prepareTestResults.sh
 
+    # Same script as the other three workflows, scoped to the one bundle this
+    # job publishes: there is no cache here to poison, and failing a release
+    # over a stub Sanity or Retry bundle nothing in this job reads would be a
+    # false blocker. The render below is pushed immutably, so a stub that got
+    # through would sit under /v/<tag>/ as a permanently empty demo (#454).
     - name: Verify fixture
       run: |
-        plist="Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult/Info.plist"
-        if [ ! -f "$plist" ]; then
-          echo "::error::missing or incomplete fixture: TestResults.xcresult"
-          exit 1
-        fi
+        ./scripts/verify_fixtures.sh \
+          Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult
 
     - name: Build
       run: swift build -c release --product xchtmlreport

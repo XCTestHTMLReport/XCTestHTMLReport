@@ -1,8 +1,9 @@
 #!/bin/bash
 # Verifies that the .xcresult fixtures actually contain test data.
 #
-# Shared by test.yml and toolchain-drift.yml so the two gates cannot drift
-# apart, and runnable locally straight after ./prepareTestResults.sh.
+# Shared by every workflow that generates or restores fixtures — test.yml,
+# toolchain-drift.yml, pages.yml and pages-release.yml — so the gates cannot
+# drift apart, and runnable locally straight after ./prepareTestResults.sh.
 #
 # Presence is not evidence. When a CI runner's simulator vanished mid-generation
 # ("Unable to find a device matching the provided destination specifier"), the
