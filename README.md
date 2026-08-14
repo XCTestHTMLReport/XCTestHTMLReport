@@ -11,7 +11,7 @@
 
 Xcode-like HTML report for Unit and UI Tests
 
-**[▶ Open a live report](https://xctesthtmlreport.github.io/XCTestHTMLReport/)** — rendered from this repository's own sample test run, republished on every merge to `main`.
+**[▶ Open a live report](https://xctesthtmlreport.github.io/XCTestHTMLReport/)** — rendered from this repository's own sample test run, republished on every merge to `main`. Past releases are at **[/v/](https://xctesthtmlreport.github.io/XCTestHTMLReport/v/)**.
 
 ![screenshot](https://i.imgur.com/NHRzoXG.jpg)
 

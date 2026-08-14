@@ -1,0 +1,132 @@
+name: Demo Site (release)
+
+# Publishes a permanent render for each stable release under /v/<tag>/, so the
+# site can answer "what did the report look like in 3.0" and not only "what
+# does it look like right now".
+#
+# Version skew is inherent here: on a tag push GitHub runs the workflow files as
+# they existed *at the tag*, while `render-ref: main` means the sources and
+# scripts/assemble_site.py come from main. A future change to the assembler's
+# CLI can therefore break releases cut before that change.
+on:
+  push:
+    tags:
+    # Stable only. release.yml needs a second, separate pattern for
+    # `[0-9]+.[0-9]+.[0-9]+rc[0-9]+`, which is what tells us this one does not
+    # match release candidates.
+    - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+# Deliberately NOT the `pages` group. This workflow calls pages.yml, and a
+# called reusable workflow evaluates its own `concurrency` — so if this one
+# already held `pages`, the call would wait for a group its own caller is
+# holding and the run would deadlock. This group protects the store push from
+# concurrent releases; pages.yml keeps serialising the deployment itself.
+concurrency:
+  group: pages-store
+  cancel-in-progress: false
+
+jobs:
+  publish-version:
+    runs-on: macos-latest
+    # The only job in either workflow that writes. It pushes one immutable
+    # directory into the pages-site store; everything else reads.
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Setup Xcode version
+      uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+      with:
+        xcode-version: latest-stable
+
+    # No cache restore: this tag's sample app differs from main's, so the
+    # shared fixture key would miss anyway. A few minutes, a few times a year.
+    - name: Generate test fixtures
+      run: ./prepareTestResults.sh
+
+    - name: Verify fixture
+      run: |
+        plist="Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult/Info.plist"
+        if [ ! -f "$plist" ]; then
+          echo "::error::missing or incomplete fixture: TestResults.xcresult"
+          exit 1
+        fi
+
+    - name: Build
+      run: swift build -c release --product xchtmlreport
+
+    - name: Render this release
+      run: |
+        mkdir -p render
+        .build/release/xchtmlreport -i \
+          -o render \
+          Tests/XCTestHTMLReportTests/Resources/TestResults.xcresult
+
+    # Checked out with credentials, because this one pushes.
+    - name: Check out the version store
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 # zizmor: ignore[artipacked]
+      with:
+        ref: pages-site
+        path: store
+
+    # versions.json is written only after the render succeeded, so a failed
+    # build can never leave the store declaring a version whose directory does
+    # not exist. Re-running a tag overwrites its directory rather than
+    # appending, so a re-run cannot corrupt the store.
+    - name: Write the version into the store
+      env:
+        TAG: ${{ github.ref_name }}
+      run: |
+        # Copy the whole render, not just index.html: `-i` yields one
+        # self-contained file today, but a render that ever emitted a sibling
+        # asset would otherwise be published half-complete, and the truncation
+        # guard only checks index.html so it would not notice. Clearing the
+        # directory first is what makes "a re-run overwrites" literally true —
+        # a plain copy would leave behind files an earlier render produced and
+        # this one no longer does.
+        rm -rf "store/v/$TAG"
+        mkdir -p "store/v/$TAG"
+        cp -R render/. "store/v/$TAG/"
+        python3 - "$TAG" <<'PY'
+        import json, sys
+        tag = sys.argv[1]
+        with open("store/versions.json", encoding="utf-8") as handle:
+            versions = json.load(handle)
+        if tag not in versions:
+            versions.insert(0, tag)
+        with open("store/versions.json", "w", encoding="utf-8") as handle:
+            json.dump(versions, handle, indent=2)
+            handle.write("\n")
+        PY
+        cd store
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add "v/$TAG" versions.json
+        # A re-run of an already-published tag can stage nothing. The render is
+        # rebuilt from freshly generated fixtures, so it almost never matches
+        # the stored one byte for byte — but if it ever did, a bare `git commit`
+        # would exit nonzero and take `deploy` down with it. Nothing staged
+        # means the store is already correct, which is success, not failure.
+        if git diff --cached --quiet; then
+          echo "store already up to date for $TAG"
+        else
+          git commit -m "Publish demo report for $TAG"
+        fi
+        git push
+
+  # Reuses pages.yml wholesale rather than duplicating assembly and deploy.
+  deploy:
+    needs: publish-version
+    uses: ./.github/workflows/pages.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    with:
+      render-ref: main
