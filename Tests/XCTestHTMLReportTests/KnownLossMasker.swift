@@ -93,10 +93,21 @@ enum KnownLossMasker {
             // between the `<p>` and the name — so the anchor spans both
             // preceding lines. Anchoring on the icon span also keeps the rule
             // from ever touching a non-attachment `<p>`.
-            return replace(
+            let namedLines = replace(
                 html,
                 #"(<p class="attachment[^"]*">\n\s*<span class="icon left [a-z-]*icon"[^\n]*></span>\n)[^\n]*\n"#,
                 with: "$1ATTACHMENT_NAME\n"
+            )
+            // One divergence, two sites since #462: the same display name is
+            // also the `alt` of every attachment-derived image. Masking only
+            // the text line would let the `alt` reintroduce the difference
+            // this entry already accounts for. Matched on an exact class so
+            // the two `displayed-*` preview panes — whose `alt` is empty in
+            // both backends — stay compared.
+            return replace(
+                namedLines,
+                #"(<img class="(?:screenshot|screenshot-flow|screenshot-tail|gif)"[^\n]*?)alt="[^"]*""#,
+                with: "$1alt=\"ATTACHMENT_NAME\""
             )
         case "failureTitlePrefix":
             // Two shapes, not one. Verified on `TestResults`:
