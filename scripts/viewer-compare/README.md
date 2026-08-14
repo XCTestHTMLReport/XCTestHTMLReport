@@ -27,6 +27,16 @@ automated because it can be; this one is not, and should not be. Driving Xcode's
 GUI on a hosted runner is a flake generator, and a red check nobody trusts is
 worse than a tool the maintainer runs deliberately.
 
+## Why this lives in `scripts/` and not in `visual/`
+
+It borrows [`visual/`](../../visual)'s Playwright — the same pinned version, the
+same browser build, no second lockfile — but it is not part of that suite.
+`visual/` is assertions that run on every pull request, on Linux, headless, with
+no Xcode anywhere. This is a macOS-only, GUI-driving, screenshot-producing tool
+that runs when a human decides to run it. Folding it in would put `osascript`
+and `screencapture` inside a directory whose whole contract is "this runs in
+CI", and the first person to add a `playwright test` glob would pick it up.
+
 ## Prerequisites
 
 - macOS with Xcode installed (verified against Xcode 26.2).
