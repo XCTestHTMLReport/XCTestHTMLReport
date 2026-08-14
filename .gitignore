@@ -35,3 +35,8 @@ visual/fixtures
 
 # Byte-compiled by Python whenever a module under scripts/ is imported.
 __pycache__/
+
+# Capture runs from scripts/viewer-compare. Each run is about 64 MB, nearly all
+# of it the copy of the fixture bundle; they are local evidence, not repository
+# content (see scripts/viewer-compare/README.md).
+/.viewer-compare
