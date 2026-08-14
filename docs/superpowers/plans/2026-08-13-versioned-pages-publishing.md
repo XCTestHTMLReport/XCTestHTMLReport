@@ -46,6 +46,14 @@ the render.
   limit.
 - Never bypass the pre-commit hook (`core.hooksPath` → `.githooks/`). If git
   signing fails with a keychain error, retry; never fall back to unsigned.
+- **Amended during execution:** `pages.yml`'s `workflow_call` trigger takes a
+  **required** `render-ref` input, and `pages-release.yml` passes
+  `render-ref: main`. A called workflow inherits the *caller's* event context,
+  so on a tag push a checkout with no explicit `ref` resolves to the tag — the
+  site root would be rebuilt from the release tag and roll `/` back until the
+  next merge. Task 3 Step 1 and Task 4 Step 1 below carry the amended YAML;
+  `pages.yml:13-22` explains it inline. `required: true` rather than a default
+  so that a caller forgetting it fails loudly instead of silently.
 
 ## File Structure
 
@@ -54,6 +62,7 @@ the render.
 | path | responsibility |
 |---|---|
 | `scripts/assemble_site.py` | assemble `_site`, generate the version listing, run all four guards |
+| `scripts/test_assemble_site.py` | stdlib `unittest` cover for those guards (added after execution) |
 | `.github/workflows/pages-release.yml` | render a stable tag into the store, then call `pages.yml` |
 
 **Modified:**
@@ -61,6 +70,7 @@ the render.
 | path | change |
 |---|---|
 | `.github/workflows/pages.yml` | add `workflow_call`; check out the store; call the assembler |
+| `.github/workflows/lint.yml` | run the assembler tests in the existing `shell` job (added after execution) |
 | `README.md` | link the version listing |
 
 **Created outside the working tree:** the `pages-site` branch (Task 2).
@@ -81,6 +91,14 @@ to make that loud.
 - Produces: `python3 scripts/assemble_site.py <site-dir>` — exits 0 on a valid
   assembled site, non-zero with a `::error::` line otherwise. Writes
   `<site-dir>/v/index.html`. Removes `<site-dir>/.git`.
+
+**Amended after execution:** the shipped script has since gained three more
+guards — entries must match `MAJOR.MINOR.PATCH`, may not repeat, and a failure
+writing the listing is reported as `::error::` rather than a traceback — and the
+listing sorts by version rather than by publication order. `scripts/assemble_site.py`
+is the authority; the source below is the state at the end of this task. Steps 2-6
+are now automated in `scripts/test_assemble_site.py`, which `lint.yml`'s `shell`
+job runs on every push and pull request.
 
 - [ ] **Step 1: Write the script**
 
@@ -286,8 +304,9 @@ Expected: `.git` is gone.
 
 - [ ] **Step 7: Commit**
 
+From the repository root:
+
 ```bash
-cd /Users/tyler/Documents/XCTestHTMLReport
 chmod +x scripts/assemble_site.py
 git add scripts/assemble_site.py
 git commit -m "Site assembler that refuses to publish a truncated version store"
@@ -308,8 +327,9 @@ Do this in a scratch clone so the working tree is never left on the store
 branch:
 
 ```bash
+origin_url="$(git remote get-url origin)"
 cd /tmp && rm -rf storeinit
-git clone --no-checkout "$(git -C /Users/tyler/Documents/XCTestHTMLReport remote get-url origin)" storeinit
+git clone --no-checkout "$origin_url" storeinit
 cd storeinit
 git checkout --orphan pages-site
 git rm -rf --cached . 2>/dev/null || true
@@ -327,9 +347,11 @@ git push -u origin pages-site
 
 - [ ] **Step 2: Verify the branch exists and holds only the store**
 
+Back in the repository root:
+
 ```bash
-git -C /Users/tyler/Documents/XCTestHTMLReport fetch origin
-git -C /Users/tyler/Documents/XCTestHTMLReport ls-tree -r --name-only origin/pages-site
+git fetch origin
+git ls-tree -r --name-only origin/pages-site
 ```
 
 Expected: exactly `v/.gitkeep` and `versions.json`. If any source file appears,
@@ -339,7 +361,6 @@ committing a fix on top.
 - [ ] **Step 3: Confirm the main working tree is untouched**
 
 ```bash
-cd /Users/tyler/Documents/XCTestHTMLReport
 git status --porcelain
 git rev-parse --abbrev-ref HEAD
 ```
@@ -369,7 +390,21 @@ on:
   # pages-release.yml calls this after writing a version into the store, so
   # assembly and deployment exist in exactly one place.
   workflow_call:
+    inputs:
+      render-ref:
+        description: >-
+          Ref whose source is rendered into the site root. Callers must pass
+          `main`. A called workflow inherits the CALLER's event context, so a
+          release run would otherwise rebuild `/` from the tag and roll the
+          demo back until the next merge.
+        type: string
+        required: true
 ```
+
+The `build` job's own checkout then takes `ref: ${{ inputs.render-ref ||
+github.sha }}`. On `push` and `workflow_dispatch` the `inputs` context is
+empty, so the fallback resolves to the triggering commit — what the checkout
+used implicitly before.
 
 - [ ] **Step 2: Check out the store before rendering**
 
@@ -566,7 +601,7 @@ jobs:
         cd store
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add "v/$TAG/index.html" versions.json
+        git add "v/$TAG" versions.json
         git commit -m "Publish demo report for $TAG"
         git push
 
@@ -578,7 +613,13 @@ jobs:
       contents: read
       pages: write
       id-token: write
+    with:
+      render-ref: main
 ```
+
+`render-ref: main` is not optional — see Global Constraints. Without it the
+called workflow inherits this workflow's tag event and rebuilds the site root
+from the tag.
 
 - [ ] **Step 2: Lint**
 
