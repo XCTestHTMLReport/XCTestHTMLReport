@@ -96,4 +96,42 @@ if [[ $XCODE_VERSION != 12.* && $XCODE_VERSION != 11.* ]]; then
     mv "$RETRY_FILENAME" "../Tests/XCTestHTMLReportTests/Resources/"
 fi
 
+# The one fixture that is deliberately a broken run.
+#
+# `systemFailure` (#478) keys on a group Apple names `System Failures`, and a
+# display name is a handle that can be renamed out from under us — nothing
+# structural tells that bucket apart from a user's own suite on either reader.
+# So the name is re-measured instead of assumed: SystemFailureCanaryTests reads
+# this bundle and asserts both readers still find the bucket in it, which turns
+# a rename in some future Xcode into a red suite on the toolchain that
+# introduces it rather than a fault that quietly stops firing.
+#
+# XCHR_TRAP_AT_LAUNCH makes the sample app's AppDelegate trap in
+# didFinishLaunchingWithOptions. SampleAppUnitTests is hosted in that app, so
+# the whole target dies with it — which is exactly what happened on the Xcode 27
+# beta, reproduced rather than simulated. `TEST_RUNNER_` is xcodebuild's own
+# channel for reaching the launched process: it strips the prefix and passes the
+# rest through, and for a hosted unit test that process is the host app. No
+# scheme edit and no second copy of the project to keep in step.
+#
+# Unit tests only. The UI tests launch the app themselves through
+# XCUIApplication, which does not inherit this environment, so including them
+# would add a minute of healthy rows the canary does not read.
+CRASH_FILENAME='CrashResults.xcresult'
+rm -rf "$CRASH_FILENAME"
+TEST_RUNNER_XCHR_TRAP_AT_LAUNCH=1 xcodebuild test-without-building \
+    -project SampleApp.xcodeproj \
+    -scheme MainScheme \
+    -destination "$SIM_DESTINATION" \
+    -derivedDataPath "$DERIVED_DATA" \
+    -only-testing:SampleAppUnitTests \
+    -resultBundlePath "$CRASH_FILENAME" || true
+
+# `|| true` above because this invocation is *meant* to fail — but the move is
+# not guarded, so a run that wrote no bundle at all still stops the script here
+# rather than leaving the canary to fail later with a missing resource.
+echo "${CRASH_FILENAME} should contain a host-app launch failure for the System Failures canary"
+rm -rf "../Tests/XCTestHTMLReportTests/Resources/${CRASH_FILENAME}"
+mv "$CRASH_FILENAME" "../Tests/XCTestHTMLReportTests/Resources/"
+
 echo "$(tput setaf 2)$(basename "$0") successfully finished$(tput sgr 0)"

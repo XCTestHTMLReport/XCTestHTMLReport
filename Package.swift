@@ -38,6 +38,12 @@ let package = Package(
                 .process("Resources/TestResults.xcresult"),
                 .process("Resources/RetryResults.xcresult"),
                 .process("Resources/SanityResults.xcresult"),
+                // A deliberately broken run — a host app that traps at launch.
+                // SystemFailureCanaryTests reads it to re-measure the group
+                // name `systemFailure` keys on against the live toolchain
+                // (#478); prepareTestResults.sh generates it alongside the
+                // three healthy bundles.
+                .process("Resources/CrashResults.xcresult"),
                 .process("Resources/differential-allowlist.json"),
             ]
         ),

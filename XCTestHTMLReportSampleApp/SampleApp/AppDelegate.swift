@@ -10,46 +10,55 @@ import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    var window: UIWindow?
+    /// The environment variable `prepareTestResults.sh` sets — and nothing else
+    /// does — when it generates `CrashResults.xcresult`.
+    ///
+    /// That bundle exists to feed a canary, and a canary for a host-app launch
+    /// failure needs a host app that really fails to launch. The
+    /// alternative was a scratch copy of the project patched at generation
+    /// time, which is a second sample app to keep in step with this one. A trap
+    /// nothing sets during a normal run is cheaper and reads as what it is.
+    static let trapAtLaunchVariable = "XCHR_TRAP_AT_LAUNCH"
 
     func application(
         _: UIApplication,
         didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        // Deliberate: this is what a host-app launch failure looks like from
+        // the inside, and `SystemFailureCanaryTests` needs a bundle carrying
+        // one to check that Apple still calls the bucket `System Failures`
+        // (#478). Absent the variable — every other invocation in
+        // prepareTestResults.sh, and every run from Xcode — this is a no-op.
+        if ProcessInfo.processInfo.environment[Self.trapAtLaunchVariable] != nil {
+            fatalError("\(Self.trapAtLaunchVariable) is set: trapping at launch on purpose")
+        }
+
         // Override point for customization after application launch.
-        true
+        return true
     }
 
-    func applicationWillResignActive(_: UIApplication) {
-        // Sent when the application is about to move from active to inactive state. This can occur
-        // for certain types of temporary interruptions (such as an incoming phone call or SMS
-        // message) or when the user quits the application and it begins the transition to the
-        // background state.
-        // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering
-        // callbacks. Games should use this method to pause the game.
-    }
+    // The five app-level lifecycle stubs that used to sit here
+    // (applicationWillResignActive and friends) went with the scene adoption in
+    // #478: UIKit delivers those transitions to the scene delegate now, so
+    // keeping them would leave five methods nothing ever calls. They were empty
+    // Xcode-template comments, so nothing this app does changed.
 
-    func applicationDidEnterBackground(_: UIApplication) {
-        // Use this method to release shared resources, save user data, invalidate timers, and store
-        // enough application state information to restore your application to its current state in
-        // case it is terminated later.
-        // If your application supports background execution, this method is called instead of
-        // applicationWillTerminate: when the user quits.
-    }
-
-    func applicationWillEnterForeground(_: UIApplication) {
-        // Called as part of the transition from the background to the active state; here you can
-        // undo many of the changes made on entering the background.
-    }
-
-    func applicationDidBecomeActive(_: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was
-        // inactive. If the application was previously in the background, optionally refresh the
-        // user interface.
-    }
-
-    func applicationWillTerminate(_: UIApplication) {
-        // Called when the application is about to terminate. Save data if appropriate. See also
-        // applicationDidEnterBackground:.
+    /// Hands UIKit the configuration the scene manifest declares.
+    ///
+    /// The name is matched against `UISceneConfigurationName` in Info.plist at
+    /// run time, and nothing checks it at compile time. Rename it on one side
+    /// only and this still builds: UIKit vends an unmatched configuration, with
+    /// no delegate class and no storyboard behind it, and the app comes up as a
+    /// blank window. Keep the two spellings in step by hand — the compiler will
+    /// not. See `SceneDelegate` for why adoption is required at all.
+    func application(
+        _: UIApplication,
+        configurationForConnecting connectingSceneSession: UISceneSession,
+        options _: UIScene.ConnectionOptions
+    ) -> UISceneConfiguration {
+        UISceneConfiguration(
+            name: "Default Configuration",
+            sessionRole: connectingSceneSession.role
+        )
     }
 }

@@ -56,6 +56,96 @@ public struct ParsedGroup {
     public let children: [ParsedNode]
 }
 
+/// The truncation signal `Summary.validate()` reads (#478). It lives here, on
+/// the shared model, rather than in either reader, so there is one
+/// implementation rather than two to keep in step — the same argument
+/// `ParsedActivity.interleavingFailureRows` makes for failure-row ordering.
+///
+/// One implementation is not by itself a guarantee that both backends behave
+/// alike: shared code over unequal input still diverges, which is how the
+/// withdrawn `emptyPlannedTestable` managed to fire on legacy only. What makes
+/// this one agree is that the node it keys on was measured on both readers,
+/// from the same bundle, and is re-measured on every toolchain by
+/// `SystemFailureCanaryTests`.
+extension ParsedGroup {
+    /// The group Apple files host-app and system failures under.
+    ///
+    /// Not a heuristic reading of a message: it is the node's own name, and
+    /// both formats spell it identically at the same position in the tree.
+    /// Measured, not assumed — `prepareTestResults.sh` generates
+    /// `CrashResults.xcresult` by trapping in the host app's
+    /// `didFinishLaunchingWithOptions`, and both readers put out a group whose
+    /// `name` and `identifier` are `System Failures`, directly under the
+    /// testable.
+    ///
+    /// The group is the marker rather than its rows precisely because the rows
+    /// are where the two backends stop agreeing: modern carries the crash row
+    /// (`SampleApp (<pid>) encountered an error`, with the bootstrap failure as
+    /// its failure activity), while XCResultKit drops it — the node is an
+    /// `ActionTestSummary`, not one of the `ActionTestMetadata` entries
+    /// `subtests` decodes — so legacy sees the bucket empty. Keying on the
+    /// bucket makes the rule fire on both; keying on the row would have made it
+    /// fire only on modern.
+    ///
+    /// Two consequences of keying on a display name, both accepted knowingly:
+    ///
+    /// - **A rename disarms the rule silently.** The bucket is a plain test
+    ///   suite on both surfaces — modern's node is
+    ///   `{"name": "System Failures", "nodeType": "Test Suite"}`, legacy's an
+    ///   ordinary `ActionTestSummaryGroup` — so nothing structural
+    ///   distinguishes it from a user's own suite, and there is no other
+    ///   surface to detect it on today. If Apple renames it, healthy fixtures
+    ///   go on passing and nothing reddens. That is what
+    ///   `SystemFailureCanaryTests` is for: it asserts a freshly generated
+    ///   crash bundle still contains this literal, on both readers, so the
+    ///   rename fails the suite on the toolchain that introduces it — and the
+    ///   `toolchain-drift` beta leg reaches that toolchain before a release
+    ///   does. The literal appears in no binary and no `.strings` table under
+    ///   `Xcode.app`; it is written into the bundle at run time, which is weak
+    ///   evidence it is not localized, and no evidence at all that it is
+    ///   permanent.
+    /// - **A user suite named `System Failures` faults.** Contrived, and it
+    ///   costs that user one `--lenient` run, which is the cheaper side of the
+    ///   trade against missing a real crash.
+    static let systemFailureName = "System Failures"
+
+    /// Every test row in this group's subtree, at any depth.
+    var allTestCases: [ParsedTestCase] {
+        children.flatMap { child -> [ParsedTestCase] in
+            switch child {
+            case let .testCase(testCase):
+                return [testCase]
+            case let .group(group):
+                return group.allTestCases
+            }
+        }
+    }
+
+    /// Every `System Failures` group in this subtree, including this one.
+    ///
+    /// Recursive, though both backends put the bucket directly under the
+    /// testable today: the name is Apple's, so a nested one is still a system
+    /// failure, and for a fault whose whole job is catching a run that stopped
+    /// early, missing a relocated bucket is the worse way to be wrong.
+    var systemFailureGroups: [ParsedGroup] {
+        let nested = children
+            .compactMap { child -> ParsedGroup? in
+                guard case let .group(group) = child else {
+                    return nil
+                }
+                return group
+            }
+            .flatMap(\.systemFailureGroups)
+        return (name == Self.systemFailureName ? [self] : []) + nested
+    }
+}
+
+extension ParsedTestable {
+    var systemFailureGroups: [ParsedGroup] {
+        groups.flatMap(\.systemFailureGroups)
+    }
+}
+
 /// A test method. Carries one entry per repetition; a non-repeated test has
 /// exactly one.
 public struct ParsedTestCase {

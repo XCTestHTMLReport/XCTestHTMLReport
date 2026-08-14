@@ -3,6 +3,7 @@
 TestResults*.xcresult
 RetryResults*.xcresult
 SanityResults*.xcresult
+CrashResults*.xcresult
 .DS_Store
 /.build
 /XCTestHTMLReportSampleApp/Build

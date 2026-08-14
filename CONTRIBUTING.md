@@ -52,12 +52,26 @@ No credentials or secrets are required for this part.
 
 If a simulator goes away mid-run, `xcodebuild` can leave an `.xcresult` behind
 that looks complete but holds no tests, and the suite then fails with a
-confusing error. `scripts/verify_fixtures.sh` — the same gate CI runs — catches
-that in a second:
+confusing error. A host-app launch failure does something subtler: the bundle is
+full of tests, just not the ones hosted in the app.
+`scripts/verify_fixtures.sh` — the same gate CI runs — catches both in a second:
 
 ```bash
-./scripts/verify_fixtures.sh   # asserts each bundle actually contains tests
+./scripts/verify_fixtures.sh   # asserts each bundle holds its expected test count
 ```
+
+It knows the shape of each fixture (21, 1 and 4 tests for the three healthy
+ones), so a bundle that generated partially is rejected by name and count
+rather than waved through. Adding or removing sample-app tests moves those
+numbers: update the table at the top of the script in the same commit.
+
+The fourth bundle, `CrashResults.xcresult`, is a broken run on purpose: the
+script sets `XCHR_TRAP_AT_LAUNCH`, the sample app traps in
+`didFinishLaunchingWithOptions`, and `SampleAppUnitTests` — hosted in that app
+— dies with it. `SystemFailureCanaryTests` reads it to check that Apple still
+calls the resulting group `System Failures`, which is the only handle the
+`systemFailure` fault has. Expect one failing `xcodebuild` invocation during
+generation; that is the fixture being made, not a problem.
 
 Regenerate fixtures after upgrading Xcode; `.xcresult` contents change between
 Xcode versions.

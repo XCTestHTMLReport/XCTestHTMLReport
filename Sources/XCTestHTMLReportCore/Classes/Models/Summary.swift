@@ -268,6 +268,57 @@ public struct Summary {
             }
             faultCollector.record(.unresolvedLog, run.logFaultDescription)
         }
+
+        validateSystemFailures(recorded: recorded)
+    }
+
+    /// Records the signal that a run stopped early (#478).
+    ///
+    /// Reads `parsedRuns` — the model *both* readers produce — rather than the
+    /// rendered tree or either backend's document, so one implementation serves
+    /// both. That matters more here than elsewhere: this fault exists because a
+    /// beta toolchain broke fixture generation, and a rule that keyed on the
+    /// toolchain, or on one reader's vocabulary, would be measuring a proxy for
+    /// the loss rather than the loss.
+    ///
+    /// Sharing the implementation is necessary but not sufficient, and the
+    /// distinction cost this file a second fault kind. A rule that flagged a
+    /// *selected* target holding zero test rows was written here, read the same
+    /// shared model, and still fired on one backend only: legacy keeps a
+    /// zero-row `ActionTestableSummary` where the modern node tree prunes the
+    /// bundle node outright, so the same code saw different input and — worse —
+    /// faulted a healthy suite-granular `-skip-testing`, which is ordinary CI
+    /// practice. It was withdrawn. What survives is keyed on a node both
+    /// readers demonstrably produce for the same bundle, checked by
+    /// `SystemFailureCanaryTests` against a bundle the current toolchain just
+    /// generated. Bundles missing whole targets are caught before the tool
+    /// sees them, by the per-bundle floors in `scripts/verify_fixtures.sh`.
+    ///
+    /// Deduped and idempotent on the same terms as the loops above, so the CLI
+    /// and a library caller that validates twice see the same fault set.
+    private func validateSystemFailures(recorded: [Fault]) {
+        var flaggedSystemFailures = Set(
+            recorded.filter { $0.kind == .systemFailure }.map(\.detail)
+        )
+
+        for run in parsedRuns {
+            for testable in run.testables {
+                for group in testable.systemFailureGroups {
+                    // The bucket's presence is the signal; its rows only name
+                    // it. An empty bucket is still a system failure, so fall
+                    // back to the group's own name rather than recording
+                    // nothing.
+                    let rows = group.allTestCases.map(\.name)
+                    for row in rows.isEmpty ? [group.name] : rows {
+                        let detail = "\(testable.targetName): \(row)"
+                        guard flaggedSystemFailures.insert(detail).inserted else {
+                            continue
+                        }
+                        faultCollector.record(.systemFailure, detail)
+                    }
+                }
+            }
+        }
     }
 }
 
