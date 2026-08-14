@@ -149,7 +149,9 @@ Guided by numbered prompt:
   by name is a guess that changes with the fixture.
 - **Anything that stops working.** A failed view switch degrades to a prompt
   rather than aborting, and `xcode-shots.json` records `automated: false` for
-  the shots a human drove, so a half-automated run is still honest.
+  the shots a human drove, so a half-automated run is still honest. When there
+  is no terminal to prompt on, or nobody answers, the shot is skipped instead:
+  `automated: false` always means a person pressed RETURN for it.
 
 `--manual` puts every view switch behind a prompt, which is the fallback when a
 new Xcode moves the accessibility tree far enough that nothing matches.

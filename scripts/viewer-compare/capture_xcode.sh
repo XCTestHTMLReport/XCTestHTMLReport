@@ -190,7 +190,13 @@ STEP=0
 prompt_step() {
     local instruction="$1"
     STEP=$((STEP + 1))
-    if [ ! -e /dev/tty ]; then
+    # Every path out of here that is not a person pressing RETURN is a skip.
+    # `automated: false` in the manifest asserts a human drove that shot, so a
+    # terminal that cannot be opened, or one that hangs up mid-run, has to lose
+    # the shot rather than let the run claim someone was watching. Existence is
+    # not enough: /dev/tty exists in a session with no controlling terminal and
+    # only fails on open.
+    if ! { true >/dev/tty; } 2>/dev/null; then
         note "step ${STEP} needed a prompt but there is no terminal to ask on: ${instruction}"
         return 1
     fi
@@ -202,7 +208,10 @@ prompt_step() {
         echo "  ------------------------------------------------------------"
     } >/dev/tty
     local reply=""
-    read -r reply </dev/tty || true
+    if ! read -r reply </dev/tty; then
+        note "step ${STEP} was never answered (terminal closed, or end of input) — skipping it: ${instruction}"
+        return 1
+    fi
     case "$reply" in
     s | S | skip) return 1 ;;
     esac
