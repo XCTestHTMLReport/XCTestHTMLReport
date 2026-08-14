@@ -74,12 +74,23 @@ extension XCResultToolInvoking {
     }
 
     func jsonUnversioned<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
-        let data = try runUnversioned(arguments)
-        do {
-            return try JSONDecoder().decode(type, from: data)
-        } catch {
-            throw XCResultToolError.decodingFailed(arguments: arguments, underlying: error)
-        }
+        try decoded(runUnversioned(arguments), reporting: arguments, as: type)
+    }
+}
+
+/// Decodes what a subcommand answered with, naming the subcommand if it will
+/// not decode. Free rather than a protocol extension: `json` and
+/// `jsonUnversioned` differ only in which `run` they call, and this is the
+/// half they share — no conformer has any business overriding it.
+private func decoded<T: Decodable>(
+    _ data: Data,
+    reporting reported: [String],
+    as type: T.Type
+) throws -> T {
+    do {
+        return try JSONDecoder().decode(type, from: data)
+    } catch {
+        throw XCResultToolError.decodingFailed(arguments: reported, underlying: error)
     }
 }
 
@@ -154,12 +165,7 @@ struct XCResultToolClient: XCResultToolInvoking {
     }
 
     func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
-        let data = try run(arguments)
-        do {
-            return try JSONDecoder().decode(type, from: data)
-        } catch {
-            throw XCResultToolError.decodingFailed(arguments: arguments, underlying: error)
-        }
+        try decoded(run(arguments), reporting: arguments, as: type)
     }
 
     // MARK: Private

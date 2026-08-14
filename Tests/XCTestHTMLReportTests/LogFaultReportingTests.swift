@@ -174,12 +174,17 @@ final class LogFaultReportingTests: XCTestCase {
     /// `xcresulttool` exits 0 and hands back something that is not a log
     /// document.
     private struct UndecodableClient: XCResultToolInvoking {
+        /// What `get --legacy` answers with. `[]` is the shape that was never
+        /// a log document under any decoder; the wrong-shaped-object case
+        /// passes its own payload.
+        var payload = "[]"
+
         var bundleDescription: String {
             "Undecodable.xcresult"
         }
 
         func run(_: [String]) throws -> Data {
-            Data("[]".utf8)
+            Data(payload.utf8)
         }
 
         func json<T: Decodable>(_ arguments: [String], as type: T.Type) throws -> T {
@@ -212,6 +217,37 @@ final class LogFaultReportingTests: XCTestCase {
         XCTAssertEqual(
             collector.faults.map(\.kind), [.logExportFailed],
             "The report ships without this run's log, so it must not exit 0"
+        )
+    }
+
+    /// Well-formed JSON of the wrong shape is a fault too, not a husk.
+    ///
+    /// The decoder reads every field of a node permissively, so that a node
+    /// type Apple adds later keeps its content instead of vanishing — which
+    /// is the whole point of not going through XCResultKit here. Left
+    /// unqualified that tolerance reaches the root as well: `{}` decodes
+    /// happily and exports `--------  --------`, 18 bytes of nothing, with no
+    /// fault raised. That is the #480 signature again — read successfully,
+    /// wrote successfully, content gone — one layer earlier.
+    ///
+    /// The root is required to carry `domainType`, which every node of a real
+    /// document has, so a document that is not one throws here and reaches
+    /// the fault above.
+    func testWrongShapedLegacyLogDocumentIsRecordedAsAFault() {
+        let collector = FaultCollector()
+        let file = ResultFile(
+            url: URL(fileURLWithPath: "/nonexistent/WrongShape.xcresult"),
+            faultCollector: collector,
+            toolClient: UndecodableClient(payload: "{}")
+        )
+
+        XCTAssertNil(
+            file.exportLogsData(reference: "log-ref"),
+            "An empty object is not a log document, and a husk is not a log"
+        )
+        XCTAssertEqual(
+            collector.faults.map(\.kind), [.logExportFailed],
+            "A log that came out empty because the document was not one must not exit 0"
         )
     }
 }

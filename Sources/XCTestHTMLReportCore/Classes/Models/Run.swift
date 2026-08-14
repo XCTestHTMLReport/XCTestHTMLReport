@@ -75,8 +75,6 @@ struct Run: HTML {
 
         logReference = run.logReference
 
-        // TODO: (Pierre Felgines) 02/10/2019 Use only emittedOutput from logs objects
-        // For now XCResultKit do not handle logs
         if let logReference = run.logReference {
             logContent = file.exportLogsContent(
                 reference: logReference,

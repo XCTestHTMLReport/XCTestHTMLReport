@@ -14,9 +14,19 @@ final class RunLogTests: XCTestCase {
     /// scalar wrapped in a `_value` envelope, every array in `_values`, and a
     /// polymorphic tree — a plain `ActivityLogSection` root over an
     /// `ActivityLogUnitTestSection` and an `ActivityLogCommandInvocationSection`.
+    ///
+    /// Only the root carries `domainType`, the one key the decoder requires.
+    /// A real document has it on every node, but leaving it off the children
+    /// here pins the asymmetry: the nodes stay permissive so an unfamiliar
+    /// subtype keeps its content, and it is the root alone that has to prove
+    /// this is a log document at all.
     private let legacyDocument = Data("""
     {
       "_type": { "_name": "ActivityLogSection" },
+      "domainType": {
+        "_type": { "_name": "String" },
+        "_value": "com.apple.dt.unit.cocoaUnitTest"
+      },
       "title": { "_type": { "_name": "String" }, "_value": "Test MainScheme" },
       "subsections": {
         "_type": { "_name": "Array" },
@@ -86,12 +96,12 @@ final class RunLogTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            document.subsections.map(\.title),
+            document.root.subsections.map(\.title),
             ["Launch actions", "Test target SampleAppUnitTests"],
             "An ActivityLogUnitTestSection child must survive decoding"
         )
         XCTAssertEqual(
-            document.subsections.first?.subsections.map(\.title),
+            document.root.subsections.first?.subsections.map(\.title),
             ["Install Actions"],
             "An ActivityLogCommandInvocationSection child must survive decoding"
         )
@@ -108,14 +118,74 @@ final class RunLogTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            document.subsections.first?.messages,
+            document.root.subsections.first?.messages,
             ["Platform: iOS Simulator", "Target Architecture: arm64"]
         )
         XCTAssertEqual(
-            document.title, "Test MainScheme",
+            document.root.title, "Test MainScheme",
             "The root carries no messages of its own; its title is still the header"
         )
-        XCTAssertEqual(document.messages, [], "An absent `messages` key is no messages")
+        XCTAssertEqual(document.root.messages, [], "An absent `messages` key is no messages")
+    }
+
+    /// The root is the one node that has to prove the document is a log
+    /// document.
+    ///
+    /// Reading every field permissively is what keeps an unfamiliar node type
+    /// intact, but applied to the root it also accepts `{}`, which formats to
+    /// `--------  --------` — 18 bytes of nothing, exported with no fault.
+    /// That is the #480 signature again, moved one layer earlier. `domainType`
+    /// is on 46 of the real `TestResults` document's 46 nodes (`duration` is
+    /// on 37, so not that one), so requiring it costs no real document
+    /// anything.
+    func testLegacyDecoderRejectsARootThatIsNotALogDocument() {
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(LegacyRunLogDocument.self, from: Data("{}".utf8)),
+            "Well-formed JSON of the wrong shape is not an empty log, it is a fault"
+        )
+    }
+
+    /// …and the requirement stops there. A node Apple ships without the keys
+    /// this decoder happens to know is exactly the case the hand-written
+    /// decoder exists to survive, so strictness that recursed would trade the
+    /// #480 husk for a #480 fault on a log that is perfectly readable.
+    func testLegacyDecoderKeepsChildrenThatDeclareNoDomainType() throws {
+        let document = try JSONDecoder().decode(
+            LegacyRunLogDocument.self,
+            from: Data("""
+            {
+              "domainType": { "_type": { "_name": "String" }, "_value": "com.apple.dt.unit.cocoaUnitTest" },
+              "title": { "_type": { "_name": "String" }, "_value": "Test MainScheme" },
+              "subsections": {
+                "_type": { "_name": "Array" },
+                "_values": [
+                  {
+                    "_type": { "_name": "ActivityLogSectionAppleShipsNextYear" },
+                    "title": { "_type": { "_name": "String" }, "_value": "Something new" },
+                    "messages": {
+                      "_type": { "_name": "Array" },
+                      "_values": [
+                        {
+                          "_type": { "_name": "ActivityLogMessage" },
+                          "title": { "_type": { "_name": "String" }, "_value": "Kept anyway" }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+            """.utf8)
+        )
+
+        XCTAssertEqual(
+            document.root.subsections.map(\.title), ["Something new"],
+            "A child that carries no `domainType` is still part of the log"
+        )
+        XCTAssertEqual(
+            document.root.subsections.first?.messages, ["Kept anyway"],
+            "…and it keeps its content, which is the whole reason for this decoder"
+        )
     }
 
     func testFormattedLaysOutHeadersMessagesThenChildren() throws {
@@ -140,7 +210,8 @@ final class RunLogTests: XCTestCase {
     /// The two decoders must reduce the same tree to the same shape, or the
     /// shared formatter is shared in name only. The modern document describes
     /// this bundle's log identically — node for node, message for message —
-    /// and leaves `emittedOutput` null throughout.
+    /// while carrying no counterpart at all to the legacy `emittedOutput`
+    /// above, which is why neither shape has one.
     func testModernDocumentReducesToTheSameShape() throws {
         let modernDocument = Data("""
         {
@@ -159,7 +230,7 @@ final class RunLogTests: XCTestCase {
                 }
               ]
             },
-            { "title": "Test target SampleAppUnitTests", "emittedOutput": null }
+            { "title": "Test target SampleAppUnitTests" }
           ]
         }
         """.utf8)
