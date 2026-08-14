@@ -331,6 +331,50 @@ jobs:
           Tests/XCTestHTMLReportTests/Resources/RetryResults.xcresult
         key: ${{ steps.fixture-key.outputs.key }}
 
+    # The bundles themselves, whenever this leg found anything wrong.
+    #
+    # #478 is the argument for this step. A beta run produced a `TestResults`
+    # bundle missing 12 of its 21 tests; `toolchain-drift.yml` uploaded nothing,
+    # so triaging it meant reading two job logs and inferring the bundle's shape
+    # from which assertions failed — and the one question that mattered most
+    # (whether XCTest stopped recording `file:line` in failure titles, or
+    # xcresulttool stopped emitting it) could not be answered at all without a
+    # bundle to interrogate. `gh run download` on that run reported "no valid
+    # artifacts found". Fifty megabytes is a cheap price for the next triage
+    # starting from evidence.
+    #
+    # Named per leg, the convention #470 established for `test.yml`:
+    # upload-artifact v4+ rejects duplicate names, so a run where both legs
+    # failed would otherwise lose the second upload. Five days rather than the
+    # 7-14 elsewhere, because these are ~50 MB each and this workflow runs twice
+    # a week — a triage that has not started by the next scheduled run will be
+    # working from that run's bundles instead.
+    #
+    # Placed before the report step, not after: `Report drift` exits 1 on the
+    # stable leg, and a step after a failed step does not run unless it says so.
+    #
+    # The condition enumerates the signals rather than saying `failure()`,
+    # because a bare `failure()` would never fire here — every signal above is
+    # continue-on-error, so a failing one leaves the job itself successful.
+    # `!cancelled()` is what still covers the case where a step that is *not*
+    # continue-on-error (the cache save) failed first. Generation failing
+    # outright can leave no bundle at all, so the upload tolerates finding
+    # nothing rather than adding a red step of its own.
+    - name: Upload fixtures on drift
+      if: >-
+        ${{ !cancelled() && (steps.legacy.outcome == 'failure'
+        || steps.build.outcome == 'failure'
+        || steps.fixtures.outcome == 'failure'
+        || steps.verify.outcome == 'failure'
+        || steps.tests.outcome == 'failure'
+        || steps.tool.outcome == 'failure') }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: xcresult-fixtures-${{ matrix.channel }}
+        path: Tests/XCTestHTMLReportTests/Resources
+        retention-days: 5
+        if-no-files-found: ignore
+
     # Turns step outcomes into a filed issue, so a broken scheduled run cannot
     # rot unseen in the Actions tab. One open issue per label collects repeat
     # failures as comments; a later green run comments on it too, so the
@@ -468,6 +512,12 @@ jobs:
           done
           echo
           cat "$RUNNER_TEMP/summary.md"
+          echo
+          # The pointer matters as much as the upload: #478 was triaged from
+          # logs because nobody knew there was nothing to download.
+          echo "The \`.xcresult\` bundles this leg generated are attached to the run as"
+          echo "\`xcresult-fixtures-${CHANNEL}\` (5-day retention) — interrogate those rather than"
+          echo "these logs. Nothing is attached if generation failed before writing a bundle."
           echo
           echo "_Filed automatically by the \`toolchain-drift\` workflow (#392). While this issue stays open, later failing runs append comments here instead of filing duplicates._"
         } > "$RUNNER_TEMP/issue.md"

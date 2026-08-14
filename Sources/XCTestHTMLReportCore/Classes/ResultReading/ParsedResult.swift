@@ -56,6 +56,72 @@ public struct ParsedGroup {
     public let children: [ParsedNode]
 }
 
+/// The truncation signals `Summary.validate()` reads (#478). They live here,
+/// on the shared model, rather than in either reader: one implementation over
+/// the structure both backends produce is what makes the two agree by
+/// construction instead of by allow-list — the same argument
+/// `ParsedActivity.interleavingFailureRows` makes for failure-row ordering.
+extension ParsedGroup {
+    /// The group Apple files host-app and system failures under.
+    ///
+    /// Not a heuristic reading of a message: it is the node's own name, and
+    /// both formats spell it identically at the same position in the tree.
+    /// Measured, not assumed — a crash bundle was reproduced on Xcode 26.2 by
+    /// trapping in the host app's `didFinishLaunchingWithOptions`, and both
+    /// readers put out a group whose `name` and `identifier` are
+    /// `System Failures`, directly under the testable.
+    ///
+    /// The group is the marker rather than its rows precisely because the rows
+    /// are where the two backends stop agreeing: modern carries the crash row
+    /// (`SampleApp (<pid>) encountered an error`, with the bootstrap failure as
+    /// its failure activity), while XCResultKit drops it — the node is an
+    /// `ActionTestSummary`, not one of the `ActionTestMetadata` entries
+    /// `subtests` decodes — so legacy sees the bucket empty. Keying on the
+    /// bucket makes the rule fire on both; keying on the row would have made it
+    /// fire only on modern.
+    static let systemFailureName = "System Failures"
+
+    /// Every test row in this group's subtree, at any depth.
+    var allTestCases: [ParsedTestCase] {
+        children.flatMap { child -> [ParsedTestCase] in
+            switch child {
+            case let .testCase(testCase):
+                return [testCase]
+            case let .group(group):
+                return group.allTestCases
+            }
+        }
+    }
+
+    /// Every `System Failures` group in this subtree, including this one.
+    ///
+    /// Recursive, though both backends put the bucket directly under the
+    /// testable today: the name is Apple's, so a nested one is still a system
+    /// failure, and for a fault whose whole job is catching a run that stopped
+    /// early, missing a relocated bucket is the worse way to be wrong.
+    var systemFailureGroups: [ParsedGroup] {
+        let nested = children
+            .compactMap { child -> ParsedGroup? in
+                guard case let .group(group) = child else {
+                    return nil
+                }
+                return group
+            }
+            .flatMap(\.systemFailureGroups)
+        return (name == Self.systemFailureName ? [self] : []) + nested
+    }
+}
+
+extension ParsedTestable {
+    var allTestCases: [ParsedTestCase] {
+        groups.flatMap(\.allTestCases)
+    }
+
+    var systemFailureGroups: [ParsedGroup] {
+        groups.flatMap(\.systemFailureGroups)
+    }
+}
+
 /// A test method. Carries one entry per repetition; a non-repeated test has
 /// exactly one.
 public struct ParsedTestCase {

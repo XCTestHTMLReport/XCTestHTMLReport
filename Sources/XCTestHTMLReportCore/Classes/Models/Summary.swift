@@ -268,6 +268,63 @@ public struct Summary {
             }
             faultCollector.record(.unresolvedLog, run.logFaultDescription)
         }
+
+        validateTruncation(recorded: recorded)
+    }
+
+    /// Records the two signals that a run stopped early (#478).
+    ///
+    /// Both read `parsedRuns` — the model *both* readers produce — rather than
+    /// the rendered tree or either backend's document, so one implementation
+    /// serves both and they cannot drift apart. That matters more here than
+    /// elsewhere: this fault exists because a beta toolchain broke fixture
+    /// generation, and a rule that keyed on the toolchain, or on one reader's
+    /// vocabulary, would be measuring a proxy for the loss rather than the loss.
+    ///
+    /// The two are deliberately independent, and neither knows the other's
+    /// business: the count check never looks at a name, the bucket check never
+    /// looks at a count. A truncated target usually trips exactly one of them —
+    /// a testable emptied outright trips the first, one left holding only a
+    /// crash row trips the second.
+    ///
+    /// Deduped and idempotent on the same terms as the loops above, so the CLI
+    /// and a library caller that validates twice see the same fault set.
+    private func validateTruncation(recorded: [Fault]) {
+        var flaggedTestables = Set(
+            recorded.filter { $0.kind == .emptyPlannedTestable }.map(\.detail)
+        )
+        var flaggedSystemFailures = Set(
+            recorded.filter { $0.kind == .systemFailure }.map(\.detail)
+        )
+
+        for run in parsedRuns {
+            // No loop body for a run with no testables at all: that is
+            // structural absence — `-only-testing` prunes unselected targets
+            // out of the document on both backends — and absence is never a
+            // fault. Only a target that IS here and produced nothing is.
+            for testable in run.testables {
+                if testable.allTestCases.isEmpty,
+                   flaggedTestables.insert(testable.targetName).inserted
+                {
+                    faultCollector.record(.emptyPlannedTestable, testable.targetName)
+                }
+
+                for group in testable.systemFailureGroups {
+                    // The bucket's presence is the signal; its rows only name
+                    // it. An empty bucket is still a system failure, so fall
+                    // back to the group's own name rather than recording
+                    // nothing.
+                    let rows = group.allTestCases.map(\.name)
+                    for row in rows.isEmpty ? [group.name] : rows {
+                        let detail = "\(testable.targetName): \(row)"
+                        guard flaggedSystemFailures.insert(detail).inserted else {
+                            continue
+                        }
+                        faultCollector.record(.systemFailure, detail)
+                    }
+                }
+            }
+        }
     }
 }
 

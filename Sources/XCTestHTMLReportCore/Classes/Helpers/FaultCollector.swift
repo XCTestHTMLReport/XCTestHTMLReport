@@ -42,6 +42,18 @@ public struct Fault: Equatable {
         /// the modern reader instead, which is a different reader than the
         /// caller asked for.
         case legacyReaderUnavailable
+        /// A test target is present in the bundle with no test rows beneath
+        /// it: it was planned, it was meant to run, and it produced nothing.
+        /// The run stopped early, and the report is missing everything that
+        /// target would have contributed (#478). A bundle that carries no
+        /// testable for a target at all is structural absence — the usual
+        /// result of `-only-testing` — and is never flagged, the same rule
+        /// `unresolvedLog` and `unresolvedAttachment` follow.
+        case emptyPlannedTestable
+        /// A host-application or system failure row, which both formats file
+        /// under a group Apple names `System Failures`. Direct evidence the
+        /// run did not complete, whatever else survived into the report.
+        case systemFailure
     }
 
     public let kind: Kind
