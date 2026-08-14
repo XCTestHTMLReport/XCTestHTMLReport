@@ -5,28 +5,20 @@ import { resolve } from 'node:path';
 
 const reportURL = pathToFileURL(resolve(__dirname, '../fixtures/report.html')).href;
 
-// The first real run found real, uncorrected violations, so the gate is
-// deliberately open (GATING_IMPACTS = []) rather than asserting a clean
-// result that does not exist yet. Fixing them is #440's job, not this
-// spec's; this test's only job is to keep every finding visible so nothing
-// is silently lost. Known findings as of the first run:
+// The gate was held open (GATING_IMPACTS = []) from #461 until #462, because
+// the first real run found six uncorrected violations and a spec cannot
+// assert a clean result that does not exist yet. #462 cleared all six —
+// image-alt (critical, 6 nodes), frame-title (serious), heading-order,
+// landmark-one-main, region and empty-heading — so the gate is closed again
+// and any new critical or serious finding fails the build.
 //
-//   critical  image-alt          x6  — screenshot/gif/tail <img> elements
-//                                       and the No-Selected-Attachment state
-//                                       carry no alt text
-//   serious   frame-title        x1  — the text-attachment <iframe> has no
-//                                       accessible name
-//   moderate  heading-order          — heading levels skip
-//   moderate  landmark-one-main      — no <main> landmark
-//   moderate  region                 — content outside a landmark region
-//   minor     empty-heading          — a heading element with no text
-//
-// #440 tracks the fix. Restore the gate (e.g. back to
-// ['critical', 'serious']) once those are cleared — at which point this
-// test's name and body should go back to asserting zero violations.
-const GATING_IMPACTS: string[] = [];
+// Moderate and minor stay informational rather than gating. That is the
+// level #462 prescribed, and it keeps the failure mode proportionate: a
+// missing alt or an unnamed frame blocks a merge, a debatable landmark
+// question gets logged for a human to weigh.
+const GATING_IMPACTS: string[] = ['critical', 'serious'];
 
-test('reports accessibility violations (gate open pending #440)', async ({ page }) => {
+test('reports no critical or serious accessibility violations', async ({ page }) => {
   await page.goto(reportURL);
   const results = await new AxeBuilder({ page }).analyze();
 
