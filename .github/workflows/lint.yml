@@ -26,6 +26,13 @@ jobs:
         shellcheck --version
         find . -name '*.sh' -not -path './.build/*' -print0 | xargs -0 -r shellcheck
 
+    # assemble_site.py decides whether the Pages deployment goes out, and its
+    # failure mode is a green run that deletes published releases. It rides in
+    # this job because the tests are stdlib-only: no runner, toolchain or
+    # dependency beyond the python3 already on the image.
+    - name: Site assembler tests
+      run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
   actions:
     runs-on: ubuntu-latest
     steps:
