@@ -116,26 +116,34 @@ a green run of all of it locally means a green run on your pull request.
 ### Optional: run the checks before committing
 
 CI runs shellcheck, SwiftFormat, and SwiftLint. The same checks can run locally on
-staged files, so you find problems before pushing:
+staged files, so you find problems before pushing.
+
+[mise](https://mise.jdx.dev) installs the versions pinned in `mise.toml` — the
+same ones CI uses, so a linter release cannot fail your pull request on a file
+you did not touch — and, as a side effect, the pre-commit hook itself:
 
 ```bash
-git config core.hooksPath .githooks
+brew install mise            # or https://mise.jdx.dev/installing-mise.html
+mise trust && mise install
 ```
 
-That is opt-in on purpose — nothing installs it for you.
+That is opt-in on purpose: nothing installs it for you, and `mise trust` is where
+you agree to let the repository run its own setup.
 
-The hook only checks files you are actually committing, and skips a tool entirely
-if it is not installed:
-
-```bash
-brew install shellcheck swiftformat swiftlint
-```
-
-It reports problems rather than rewriting your files, so a commit never contains
-changes you have not read. To skip it for one commit:
+The hook is defined in [`hk.pkl`](hk.pkl). It only checks files you are actually
+committing, and reports problems rather than rewriting your files, so a commit
+never contains changes you have not read. To skip it for one commit:
 
 ```bash
 git commit --no-verify
+```
+
+If you set up the older `.githooks` directory, it is gone now, and the
+`core.hooksPath` it left behind will stop the new hook from firing. Clear it
+once:
+
+```bash
+git config --local --unset-all core.hooksPath
 ```
 
 

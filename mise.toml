@@ -1,0 +1,44 @@
+# Pinned versions of every tool the lint gate runs, locally and in CI alike.
+#
+# Before this file, lint.yml installed SwiftFormat and SwiftLint with a bare
+# `brew install` -- whatever version Homebrew had that morning -- while
+# contributors ran whatever they happened to have installed. A formatter
+# release could therefore redden a pull request that changed nothing, and
+# nothing in the repository recorded which version the rules were written
+# against. Homebrew has no versioned formulae for these tools, so pinning them
+# means managing them somewhere else.
+#
+# Setup, including the pre-commit hook:
+#
+#   mise trust && mise install
+#
+# The Swift toolchain itself is deliberately absent: it comes from Xcode, and
+# drift there is what .github/workflows/toolchain-drift.yml watches for.
+
+[tools]
+swiftformat = "0.62.1"
+swiftlint = "0.65.0"
+shellcheck = "0.11.0"
+# Audits the workflow files. CI-only: its most useful audits are online and
+# want a token, which a pre-commit hook has no business holding.
+zizmor = "1.29.0"
+# Runs the pre-commit hook. See hk.pkl.
+hk = "1.55.0"
+# Not required to run hk, which evaluates hk.pkl with its built-in pklr
+# evaluator. This is here so editors and a manual `pkl eval hk.pkl` work
+# without a separate install.
+pkl = "0.32.1"
+
+[env]
+# Wraps the installed git hooks in `mise x`, so a hook resolves the pinned
+# tools above even when the shell it fires from has not activated mise --
+# committing from an editor or GUI client, most often.
+HK_MISE = "1"
+
+[hooks]
+# Installs the git hook as a side effect of `mise install`, which is the one
+# command CONTRIBUTING.md already asks for. This deliberately does not clear a
+# core.hooksPath left over from the old .githooks setup: hk warns when it finds
+# one, and CONTRIBUTING.md carries the one-time fix. Silently rewriting git
+# config someone set by hand is the overreach the old hook argued against.
+postinstall = "hk install --mise"
