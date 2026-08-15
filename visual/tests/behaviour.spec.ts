@@ -7,12 +7,12 @@ const reportURL = pathToFileURL(resolve(__dirname, '../fixtures/report.html')).h
 test('the failed filter hides passing tests', async ({ page }) => {
   await page.goto(reportURL);
 
-  const visibleRows = () => page.locator('.run.active .test-summary:visible').count();
+  const visibleRows = () => page.locator('#view-tests .run-view.active .test-summary:visible').count();
 
   const all = await visibleRows();
   expect(all, 'fixture must render test rows').toBeGreaterThan(0);
 
-  await page.locator('li', { hasText: /^Failed \(\d+\)$/ }).click();
+  await page.locator('.pill', { hasText: /^Failed \(\d+\)$/ }).click();
   const failed = await visibleRows();
 
   expect(failed, 'filtering to Failed must hide rows').toBeLessThan(all);
@@ -38,7 +38,7 @@ test('a digest jump expands the failing test it names', async ({ page }) => {
 
   await expect(disclosure, 'the jump must expand the test').toBeVisible();
   await expect(
-    page.locator('.run.active .list-item.selected').first(),
+    page.locator('#view-tests .run-view.active .list-item.selected').first(),
     'the jump must select the row it scrolled to',
   ).toContainText(name!);
 });
@@ -48,7 +48,7 @@ test('a digest jump reveals a row the filter has hidden', async ({ page }) => {
   await page.goto(reportURL);
 
   // "Passed" hides every failing row, which is every row the digest lists.
-  await page.locator('li', { hasText: /^Passed \(\d+\)$/ }).click();
+  await page.locator('.pill', { hasText: /^Passed \(\d+\)$/ }).click();
 
   const jump = page.locator('.digest-jump').first();
   const uuid = await jump.getAttribute('data-target');
@@ -80,10 +80,10 @@ test('the last test row can be scrolled to at 375px', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 500 });
   await page.goto(reportURL);
 
-  const rows = page.locator('.run.active .test-summary > p.list-item');
+  const rows = page.locator('#view-tests .run-view.active .test-summary > p.list-item');
   expect(await rows.count(), 'the fixture must render test rows').toBeGreaterThan(0);
 
-  const geometry = await page.locator('.run.active .tests').evaluate((el) => ({
+  const geometry = await page.locator('#view-tests .run-view.active .tests').evaluate((el) => ({
     bottom: el.getBoundingClientRect().bottom,
     scrollHeight: el.scrollHeight,
     clientHeight: el.clientHeight,
@@ -122,14 +122,14 @@ for (const width of [1440, 375]) {
     await page.goto(reportURL);
 
     const summary = page.locator('#run-summary');
-    const logs = page.locator('#logs');
+    const logs = page.locator('#view-logs');
     await expect(summary, 'the band starts in the layout').toBeVisible();
 
-    await page.locator('#test-log-toolbar li', { hasText: 'Logs' }).click();
+    await page.locator('#tab-logs').click();
     await expect(summary, 'Logs must reclaim the band').toBeHidden();
     await expect(logs, 'the log must take its place').toBeVisible();
 
-    await page.locator('#test-log-toolbar li', { hasText: 'Tests' }).click();
+    await page.locator('#tab-tests').click();
     await expect(summary, 'Tests must put the band back').toBeVisible();
   });
 }
@@ -137,11 +137,11 @@ for (const width of [1440, 375]) {
 test('arrow keys move the selection', async ({ page }) => {
   await page.goto(reportURL);
 
-  await page.locator('.run.active .test-summary').first().click();
-  const before = await page.locator('.run.active .list-item.selected').first().textContent();
+  await page.locator('#view-tests .run-view.active .test-summary').first().click();
+  const before = await page.locator('#view-tests .run-view.active .list-item.selected').first().textContent();
 
   await page.keyboard.press('ArrowDown');
-  const after = await page.locator('.run.active .list-item.selected').first().textContent();
+  const after = await page.locator('#view-tests .run-view.active .list-item.selected').first().textContent();
 
   expect(after, 'ArrowDown must move the selection').not.toBe(before);
 });

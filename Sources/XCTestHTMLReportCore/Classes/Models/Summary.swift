@@ -353,16 +353,25 @@ extension Summary: HTML {
         } else {
             resultClass = "skip"
         }
+        // One view model, two renderings of it. The band and the picker are
+        // built from the same `RunSummary` — the same tallies, the same
+        // destinations, in the same order — so the ring, the bars and the
+        // options cannot describe different runs (#439, A3a).
+        let summary = RunSummary(runs: runs)
         return [
-            "DEVICES": runs.map(\.runDestination.html).joined(),
             "RESULT_CLASS": resultClass,
             // Fully rendered before it gets here, so the header's own
             // placeholders are gone by the time this dictionary is applied.
             // That matters because the substitution walks an unordered
             // dictionary: a value still carrying `[[N_OF_TESTS]]` would be
             // filled or not depending on iteration order.
-            "RUN_SUMMARY": RunSummary(runs: runs).html,
-            "RUNS": runs.map(\.html).joined(),
+            "RUN_SUMMARY": summary.html,
+            "DEVICE_PICKER": summary.pickerHTML,
+            // The per-view split (#439, A3a): a run contributes one slice to
+            // each view rather than one pane holding both, so the views are
+            // contiguous regions of the document and each can be a tabpanel.
+            "TESTS_VIEWS": runs.map(\.testsViewHTML).joined(),
+            "LOGS_VIEWS": runs.map(\.logsViewHTML).joined(),
             "TITLE": title.stringByEscapingXMLChars,
         ]
     }

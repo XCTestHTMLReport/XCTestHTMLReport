@@ -22,8 +22,12 @@ final class SummarySeamTests: XCTestCase {
         XCTAssertTrue(html.hasPrefix("<!doctype html>"), "must render the index template")
         XCTAssertTrue(html.contains("SyntheticSuite"), "must render the fixture's group")
         XCTAssertTrue(html.contains(":root"), "must carry the token layer")
+        // `class`, not `id`: A3a (#439) gave every run its own log view, so
+        // the frame's `id="logs-iframe"` — which every run used to emit,
+        // duplicating it once per bundle — became a per-destination id and the
+        // class is what identifies the frame across them.
         XCTAssertFalse(
-            html.contains("id=\"logs-iframe\" src=\"\""),
+            html.contains("class=\"logs-iframe\" src=\"\""),
             "the run's log reference must resolve to something, not degrade to an empty iframe"
         )
     }
@@ -69,12 +73,31 @@ final class SummarySeamTests: XCTestCase {
     /// was written into and `<GreaterThan>` entered the DOM as an element.
     /// The assertion was carried as an `XCTExpectFailure` from #461 until
     /// the escaping landed.
-    func testHostileAttachmentFilenameDoesNotBreakOutOfAttribute() {
+    ///
+    /// Asserted against the attribute the filename actually lands in rather
+    /// than against a handler's text. It used to read
+    /// `onclick="showText('FileName with DoubleQuote…` — but A3a (#439) gave
+    /// every attachment one handler that takes the element, so no handler
+    /// contains a filename at all any more and that literal would now be
+    /// absent from a report that escaped nothing. `HTMLEscapingTests`
+    /// still holds the "no filename in a script context" half; this holds the
+    /// half it was written for, which is that the value cannot close the
+    /// attribute quoting it.
+    func testHostileAttachmentFilenameDoesNotBreakOutOfAttribute() throws {
         let html = summary().generatedHtmlReport()
+        let raw = "FileName with DoubleQuote\"SingleQuote'LessThan<GreaterThan>Ampersand&"
+
+        // The attribute the filename lands in, escaped.
+        try XCTAssertContains(
+            html,
+            "data=\"FileName with DoubleQuote&quot;SingleQuote&apos;LessThan"
+                + "&lt;GreaterThan&gt;Ampersand&amp;"
+        )
         XCTAssertFalse(
-            html.contains("onclick=\"showText('FileName with DoubleQuote\""),
-            "the rendered attribute must not let the filename's embedded "
-                + "double quote terminate the onclick attribute early"
+            html.contains(raw),
+            "no attribute may carry the filename unescaped: the embedded double "
+                + "quote would terminate it early and the angle brackets would "
+                + "enter the DOM as elements"
         )
     }
 }

@@ -2,9 +2,15 @@
 //  RunSummary+HTML.swift
 //  XCTestHTMLReport
 //
-//  Rendering for the summary header (#439, A1). Split from `RunSummary.swift`
-//  so the derivation — which is the part with rules about what may be read —
-//  is not read alongside the string substitution.
+//  Rendering for the summary header (#439, A1) and, since A3a, for the device
+//  picker the header's device bars became. Split from `RunSummary.swift` so the
+//  derivation — which is the part with rules about what may be read — is not
+//  read alongside the string substitution.
+//
+//  Two renderings of one view model, deliberately: the band and the picker
+//  state the same runs in the same order, from the same tallies, so they cannot
+//  disagree. They are separate strings because they land in different parts of
+//  the page — see `pickerHTML`.
 //
 
 import Foundation
@@ -23,9 +29,33 @@ extension RunSummary: HTML {
             "DEVICES_LABEL": devices.count == 1 ? "1 device" : "\(devices.count) devices",
             "DONUT": donutHTML,
             "LEGEND": tally.buckets.map(Self.legendRow).joined(),
-            "DEVICE_BARS": devices.map(Self.deviceRow).joined(),
             "FAILURE_DIGEST": failureDigestHTML,
         ]
+    }
+
+    /// The device picker (#439, A3a), rendered separately from the band.
+    ///
+    /// Separately, because it belongs to a different part of the page: the
+    /// band stands down for the Logs view and the picker must not, or reading
+    /// a log would mean being unable to choose whose log it is. It is built
+    /// here rather than in `RunDestination` because this is the type that
+    /// already holds every run's tally, and the bars are half of what an
+    /// option says.
+    var pickerHTML: String {
+        // A one-run report needs no run number and a several-run report can
+        // need it badly — see `DeviceRow.ordinal`. Decided once, here, so every
+        // option and the collapsed summary agree about whether they carry one.
+        let numbered = devices.count > 1
+        return HTMLTemplates.devicePicker
+            .replacingOccurrences(
+                of: "[[CURRENT_DEVICE]]",
+                with: devices.first.map { Self.destinationLabel($0, numbered: numbered) }
+                    ?? "No device"
+            )
+            .replacingOccurrences(
+                of: "[[DEVICE_OPTIONS]]",
+                with: devices.map { Self.deviceOption($0, numbered: numbered) }.joined()
+            )
     }
 
     /// The class the shared icon rules paint the run-wide glyph from. Those
@@ -40,8 +70,8 @@ extension RunSummary: HTML {
         }
     }
 
-    /// "12 passed, 6 failed, 1 skipped" — the device bars' visible caption,
-    /// and the only reading of the bar that assistive technology gets, since
+    /// "12 passed, 6 failed, 1 skipped" — the caption under a picker option's
+    /// bar, and the only reading of that bar assistive technology gets, since
     /// the bar itself is `aria-hidden`.
     private static func spokenTally(_ tally: RunSummary.Tally) -> String {
         guard tally.total > 0 else {
@@ -59,22 +89,62 @@ extension RunSummary: HTML {
             .replacingOccurrences(of: "[[COUNT]]", with: String(bucket.count))
     }
 
-    private static func deviceRow(_ device: DeviceRow) -> String {
-        // The OS version is a secondary span rather than being folded into the
-        // name, because it is the field that tells two otherwise identical
-        // destinations apart in a multi-runtime test plan.
-        let name = device.name.stringByEscapingXMLChars
-        let label = device.osVersion.isEmpty
-            ? name
-            : name + " <span class=\"device-row-os\">"
-            + device.osVersion.stringByEscapingXMLChars + "</span>"
-        return HTMLTemplates.summaryDeviceRow
-            .replacingOccurrences(of: "[[DEVICE_LABEL]]", with: label)
+    /// One destination's label: the name, then the OS version in a secondary
+    /// span rather than folded into it, because the version is the field that
+    /// tells two otherwise identical destinations apart in a multi-runtime
+    /// test plan.
+    ///
+    /// Rendered markup, not leaf text — both leaves inside it are escaped
+    /// here.
+    private static func destinationLabel(_ device: DeviceRow, numbered: Bool) -> String {
+        var label = device.name.stringByEscapingXMLChars
+        if !device.osVersion.isEmpty {
+            label += " <span class=\"device-row-os\">"
+                + device.osVersion.stringByEscapingXMLChars + "</span>"
+        }
+        guard numbered else {
+            return label
+        }
+        // Inside the label rather than beside it, so the collapsed summary —
+        // which the script fills from this element's text — carries the run
+        // number too. A picker that can only tell two identical destinations
+        // apart while it is open is not telling the reader which one they are
+        // reading.
+        return label + " <span class=\"device-row-run\">Run \(device.ordinal)</span>"
+    }
+
+    /// One option in the picker: the run's outcome glyph, its destination, the
+    /// proportional bar and the same split in words, then the model.
+    ///
+    /// The bar is `aria-hidden` for the reason the ring is — the tally beside
+    /// it is the accessible reading of the identical fact.
+    ///
+    /// What the device sidebar showed and this does not is its `Identifier:`
+    /// line. Since #430 that line has carried the report's own element handle
+    /// — a 32-character digest of the run's path through the report — rather
+    /// than the destination's identifier, so it named nothing a reader could
+    /// use or match against anything outside the page. The handle is still
+    /// there, in `data-device` and in the ids it addresses, where it is
+    /// machinery rather than content.
+    private static func deviceOption(_ device: DeviceRow, numbered: Bool) -> String {
+        HTMLTemplates.deviceOption
+            .replacingOccurrences(
+                of: "[[DEVICE_LABEL]]", with: destinationLabel(device, numbered: numbered)
+            )
+            .replacingOccurrences(
+                of: "[[DEVICE_STATUS_CLASS]]", with: iconClass(for: device.status)
+            )
             .replacingOccurrences(of: "[[SEGMENTS]]", with: barSegments(device.tally))
             .replacingOccurrences(
                 of: "[[DEVICE_TALLY]]",
                 with: spokenTally(device.tally).stringByEscapingXMLChars
             )
+            .replacingOccurrences(
+                of: "[[DEVICE_MODEL]]", with: device.model.stringByEscapingXMLChars
+            )
+            // Last, so a model or a device name that happened to contain the
+            // literal text of this placeholder could not be filled by it.
+            .replacingOccurrences(of: "[[DEVICE_IDENTIFIER]]", with: device.identifier)
     }
 
     /// The bar's rects, in a 0–100 user-space viewBox so a segment's width is

@@ -10,6 +10,13 @@ import XCTest
 @testable import XCTestHTMLReportCore
 
 final class VisualFixtureDumpTests: XCTestCase {
+    /// One file the Playwright suite reads.
+    private struct Fixture {
+        let name: String
+        let mode: Summary.RenderingMode
+        let runs: [ParsedRun]
+    }
+
     func testDumpSyntheticRender() throws {
         guard let dir = ProcessInfo.processInfo.environment["XCHR_VISUAL_DIR"] else {
             throw XCTSkip("Set XCHR_VISUAL_DIR to dump the visual fixture")
@@ -18,11 +25,25 @@ final class VisualFixtureDumpTests: XCTestCase {
             atPath: dir, withIntermediateDirectories: true
         )
 
-        for (mode, name) in [(Summary.RenderingMode.linking, "report"),
-                             (Summary.RenderingMode.inline, "report-inline")]
-        {
+        // `report-multi` is the third since A3a (#439): the per-view shell's
+        // navigation claims — one picker switching both views, a digest jump
+        // crossing destinations — are only assertable on a report that holds
+        // more than one run, and the other two dumps deliberately hold one.
+        let single = [SyntheticResult.parsedRun]
+        let fixtures = [
+            Fixture(name: "report", mode: .linking, runs: single),
+            Fixture(name: "report-inline", mode: .inline, runs: single),
+            Fixture(
+                name: "report-multi",
+                mode: .linking,
+                runs: single + [SyntheticResult.secondParsedRun]
+            ),
+        ]
+
+        for fixture in fixtures {
+            let (name, mode) = (fixture.name, fixture.mode)
             let html = Summary(
-                parsedRuns: [SyntheticResult.parsedRun],
+                parsedRuns: fixture.runs,
                 payloads: SyntheticResult.payloads,
                 renderingMode: mode,
                 downsizeImagesEnabled: false,

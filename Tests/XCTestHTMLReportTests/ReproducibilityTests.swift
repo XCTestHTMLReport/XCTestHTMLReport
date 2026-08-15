@@ -71,16 +71,32 @@ final class ReproducibilityTests: XCTestCase {
         }
         assertNoDuplicates(in: identifiers.values.flatMap { $0 })
 
-        // Every device handle must address exactly one run element, including
-        // the two runs that share a device identifier.
+        // Every device handle must address exactly one element *per view*,
+        // including the two runs that share a device identifier.
+        //
+        // Two selectors since A3a (#439), where they were one. The shell used
+        // to give a run a single pane holding both its tree and its log, so
+        // one `div.run#device_<id>` was the whole of what a device handle
+        // addressed. Per-view surface ownership splits that in two, and the
+        // split is the fix for a real collision rather than a cost of one:
+        // before it, every run rendered `id="logs"`, `id="logs-header"` and
+        // `id="logs-iframe"`, so this very fixture — one bundle passed twice,
+        // plus a third — emitted each of those ids three times. That went
+        // unnoticed because the duplicates were hidden inside an inactive
+        // pane; nothing here could see them, because the check only ever
+        // looked at the pane. The log slice is now addressed by the same
+        // per-run handle the tree is, and both are checked.
         let deviceIdentifiers = try XCTUnwrap(identifiers[.device])
         XCTAssertGreaterThanOrEqual(deviceIdentifiers.count, 2, "Expected at least two runs")
         for deviceIdentifier in deviceIdentifiers {
-            let runs = try document.select("div.run#device_\(deviceIdentifier)")
-            XCTAssertEqual(
-                runs.count, 1,
-                "selectDevice('\(deviceIdentifier)') must resolve to exactly one run element"
-            )
+            for view in ["tests", "logs"] {
+                let slices = try document.select("div.run-view#\(view)_\(deviceIdentifier)")
+                XCTAssertEqual(
+                    slices.count, 1,
+                    "selectDevice('\(deviceIdentifier)') must resolve to exactly one "
+                        + "\(view) view"
+                )
+            }
         }
 
         // Every toggle handle must address the element it is meant to open.
@@ -196,7 +212,10 @@ enum IdentifierKind: String, CaseIterable {
 
     var selector: String {
         switch self {
-        case .device: return "ul.device-info"
+        // The header device picker's option (#439, A3a), which is where the
+        // sidebar card's `selectDevice(...)` handler moved. The handler shape
+        // is unchanged, so `selectDeviceArgument` below still reads it.
+        case .device: return "button.device-option"
         case .targetSummary: return "div.summary[id]"
         case .suite: return "div.test-summary-group > p > span.drop-down-icon"
         case .testCase: return "div.test-summary > p.list-item > span.drop-down-icon"

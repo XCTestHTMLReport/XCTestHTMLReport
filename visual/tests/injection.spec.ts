@@ -11,8 +11,13 @@ const reportURL = pathToFileURL(resolve(__dirname, '../fixtures/report.html')).h
 const HOSTILE_FILENAME =
   'FileName with DoubleQuote"SingleQuote\'LessThan<GreaterThan>Ampersand&.txt';
 
+// `.preview-button` since A3a (#439): the control that carries the file name
+// and the handler is a real `<button>` now, with the masked eye as a span
+// inside it. The two elements exist because a CSS mask clips everything its
+// element paints, focus ring included, so the ring and the glyph cannot be the
+// same box — and this control had no keyboard path at all before.
 const previewIcons = (page: import('@playwright/test').Page) =>
-  page.locator('.attachment .preview-icon');
+  page.locator('.attachment .preview-button');
 
 test('a hostile attachment filename does not put an element in the DOM', async ({ page }) => {
   await page.goto(reportURL);

@@ -22,7 +22,7 @@ final class SanityTests: XCTestCase {
         try XCTContext.runActivity(named: "Test header contain the right number of results") { _ in
             let elements = try XCTUnwrap(
                 document
-                    .select("div.tests-header > ul:first-of-type > li")
+                    .select("div.view-toolbar .filter-pills > button[role=radio]")
             )
             let texts = try elements.eachText()
             XCTAssertEqual(texts.count, 5)

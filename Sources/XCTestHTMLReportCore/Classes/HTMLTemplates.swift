@@ -46,7 +46,8 @@ struct HTMLTemplates
       /* Colour — status. One token per outcome, because #439 gives all six
          states a glyph and a glyph needs a colour of its own. These are icon
          fills, so the floor is 3:1 (WCAG non-text contrast) against the
-         lightest surface a row can sit on — the sidebar, not the page. The
+         lightest surface a row can sit on — the chrome ground, not the page.
+         The
          values clear it with room: 3.76 (passed) to 4.81 (failed). */
       --status-passed: #1E8E3E;
       --status-failed: #D70015;
@@ -62,9 +63,18 @@ struct HTMLTemplates
          each", one by geometry and one by being neither green nor red. */
       --status-mixed: #8944AB;
 
-      /* Colour — surfaces */
+      /* Colour — surfaces.
+
+         `--color-bg-chrome` was `--color-bg-sidebar` until A3a. The value is
+         unchanged in both themes; only the name moved, because the two
+         sidebars it was named for no longer exist. What it paints now is the
+         report's chrome — the per-view toolbars, the device picker's panel and
+         the attachment sheet's head — which is the same role it always had and
+         the same ground every status token was measured against (the dark
+         theme's #232327 is still the lightest surface a glyph can land on, so
+         A1's and A2's 3:1 figures carry over unrecomputed). */
       --color-surface: #FFF;
-      --color-bg-sidebar: #F2F2F2;
+      --color-bg-chrome: #F2F2F2;
       --color-bg-group-header: #F6F6F6;
 
       /* Colour — the tests tree (#439, A2). Four roles the sheet had no way
@@ -113,7 +123,19 @@ struct HTMLTemplates
       --color-summary-border: #D2D2D7;
       --color-donut-track: #E3E3E8;
 
-      /* Colour — borders */
+      /* Colour — borders.
+
+         `--color-border-control` is the one border in the sheet held to a
+         contrast floor, and it is new in A3a (#439). The rest of these outline
+         regions — a card, a pane edge, a row's hairline — which 1.4.11 scopes
+         out as decoration, because the thing they bound is identified by its
+         own content. A control is not: the boundary of the device picker's
+         summary and of the sheet's Close button is part of what says "this is
+         a button", so it is sized against the ground it is drawn on (3.24:1
+         light and 3.48:1 dark against the chrome ground; 3.62 and 4.02 against
+         the surface) rather than picked to look quiet. The full table is in
+         the PR body. */
+      --color-border-control: #86868B;
       --color-border-strong: #BBB;
       --color-border-medium: #CCC;
       --color-border-light: #DDD;
@@ -142,9 +164,9 @@ struct HTMLTemplates
 
       /* Spacing — the two steps used as a shared scale, i.e. repeated across
          unrelated components. 2px and 6px each also appear four times, but
-         as component-local nudges (icon baseline shifts, the #title and
-         #report-issue paddings, the resizer's width) with no common meaning
-         to name, so they stay inline. */
+         as component-local nudges (icon baseline shifts, the #title padding,
+         a control's own inset) with no common meaning to name, so they stay
+         inline. */
       --space-xs: 4px;
       --space-sm: 10px;
 
@@ -152,7 +174,6 @@ struct HTMLTemplates
       --icon-size-sm: 10px;
       --icon-size: 14px;
       --icon-size-lg: 24px;
-      --preview-height: 600px;
       --radius-sm: 3px;
 
       /* One nesting level of the tree. Applied to the child container, not
@@ -213,13 +234,13 @@ struct HTMLTemplates
     @media (prefers-color-scheme: dark) {
       :root {
         /* The selection fill lands on three different backgrounds — the
-           sidebar (#232327, the lightest and so the binding one), the
+           chrome ground (#232327, the lightest and so the binding one), the
            surface, and the group header — and has to clear 3:1 against each
            while still carrying white text at 4.5:1. That window is narrow:
            at this hue no value clears both floors by more than ~7%, and this
-           one sits at its centre (sidebar 3.25, white 4.82). Splitting a
+           one sits at its centre (chrome 3.25, white 4.82). Splitting a
            separate fill token would buy nothing, because the selected device
-           card needs both floors satisfied at once. */
+           option needs both floors satisfied at once. */
         --color-accent: #2170D6;
         --color-accent-text: #7FB0FF;
         --color-accent-soft: #274A73;
@@ -231,8 +252,8 @@ struct HTMLTemplates
         --color-text-subtle: #9A9AA2;
         --color-text-placeholder: #8A8A92;
 
-        /* Same 3:1 floor, measured against the dark sidebar (#232327): 5.61
-           (skipped/unknown) to 6.74 (expected). */
+        /* Same 3:1 floor, measured against the dark chrome ground (#232327):
+           5.61 (skipped/unknown) to 6.74 (expected). */
         --status-passed: #4FBF6B;
         --status-failed: #FF6E6A;
         --status-skipped: #9A9AA2;
@@ -241,7 +262,7 @@ struct HTMLTemplates
         --status-mixed: #C89AF5;
 
         --color-surface: #161619;
-        --color-bg-sidebar: #232327;
+        --color-bg-chrome: #232327;
         --color-bg-group-header: #202024;
 
         /* The tree's own surfaces. The activities panel is *lighter* than the
@@ -257,8 +278,8 @@ struct HTMLTemplates
         --color-tree-guide: #38383E;
 
         /* The summary header's own surfaces. The card is the same value as
-           the sidebar, which is deliberate: it is the lightest ground in the
-           dark theme, so every status token was already sized against it and
+           the chrome ground, which is deliberate: it is the lightest ground in
+           the dark theme, so every status token was already sized against it and
            the header inherits those measurements unchanged (5.61 skipped to
            6.74 expected). The band beneath the cards is darker than the page
            so the cards read as raised, the way Xcode's do. */
@@ -268,6 +289,7 @@ struct HTMLTemplates
         --color-summary-border: #3A3A40;
         --color-donut-track: #3A3A40;
 
+        --color-border-control: #767680;
         --color-border-strong: #3A3A40;
         --color-border-medium: #33333A;
         --color-border-light: #2E2E34;
@@ -289,15 +311,6 @@ struct HTMLTemplates
       color: var(--color-text-primary);
     }
 
-    body.dragging {
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      -khtml-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-    }
-
     ul li {
       list-style: none;
     }
@@ -311,151 +324,367 @@ struct HTMLTemplates
       text-decoration: none;
     }
 
+    /* ---- The shell (#439, A3a) ----------------------------------------
+
+       Three panes became per-view surfaces. The header is what every view
+       shares — the report's identity, which run is being read, and which view
+       is showing it — and below it exactly one view owns the whole content
+       area, toolbar included.
+
+       What that replaces: an always-on 200px device sidebar and an always-on
+       400px attachment pane, both of which were in the layout whether or not
+       they had anything to say. On a single-device run at 1440px that was
+       ~600px, 42% of the window, spent on one device card and the words "No
+       Selected Attachment" (audit findings 1 and 3). Both jobs move: device
+       selection into the header picker below, attachments into a sheet the
+       Tests view summons. */
     header {
       color: var(--color-text-primary);
       background-color: var(--color-surface);
       width: 100%;
-      /* Same reasoning as .toolbar: 70px is ~4px of slack over the title
-         band plus the Tests/Logs row, so any text scaling clipped it. The
-         two rows never wrap on their own — the pills that do wrap live in
-         .tests-header, not here. */
-      min-height: 70px;
       /* A flex item shrinks by default, and #439's summary band made that
          visible: in a short window the header shrank below its content and
          `overflow: hidden` on the body clipped the digest. The band caps its
-         own height at 50vh, so refusing to shrink cannot starve the tree. */
+         own height at 50vh, so refusing to shrink cannot starve the views. */
       flex: none;
     }
 
-    #info-sections ul {
-      padding-left: var(--space-xs);
-    }
-
-    #info-sections ul li {
-      font-size: var(--font-size-sm);
-      color: var(--color-text-secondary);
-      line-height: 18px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    #info-sections ul.selected li {
-      color: var(--color-on-accent);
-    }
-
-    #info-sections ul li h3 {
-      font-size: var(--font-size-lg);
-      margin: 0;
-    }
-
-    .device-info {
-      margin: 0;
-      padding: var(--space-sm) 0;
-      cursor: pointer;
-    }
-
-    .device-info.selected {
-      background-color: var(--color-accent);
-    }
-
-    .device-info li:nth-child(2) {
-      margin-bottom: var(--space-sm);
-    }
-
-    .device-os,
-    .device-identifier,
-    .device-model {
-      padding-left: 24px;
-    }
-
-    .device-info .device-result {
-      margin-top: 2px;
-      margin-right: 6px;
-    }
-
+    /* The title band: identity on the left, which run on the right. */
     #title {
-      border-bottom: 1px solid var(--color-border-strong);
-      padding: 6px;
-    }
-
-    .toolbar {
-      background-color: var(--color-surface);
-      /* min-, not a fixed height: identical while the row fits on one line,
-         but lets it grow instead of spilling over the next element once the
-         pills wrap. Adding the viewport meta stopped phones from rendering
-         this page zoomed out at desktop width, which is what had been hiding
-         that overlap. The actual narrow-screen layout is PR 2's job. */
-      min-height: 24px;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
       border-bottom: 1px solid var(--color-border-light);
-      padding: var(--space-xs) var(--space-sm);
-    }
-
-    #test-log-toolbar {
-      text-align: center;
-      border-bottom: 1px solid var(--color-border-strong);
+      padding: 6px var(--space-sm);
     }
 
     #title h1 {
-      padding-left: var(--space-sm);
       font-size: var(--font-size-title);
-      float: left;
       margin: 0;
       font-weight: var(--font-weight-regular);
     }
 
-    #title span {
-      float: left;
+    /* ---- The device picker (#439, A3a) --------------------------------
+
+       One control, not two. A1 gave the summary band a "Devices &
+       Configurations" card that stated each run's pass/fail split, and the
+       shell separately carried a sidebar that *selected* a run — two places
+       naming the same set, one of which could not act and one of which could
+       not tell you anything. The bars are now inside the picker: every option
+       is a real button carrying the glyph, the destination, the proportional
+       bar and the same spoken tally the card had.
+
+       `<details>`, so the disclosure is the browser's — keyboard-operable,
+       announced as expanded or collapsed, and correct with no script at all.
+       The options inside are ordinary buttons, so Tab reaches them and Enter
+       and Space activate them without a roving-tabindex widget; the current
+       one carries `aria-current`, which is exactly "the current member of a
+       set" and needs no live region to stay true. */
+    .device-picker {
+      margin-left: auto;
+      position: relative;
+      font-size: var(--font-size-sm);
     }
 
-    ul.toolbar li {
-      display: inline;
-    }
-
-    ul.toggle-toolbar li {
-      display: inline;
-      margin: 0px 2px;
-      padding: 3px var(--space-sm);
+    .device-picker > summary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 46vw;
+      padding: 3px 8px;
+      border: 1px solid var(--color-border-control);
       border-radius: var(--radius-sm);
+      background-color: var(--color-bg-chrome);
+      cursor: pointer;
+      /* The marker is replaced by the chevron span below, which can be
+         painted from a token; `::marker` cannot. */
+      list-style: none;
+    }
+
+    .device-picker > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .device-picker > summary:hover {
+      background-color: var(--color-row-hover);
+    }
+
+    .device-picker > summary:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 1px;
+    }
+
+    .picker-label {
+      color: var(--color-text-muted);
+      flex: none;
+    }
+
+    /* The one line that has to survive a narrow window: it says which run is
+       on screen, so it truncates rather than wraps or pushes. */
+    .picker-current {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .picker-chevron {
+      flex: none;
+      width: var(--icon-size-sm);
+      height: var(--icon-size-sm);
+      background-color: var(--color-text-muted);
+      -webkit-mask-image: var(--icon-disclosure);
+      mask-image: var(--icon-disclosure);
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      -webkit-mask-size: contain;
+      mask-size: contain;
+    }
+
+    .device-picker[open] > summary .picker-chevron {
+      -webkit-mask-image: var(--icon-disclosure-open);
+      mask-image: var(--icon-disclosure-open);
+    }
+
+    /* Absolutely positioned, so opening the picker does not reflow the header
+       and push the view below it down a row. Capped and scrollable because a
+       merged report can hold more destinations than fit a window. */
+    .picker-panel {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 60;
+      width: max(280px, 100%);
+      max-height: 60vh;
+      overflow-y: auto;
+      padding: var(--space-xs);
+      background-color: var(--color-bg-chrome);
+      border: 1px solid var(--color-border-strong);
+      border-radius: 8px;
+    }
+
+    .device-option {
+      display: block;
+      width: 100%;
+      margin: 0;
+      padding: 6px 8px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: none;
+      font: inherit;
+      color: var(--color-text-primary);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .device-option:hover {
+      background-color: var(--color-row-hover);
+    }
+
+    .device-option:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: -2px;
+    }
+
+    /* `aria-current`, not a class, drives the selected look: the attribute is
+       the accessible fact and a second class saying the same thing is a second
+       thing to keep in sync. */
+    .device-option[aria-current="true"] {
+      background-color: var(--color-accent);
+      color: var(--color-on-accent);
+    }
+
+    .device-option-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .device-option .device-result {
+      flex: none;
+    }
+
+    /* Three lines, not one run-on sentence: the destination, then what it
+       produced, then what it is. `display: block` because both are `<span>`s —
+       they carry no layout of their own, so the option is where the stacking
+       is decided. */
+    .device-option-meta,
+    .device-row-tally {
+      display: block;
       color: var(--color-text-muted);
       font-size: var(--font-size-xs);
-      cursor: default;
+      line-height: 1.4;
     }
 
-    ul.toggle-toolbar li:hover {
+    /* Every muted part of the option, on the one option that is not on a muted
+       ground. Listed rather than matched with `*` so a future element has to
+       be considered rather than inheriting a colour by accident. */
+    .device-option[aria-current="true"] .device-option-meta,
+    .device-option[aria-current="true"] .device-row-tally,
+    .device-option[aria-current="true"] .device-row-os,
+    .device-option[aria-current="true"] .device-row-run {
+      color: var(--color-on-accent);
+    }
+
+    /* ---- The view switcher (#439, A3a) --------------------------------
+
+       A real tablist, replacing two `<li onclick>` that no keyboard could
+       reach. Tests and Logs are the two views today; the pattern is what a
+       third would join, which is why the tab and its panel are wired by
+       `aria-controls` rather than by position. */
+    .view-tabs {
+      display: flex;
+      gap: 2px;
+      padding: 0 var(--space-sm);
+      border-bottom: 1px solid var(--color-border-strong);
+    }
+
+    .view-tab {
+      padding: 5px var(--space-sm);
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: none;
+      font: inherit;
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+      cursor: pointer;
+    }
+
+    .view-tab:hover {
+      color: var(--color-text-primary);
+    }
+
+    .view-tab[aria-selected="true"] {
+      color: var(--color-accent-text);
+      border-bottom-color: var(--color-accent);
+    }
+
+    .view-tab:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: -2px;
+    }
+
+    /* ---- Per-view surfaces (#439, A3a) --------------------------------
+
+       Each view is a column that owns everything below the tabs: its own
+       toolbar, its own content, and — on Tests — its own attachment sheet.
+       Only one is in the layout at a time, and the inactive one is removed by
+       `display: none` rather than moved off screen, which is also what takes
+       it out of the accessibility tree — so a screen reader on the Logs tab
+       cannot walk into the tests tree, and nothing attachment-shaped exists
+       for it to find. */
+    .view {
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+    }
+
+    .view.active {
+      display: flex;
+    }
+
+    .view:not(.active) {
+      display: none;
+    }
+
+    /* One run's slice of a view. Every run renders both slices; the picker
+       activates the pair belonging to one destination. */
+    .run-view {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+    }
+
+    .run-view.active {
+      display: flex;
+    }
+
+    /* The per-view toolbar. Left group is the view's own controls; the
+       trailing group is deliberately empty and deliberately present — it is
+       where A3b's text filter and its dropdowns land (#460), and reserving it
+       here is what keeps that from being a re-layout. */
+    .view-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-xs);
+      flex: none;
+      min-height: 26px;
+      padding: var(--space-xs) var(--space-sm);
+      background-color: var(--color-bg-chrome);
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .view-toolbar-trailing {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    /* A label, not a control. The Logs view has one scope and no way to change
+       it, and the shipped markup said otherwise: `<li class="selected">All
+       Messages</li>` in a `toggle-toolbar`, wearing a selected pill's fill and
+       hover with nothing bound to it. Dressing an inert string as the chosen
+       one of several options is the kind of thing a keyboard user finds out
+       the hard way. Real log filters are #460's, and land in the trailing slot
+       beside this. */
+    .view-toolbar-label {
+      padding: 2px var(--space-sm);
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+    }
+
+    /* The status filters. Buttons in a radiogroup, because they are mutually
+       exclusive and only one can be in effect — `aria-checked` says which,
+       where the old `<li class="selected">` said nothing at all. A3b upgrades
+       what they filter; the five functions behind them are unchanged. */
+    .filter-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+    }
+
+    .pill {
+      padding: 2px var(--space-sm);
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: none;
+      font: inherit;
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      cursor: pointer;
+    }
+
+    .pill:hover {
       background-color: var(--color-accent-soft);
       /* Primary, not --color-on-accent: the soft tint is a pale wash, and
          white on it was 1.55:1. */
       color: var(--color-text-primary);
     }
 
-    ul.toggle-toolbar li.selected {
+    .pill[aria-checked="true"] {
       background-color: var(--color-accent);
       color: var(--color-on-accent);
     }
 
-    ul.toggle-toolbar.centered-toolbar li {
-      color: var(--color-text-muted);
-      font-size: var(--font-size-xs);
-      cursor: default;
-    }
-
-    ul.toggle-toolbar.centered-toolbar li.selected {
-      background-color: var(--color-surface);
-      color: var(--color-accent-text) !important;
-    }
-
-    ul.toggle-toolbar.centered-toolbar li:hover {
-      background-color: var(--color-surface);
-      color: var(--color-text-muted);
+    .pill:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 1px;
     }
 
     /* The tree's column header. Two labels, at the two ends of the row the
        columns actually occupy, rather than the old "Status | Tests" pair
        stacked against the left edge — there is a duration column to name now,
-       and naming it is the only thing that makes it read as a column. */
+       and naming it is the only thing that makes it read as a column.
+
+       A3a lifts it out of the scroll container: it names the columns of every
+       row, so scrolling it away was the one thing it could not afford to do. */
     .table-header {
       display: flex;
+      flex: none;
       min-height: 18px;
       margin: 0;
       padding: 2px var(--space-sm) 2px 6px;
@@ -471,15 +700,10 @@ struct HTMLTemplates
       margin-left: auto;
     }
 
-    #logs {
-      display: none;
-      flex: 1;
-      flex-direction: column;
-    }
-
-    #logs-iframe {
+    .logs-iframe {
       border: 0;
       flex: 1;
+      min-height: 0;
     }
 
     /* Icons (#439).
@@ -531,13 +755,11 @@ struct HTMLTemplates
       display: inline-block;
     }
 
-    /* `.left` lived here until A2. Every element that carried it was a tree
-       icon clearing a float gutter, and the tree is flex now, so the class
-       reached nothing in the rendered page — verified against both goldens.
-       `.clear` stays: `#title` and `#container` still float. */
-    .clear {
-      clear: both;
-    }
+    /* `.left` went in A2 and `.clear` goes here, for the same reason and with
+       the same check: A2 made the tree a flex line, A3a made the title band
+       and the shell flex too, and the last two `<div class="clear">` left with
+       the floats they cleared. Neither class reaches anything in the rendered
+       page — verified against both goldens. */
 
     .paperclip-icon {
       width: var(--icon-size-sm);
@@ -699,21 +921,54 @@ struct HTMLTemplates
 
     /* The eye is a control, not a label, so it takes the accent the rest of
        the sheet uses for "you can click this" (`.digest-jump`) instead of
-       inheriting the row's text colour. */
-    .preview-icon {
-      cursor: pointer;
-      display: inline-block;
+       inheriting the row's text colour.
+
+       A real `<button>` since A3a, wearing the same mask it always did. It was
+       a `<span onclick>`: the only way to open an attachment was to point at
+       it, which is the report's single most consequential control and the one
+       a keyboard could not reach. The reset below is what a button costs —
+       `padding`, `border` and the UA background — and `background-color` is
+       not a surface here but the ink the mask clips, so it must survive. */
+    .preview-button {
+      display: inline-flex;
+      align-items: center;
       flex: none;
+      padding: 2px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: none;
+      cursor: pointer;
+      /* The accent the rest of the sheet uses for "you can click this"
+         (`.digest-jump`), handed to the glyph as `currentColor`. */
+      color: var(--color-accent-text);
+    }
+
+    .preview-button:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 1px;
+    }
+
+    /* The ring lives on the button and the mask lives on this span, which is
+       the whole reason there are two elements. A mask applies to everything
+       the element paints, its outline included, so a focus ring drawn on a
+       masked element is clipped to the eye's own silhouette and effectively
+       invisible — on the one control in the report that had no keyboard path
+       at all before A3a. */
+    .preview-icon {
+      display: block;
       height: 11px;
       width: 14px;
-      background-color: var(--color-accent-text);
+      margin: 0;
       -webkit-mask-image: var(--icon-preview);
       mask-image: var(--icon-preview);
     }
 
-    p.list-item.selected > .preview-icon,
     p.list-item.selected > .paperclip-icon {
       background-color: var(--color-on-accent);
+    }
+
+    p.list-item.selected > .preview-button {
+      color: var(--color-on-accent);
     }
 
     /* An expanded test's activities (#439, A2). The mockup draws this as a
@@ -763,40 +1018,32 @@ struct HTMLTemplates
       display: none;
     }
 
-    .run {
-      display: none;
-      flex: 1;
-    }
-
-    .run.active {
-      display: flex;
-    }
-
+    /* The tree itself, and nothing else: A3a lifted the toolbar and the column
+       header out of it, so what scrolls is exactly the rows. `overflow-y:
+       auto`, not `scroll` — a run short enough to fit no longer reserves a
+       dead gutter down the right of the page. */
     .tests {
       display: flex;
       flex: 1;
+      min-height: 0;
       flex-direction: column;
-      overflow-y: scroll;
+      overflow-y: auto;
     }
 
     /* The list takes focus so it can be scrolled from the keyboard (see the
-       `run` template). `:focus-visible`, not `:focus`, so clicking a row does
-       not draw a ring around the whole tree; `outline-offset` is negative
+       `runTests` template). `:focus-visible`, not `:focus`, so clicking a row
+       does not draw a ring around the whole tree; `outline-offset` is negative
        because the outline of a scroll container is drawn at its padding edge
-       and a positive offset would sit under the pane beside it. */
+       and a positive offset would sit under the sheet below it. */
     .tests:focus-visible {
       outline: 2px solid var(--color-accent);
       outline-offset: -2px;
     }
 
-    .tests-header, #logs-header {
-      width: 100%;
-    }
-
     .tests > .summary {
       width: 100%;
     }
-  
+
     .iteration {
       margin-left: var(--space-sm);
     }
@@ -965,50 +1212,17 @@ struct HTMLTemplates
       visibility: hidden;
     }
 
-    .screenshot {
-      background-color: var(--color-surface);
-      padding: var(--space-xs);
-      height: var(--preview-height);
-      position: absolute;
-      top:0;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      margin: auto;
-      display:none;
-      z-index: 1000;
-    }
-
-    .video {
-      background-color: var(--color-surface);
-      padding: var(--space-xs);
-      height: var(--preview-height);
-      position: absolute;
-      top:0;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      margin: auto;
-      display:none;
-      z-index: 1000;
-    }
-
-    .gif {
-      background-color: var(--color-surface);
-      padding: var(--space-xs);
-      height: var(--preview-height);
-      position: absolute;
-      top:0;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      margin: auto;
-      display:none;
-      z-index: 1000;
-    }
-  
+    /* The per-attachment source elements the sheet copies from. They have
+       never been displayed — every one of them carried `display: none` — but
+       until A3a they also carried a full-window absolute position and a
+       600px height behind it, which read as a lightbox the report does not
+       have. What they actually are is where the payload's URL lives, one
+       element per attachment, addressed by id. */
+    .screenshot,
+    .video,
+    .gif,
     .file-attachment-link {
-      display:none;
+      display: none;
     }
 
     /* The screenshot flow — the frames a UI test walked through, rendered in
@@ -1041,109 +1255,147 @@ struct HTMLTemplates
       flex-direction: column;
     }
 
-    #container {
+    #main-content {
       display: flex;
       flex: 1;
       min-height: 0;
-    }
-
-    .sidebar {
-      position: relative;
-      background-color: var(--color-bg-sidebar);
-    }
-
-    #left-sidebar {
-      width: 200px;
-      border-right: 1px solid var(--color-border-strong);
-      display: flex;
       flex-direction: column;
     }
 
-    #device-header {
-      color: var(--color-text-muted);
-      font-size: var(--font-size-md);
-      font-weight: var(--font-weight-medium);
-      margin: 16px 0 0px var(--space-sm);
-      border-bottom: 1px solid var(--color-border-light);
-    }
-
-    #info-sections {
-      overflow: auto;
-      flex: 1;
-    }
-
+    /* A page footer rather than the bottom of the device sidebar it used to
+       live in. `contentinfo` is the landmark it belongs in, and the link is
+       the only thing in the report that is about the report rather than about
+       the run. */
     #report-issue {
-      padding-top: 6px;
-      padding-bottom: var(--space-sm);
-      width: 100%;
-      background-color: var(--color-bg-sidebar);
-      text-align: center;
-      border-top: 1px solid var(--color-border-strong);
+      flex: none;
+      padding: var(--space-xs) var(--space-sm);
+      text-align: right;
+      background-color: var(--color-bg-chrome);
+      border-top: 1px solid var(--color-border-light);
     }
 
     #report-issue a {
       color: var(--color-text-subtle);
       font-weight: var(--font-weight-regular);
-      font-size: 0.8em;
+      font-size: var(--font-size-xs);
     }
 
-    #report-issue a:active {
-      color: var(--color-text-subtle);
+    #report-issue a:hover {
+      text-decoration: underline;
     }
 
-    #main-content {
-      position: relative;
-      flex: 1;
-      display: flex;
+    #report-issue a:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+      border-radius: var(--radius-sm);
     }
 
-    #right-sidebar {
-      display: flex;
-      flex-direction: column;
-      width: 400px;
-      border-left: 1px solid var(--color-border-strong);
-    }
+    /* ---- The attachment sheet (#439, A3a) -----------------------------
 
-    .resizer {
-      cursor: col-resize;
-      position: absolute;
-      width: 6px;
-      height: 100%;
-      z-index: 1;
-    }
+       A2 gave the ≤700px layout a bottom sheet that joined the layout only
+       while an attachment was selected. A3a makes that the *only* treatment,
+       at every width, and moves it inside the Tests view.
 
-    #right-sidebar .resizer {
-      left: 0;
-      margin-left: -4px;
-    }
+       Three things follow from that, and each was a finding before it was a
+       decision. The pane no longer reserves 400px of a 1440px window to say
+       "No Selected Attachment" — there is no placeholder, because a sheet with
+       nothing in it is simply not there. Nothing attachment-shaped can render
+       on Logs, because the sheet is a child of the Tests view and Logs hides
+       that whole subtree. And there is one layout to reason about instead of
+       two, which is what lets the narrow-screen query below shrink to spacing.
 
-    #left-sidebar .resizer {
-      right: 0;
-      margin-right: -4px;
-    }
-
-    #right-sidebar h2,
-    #file-attachment {
-      color: var(--color-text-placeholder);
-      font-weight: var(--font-weight-regular);
-      font-size: var(--font-size-xl);
-      text-align: center;
-      position: absolute;
-      width: 100%;
-      top: 49%;
-    }
-
-    .displayed-screenshot {
-      width: 100%;
-    }
-
-    .displayed-video {
-      width: 100%;
+       Docked, not `position: fixed`. A2's sheet floated over the tree and paid
+       for it with `padding-bottom: 50vh` on the list so the last rows could
+       still be reached; a flex item takes its share instead, and the tree
+       simply gets shorter. Nothing overlaps, so nothing needs compensating. */
+    .attachment-sheet {
       display: none;
+      flex: none;
+      flex-direction: column;
+      max-height: 50vh;
+      overflow: auto;
+      background-color: var(--color-surface);
+      border-top: 1px solid var(--color-border-strong);
     }
 
-    .displayed-gif {
+    body.attachment-open .attachment-sheet {
+      display: flex;
+    }
+
+    .attachment-sheet-head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      flex: none;
+      padding: var(--space-xs) var(--space-sm);
+      background-color: var(--color-bg-chrome);
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .attachment-sheet-head h2 {
+      margin: 0;
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-medium);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .attachment-close {
+      margin-left: auto;
+      flex: none;
+      padding: 2px var(--space-sm);
+      border: 1px solid var(--color-border-control);
+      border-radius: var(--radius-sm);
+      background: none;
+      font: inherit;
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      cursor: pointer;
+    }
+
+    .attachment-close:hover {
+      background-color: var(--color-row-hover);
+      color: var(--color-text-primary);
+    }
+
+    .attachment-close:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 1px;
+    }
+
+    .attachment-sheet-body {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      flex-direction: column;
+    }
+
+    /* `max-height` on the media, not just on the sheet: an image is
+       replaced content and would otherwise size to its intrinsic height and
+       make the sheet scroll rather than fit. */
+    .displayed-screenshot,
+    .displayed-gif,
+    .displayed-video {
+      display: none;
       width: 100%;
+      max-height: 40vh;
+      object-fit: contain;
+      background-color: var(--color-surface);
+    }
+
+    #file-attachment {
+      display: none;
+      margin: var(--space-sm);
+      font-size: var(--font-size-md);
+    }
+
+    #file-attachment a {
+      color: var(--color-accent-text);
+    }
+
+    #file-attachment a:hover {
+      text-decoration: underline;
     }
 
     .attachments {
@@ -1151,9 +1403,12 @@ struct HTMLTemplates
     }
 
     #text-attachment {
+      display: none;
       border: 0;
       width: 100%;
       flex: 1;
+      min-height: 30vh;
+      background-color: var(--color-surface);
     }
 
     .list-item {
@@ -1328,30 +1583,29 @@ struct HTMLTemplates
       font-variant-numeric: tabular-nums;
     }
 
-    .device-bars {
-      flex: 1 1 300px;
-      min-width: 240px;
-    }
-
-    .device-bars-head {
-      color: var(--color-text-muted);
-      font-size: var(--font-size-xs);
-      padding-bottom: 2px;
-      border-bottom: 1px solid var(--color-summary-border);
-    }
-
-    .device-row {
-      padding: 6px 0;
-    }
-
+    /* The per-device reading A1 put in the summary band's third column. A3a
+       moves the rows themselves into the picker — see `.device-option` — and
+       what stays here is how one row is drawn, because that is unchanged: a
+       destination, a proportional bar, and the same split stated in words.
+       The classes are the ones A1 minted, so `RunSummaryTests`' assertions
+       about a row's name and its spoken tally still describe the same thing
+       in the same words; only the ancestor moved. */
     .device-row-name {
       display: block;
       font-size: var(--font-size-sm);
       overflow-wrap: anywhere;
     }
 
-    .device-row-os {
+    .device-row-os,
+    .device-row-run {
       color: var(--color-text-muted);
+    }
+
+    /* Only rendered when a report holds several runs, because that is the only
+       time two options can carry the same destination — see
+       `RunSummary.DeviceRow.ordinal`. */
+    .device-row-run {
+      font-size: var(--font-size-xs);
     }
 
     /* An SVG rather than nested divs so no width lands in a `style`
@@ -1371,11 +1625,6 @@ struct HTMLTemplates
 
     .segbar rect {
       fill: currentColor;
-    }
-
-    .device-row-tally {
-      color: var(--color-text-muted);
-      font-size: var(--font-size-xs);
     }
 
     .failure-digest {
@@ -1443,107 +1692,87 @@ struct HTMLTemplates
 
     /* Narrow screens (#439).
 
-       Everything above this point is the desktop layout, untouched: this
-       query is the only place the three-pane shape is altered, so at 701px
-       and wider the report lays out exactly as it did before.
+       Everything above this point is one layout, not two, which is A3a's
+       biggest change to this query rather than a change *in* it. The
+       three-pane shell is gone: there is no device sidebar to fold into a
+       horizontal strip, no attachment pane to convert into a bottom sheet
+       (the sheet is now the treatment at every width), and no resizers to
+       hide. What that query had to *restructure*, it no longer has to, so
+       what is left below is spacing, indentation and two caps.
 
-       700px is where the three panes stop being three panes — a 200px device
-       sidebar plus a 400px attachment pane leaves the tree, the only part
-       anyone came for, under 100px. Below it the sidebar becomes a
-       horizontal strip above the tree, and the attachment pane becomes a
-       bottom sheet that joins the layout only while an attachment is
-       actually selected. Nothing here changes the DOM, so the filter and
-       collapse scripts — which select on `.test-summary` and
-       `.test-summary-group` — behave identically in both layouts. */
+       700px stays the breakpoint even though nothing structural happens at it
+       any more, because what does happen is still real: below it the header's
+       two rows and the summary band together outweigh the content, and the
+       tree's 16px indentation step outruns the width. The three rules that
+       used to carry `!important` to beat a dragged pixel width are gone with
+       the drag.
+
+       What a reader loses at 375px, stated plainly: the picker's summary
+       truncates to the destination name, the digest's suite column drops
+       under the message, and the ring shrinks. Nothing becomes unreachable —
+       which was not true before A3a, when the device strip and the tree
+       competed for the same column. */
     @media (max-width: 700px) {
-      #container {
-        flex-direction: column;
-      }
-
       /* A flex item's automatic minimum size is its *content's* minimum, and
          the tree holds rows that do not break — assertion messages, exported
-         filenames. Stacked vertically that minimum became the column's
-         width, which pushed the whole tree, and the filter pills with it,
-         off the side of a 375px screen. Nothing above the query needs this
-         because there the panes are fixed widths.
+         filenames. In a column that minimum became the column's width, which
+         pushed the whole tree, and the filter pills with it, off the side of a
+         375px screen.
 
          `min-height` for the same reason on the other axis, and it fixes a
-         worse bug: below 700px `#container` is a *column*, so the tree is
-         sized on the block axis by this same automatic minimum, and
-         `min-height: auto` let `.tests` grow to the full height of every row
-         it holds instead of scrolling inside its share. `body` has
-         `overflow: hidden`, so everything past the first viewport was not
-         merely unscrolled but unreachable — on a long run the last test in
-         the report could not be brought on screen at all. Only the scroll
-         container itself strictly needs it, but the automatic minimum
-         propagates up a flex chain, so all three do.
+         worse bug: the views are columns, so the tree is sized on the block
+         axis by this same automatic minimum, and `min-height: auto` let
+         `.tests` grow to the full height of every row it holds instead of
+         scrolling inside its share. `body` has `overflow: hidden`, so
+         everything past the first viewport was not merely unscrolled but
+         unreachable — on a long run the last test in the report could not be
+         brought on screen at all. Only the scroll container itself strictly
+         needs it, but the automatic minimum propagates up a flex chain, so
+         every level does.
 
          Pre-existing — the column layout arrived with the narrow-screen work
          in #459 — and made materially worse by A1: the summary band spends
          real height above the tree, so the clipped region grew by exactly
-         what the band occupies. Found while shooting this PR's 375px
-         screenshots; `visual/tests/behaviour.spec.ts` now scrolls to the last
-         row at 375 so it cannot come back. */
+         what the band occupies. `visual/tests/behaviour.spec.ts` scrolls to
+         the last row at 375 so it cannot come back. A3a keeps the rule and
+         extends it to the new levels: `#main-content` and the views are
+         columns at *every* width now, so the chain is longer, not shorter. */
       #main-content,
-      .run,
+      .view,
+      .run-view,
       .tests {
         min-width: 0;
         min-height: 0;
       }
 
-      /* `flex: none` because the strip is now a row in a column container:
-         without it the tree's flex-grow squeezes the device list to nothing.
-         `!important` twice below for a different reason — the resizer writes
-         a pixel width onto the element's own style attribute, so a window
-         narrowed after a drag would otherwise keep the dragged width. */
-      #left-sidebar {
-        width: auto !important;
-        flex: none;
-        flex-direction: row;
-        align-items: center;
-        overflow-x: auto;
-        border-right: 0;
-        border-bottom: 1px solid var(--color-border-strong);
-      }
-
-      /* Dragging the edge of a full-width strip, or of a bottom sheet,
-         means nothing. */
-      .resizer {
-        display: none;
-      }
-
-      #device-header {
-        margin: 0 var(--space-sm);
-        border-bottom: 0;
+      /* Clipped, not `display: none`. The summary's accessible name is its
+         own text — no `aria-label`, because one would replace the destination
+         with the word "Device" and the destination is the whole point — so
+         removing the label outright would make the control announce as a bare
+         device name at exactly the width where there is least context around
+         it. This frees the 44px and keeps the reading. */
+      .picker-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
         white-space: nowrap;
       }
 
-      #info-sections {
-        display: flex;
+      .device-picker > summary {
+        max-width: 58vw;
       }
 
-      #info-sections ul li,
-      #info-sections ul li h3 {
-        display: inline;
-        font-size: var(--font-size-sm);
-      }
-
-      .device-os,
-      .device-model {
-        padding-left: var(--space-sm);
-      }
-
-      /* The longest of the four fields and the least useful on a phone.
-         Qualified by the ID above deliberately: a bare `.device-identifier`
-         loses the cascade to `#info-sections ul li`'s `display: inline`
-         a dozen lines up, and the field stays on screen. */
-      #info-sections ul li.device-identifier {
-        display: none;
-      }
-
-      .device-info {
-        padding: 6px var(--space-sm);
-        white-space: nowrap;
+      /* Anchored to the header rather than to the control, so a panel wider
+         than the summary cannot hang off the right edge of a 375px screen. */
+      .picker-panel {
+        position: fixed;
+        left: var(--space-xs);
+        right: var(--space-xs);
+        top: auto;
+        width: auto;
+        max-height: 50vh;
       }
 
       #report-issue {
@@ -1551,11 +1780,10 @@ struct HTMLTemplates
       }
 
       /* The flex row already spends only what it draws, so there is no fixed
-         gutter left to reclaim here — what A1 needed this rule for is gone.
-         What is left is the indentation step: 16px per level is right at
-         1440px and profligate on a 375px screen four levels deep, where the
-         legacy backend's two wrapper levels alone would eat 32px before the
-         first suite. */
+         gutter left to reclaim here. What is left is the indentation step:
+         16px per level is right at 1440px and profligate on a 375px screen
+         four levels deep, where the legacy backend's two wrapper levels alone
+         would eat 32px before the first suite. */
       .test-summary-group > .test-summary,
       .test-summary-group > .test-summary-group {
         padding-left: 10px;
@@ -1571,51 +1799,30 @@ struct HTMLTemplates
         overflow-wrap: break-word;
       }
 
-      #right-sidebar {
-        display: none;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: auto !important;
-        max-height: 50vh;
-        overflow: auto;
-        border-left: 0;
-        border-top: 1px solid var(--color-border-strong);
-        z-index: 50;
-      }
-
-      body.attachment-open #right-sidebar {
-        display: flex;
-      }
-
-      /* So the sheet never sits on top of the last rows of the tree. */
-      body.attachment-open .tests {
-        padding-bottom: 50vh;
-      }
-
-      /* The placeholder and the file-download link are both centred
-         absolutely by the desktop sheet; in a bottom sheet they flow. */
-      #right-sidebar h2,
-      #file-attachment {
-        position: static;
-        width: auto;
-        margin: var(--space-sm);
+      /* 40vh, not the desktop 50: the sheet and the tree share one column, so
+         a half-viewport sheet on an 812px phone leaves the tree with fewer
+         rows than the sheet has pixels. */
+      .attachment-sheet {
+        max-height: 40vh;
       }
 
       .displayed-screenshot,
-      .displayed-gif {
-        max-height: 40vh;
-        object-fit: contain;
+      .displayed-gif,
+      .displayed-video {
+        max-height: 30vh;
       }
 
-      /* Summary header, narrow (#439, A1). The three columns of the summary
-         grid stack on their own — `flex-wrap` and the device bars' 300px
-         basis already do that — so this only tightens the spacing and shrinks
-         the ring, which at 108px would otherwise eat a third of a 375px row. */
-      /* 40vh, not the desktop 50: the title band and the Tests/Logs row are a
-         fixed cost, and on an 812px phone a half-viewport band left the tree
-         with less than the summary above it. */
+      #text-attachment {
+        min-height: 25vh;
+      }
+
+      /* Summary header, narrow (#439, A1). The two columns of the summary
+         grid stack on their own — `flex-wrap` already does that — so this only
+         tightens the spacing and shrinks the ring, which at 108px would
+         otherwise eat a third of a 375px row. */
+      /* 40vh, not the desktop 50: the title band and the view tabs are a fixed
+         cost, and on an 812px phone a half-viewport band left the tree with
+         less than the summary above it. */
       #run-summary {
         padding: 6px;
         max-height: 40vh;
@@ -1634,10 +1841,6 @@ struct HTMLTemplates
 
       .summary-legend {
         min-width: 140px;
-      }
-
-      .device-bars {
-        flex-basis: 100%;
       }
 
       /* The suite drops under the message rather than off the page: it is the
@@ -1670,57 +1873,253 @@ struct HTMLTemplates
         <div id=\"title\">
           <span class=\"icon big [[RESULT_CLASS]]\"></span>
           <h1>XCTestHTMLReport</h1>
-          <div class=\"clear\"></div>
+          [[DEVICE_PICKER]]
         </div>
         [[RUN_SUMMARY]]
-        <ul id=\"test-log-toolbar\" class=\"toolbar centered-toolbar toggle-toolbar\">
-          <li class=\"selected\" onclick=\"showTests(this);\">Tests</li>
-          <li onclick=\"showLogs(this);\">Logs</li>
-        </ul>
+        <div class=\"view-tabs\" role=\"tablist\" aria-label=\"Report views\">
+          <button type=\"button\" role=\"tab\" class=\"view-tab\" id=\"tab-tests\" aria-controls=\"view-tests\" aria-selected=\"true\" tabindex=\"0\">Tests</button>
+          <button type=\"button\" role=\"tab\" class=\"view-tab\" id=\"tab-logs\" aria-controls=\"view-logs\" aria-selected=\"false\" tabindex=\"-1\">Logs</button>
+        </div>
       </header>
-      <div id=\"container\">
-        <nav id=\"left-sidebar\" class=\"sidebar\" aria-label=\"Devices\">
-          <div class=\"resizer\"></div>
-          <h2 id=\"device-header\">Devices</h2>
-          <ul id=\"info-sections\">
-            <li class=\"section\">
-              [[DEVICES]]
-            </li>
-          </ul>
-          <div id=\"report-issue\"><a href=\"https://github.com/TitouanVanBelle/XCTestHTMLReport/blob/master/CONTRIBUTING.md#reporting-issues\">Report an issue</a></div>
-        </nav>
 
-        <main id=\"main-content\">
-          [[RUNS]]
-        </main>
+      <main id=\"main-content\">
+        <section class=\"view active\" id=\"view-tests\" role=\"tabpanel\" aria-labelledby=\"tab-tests\">
+          [[TESTS_VIEWS]]
 
-        <aside id=\"right-sidebar\" class=\"sidebar\" aria-label=\"Attachment preview\">
-          <div class=\"resizer\"></div>
-          <h2>No Selected Attachment</h2>
-          <img src=\"\" class=\"displayed-screenshot\" id=\"screenshot\" alt=\"\" loading=\"lazy\"/>
-          <img src=\"\" class=\"displayed-gif\" id=\"gif\" alt=\"\" loading=\"lazy\"/>
-          <iframe id=\"text-attachment\" src=\"\" title=\"Selected attachment\" loading=\"lazy\"></iframe>
-          <p id=\"file-attachment\"><a target=\"_blank\"></a></p>
-          <video class=\"displayed-video\" controls src=\"\" id=\"video\" preload=\"none\"/>
-        </aside>
-        <div class=\"clear\"></div>
-      </div>
+          <aside class=\"attachment-sheet\" id=\"attachment-sheet\" aria-labelledby=\"attachment-sheet-title\">
+            <div class=\"attachment-sheet-head\">
+              <h2 id=\"attachment-sheet-title\">Attachment</h2>
+              <button type=\"button\" class=\"attachment-close\" id=\"attachment-close\">Close</button>
+            </div>
+            <div class=\"attachment-sheet-body\">
+              <img src=\"\" class=\"displayed-screenshot\" id=\"screenshot\" alt=\"\" loading=\"lazy\"/>
+              <img src=\"\" class=\"displayed-gif\" id=\"gif\" alt=\"\" loading=\"lazy\"/>
+              <video class=\"displayed-video\" controls src=\"\" id=\"video\" preload=\"none\"></video>
+              <iframe id=\"text-attachment\" src=\"\" title=\"Selected attachment\" loading=\"lazy\"></iframe>
+              <p id=\"file-attachment\"><a target=\"_blank\" rel=\"noopener\"></a></p>
+            </div>
+          </aside>
+        </section>
+
+        <section class=\"view\" id=\"view-logs\" role=\"tabpanel\" aria-labelledby=\"tab-logs\">
+          [[LOGS_VIEWS]]
+        </section>
+      </main>
+
+      <footer id=\"report-issue\"><a href=\"https://github.com/TitouanVanBelle/XCTestHTMLReport/blob/master/CONTRIBUTING.md#reporting-issues\">Report an issue</a></footer>
     </div>
 
     <script type=\"text/javascript\">
-    var resizers = document.querySelectorAll('.resizer'),
-    leftSidebar = document.getElementById('left-sidebar'),
-    rightSidebar = document.getElementById('right-sidebar'),
-    sidebar, startX, startWidth, originalWidth,
-    screenshot = document.getElementById('screenshot'),
-    video = document.getElementById('video'),
-    gif = document.getElementById('gif'),
-    iframe = document.getElementById('text-attachment'),
-    fileAttachment = document.getElementById('file-attachment');
+    // ---- A3a (#439): the per-view shell -------------------------------
+    //
+    // What this replaces: one script that knew about a device sidebar, two
+    // resizable panes and a pair of `<li>` tabs, all of which are gone. What
+    // survives unchanged is the part nothing asked to change — the five status
+    // filters, the tree's disclosure toggling, and the digest jump — because
+    // A3b upgrades the filters and breaking them here would spend that PR's
+    // budget on repairs.
+    //
+    // Three groups of state, and each has exactly one writer:
+    //
+    //   * which view is showing        -> showView()
+    //   * which run is showing         -> selectDevice()
+    //   * which row and attachment     -> selectListItem() / openAttachment()
+    //
+    // Everything else reads them.
 
-    for (var i = 0; i < resizers.length; i++) {
-        resizers[i].addEventListener('mousedown', initDrag, false);
+    var screenshot = document.getElementById('screenshot'),
+        video = document.getElementById('video'),
+        gif = document.getElementById('gif'),
+        iframe = document.getElementById('text-attachment'),
+        fileAttachment = document.getElementById('file-attachment'),
+        attachmentTitle = document.getElementById('attachment-sheet-title');
+
+    // The tests tree of whichever run is active. Every filter, every scroll
+    // and every jump is scoped through this rather than through the document,
+    // because a merged report holds one tree per destination and only one of
+    // them is on screen.
+    function activeTestsView() {
+      return document.querySelector('#view-tests .run-view.active');
     }
+
+    function activeTree() {
+      var view = activeTestsView();
+      return view ? view.querySelector('.tests') : null;
+    }
+
+    function inActiveTests(selector) {
+      var view = activeTestsView();
+      return view ? view.querySelectorAll(selector) : [];
+    }
+
+    // ---- Roving focus --------------------------------------------------
+    //
+    // Shared by the view tabs and the status filters, which are the two
+    // composite widgets A3a introduces. Both are "one of these is chosen":
+    // ARIA gives such a group a single tab stop and moves between its members
+    // with the arrow keys, so Tab still steps *past* the whole toolbar in one
+    // press instead of through five pills.
+    //
+    // Keyboard only. Clicks are already wired — the tabs bind `showView`
+    // below, the pills carry the filter call the report has always used — and
+    // an `activate` that reached for `.click()` from a listener bound on the
+    // same element would call itself forever.
+    function rovingGroup(container, itemSelector, activate) {
+      if (!container) {
+        return;
+      }
+      var items = Array.prototype.slice.call(container.querySelectorAll(itemSelector));
+
+      function focusItem(index) {
+        var wrapped = (index + items.length) % items.length;
+        items[wrapped].focus();
+        activate(items[wrapped]);
+      }
+
+      container.addEventListener('keydown', function (e) {
+        var index = items.indexOf(e.target);
+        if (index < 0) {
+          return;
+        }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          focusItem(index + 1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          focusItem(index - 1);
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          focusItem(0);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          focusItem(items.length - 1);
+        }
+      });
+    }
+
+    // Which member of a roving group carries the page's single tab stop.
+    function setRovingTabStop(items, current) {
+      for (var i = 0; i < items.length; i++) {
+        items[i].tabIndex = items[i] === current ? 0 : -1;
+      }
+    }
+
+    // ---- Views ---------------------------------------------------------
+
+    var viewTabs = Array.prototype.slice.call(document.querySelectorAll('[role=\"tab\"]'));
+
+    // A body class rather than a style written onto #run-summary, so the
+    // band's own rules — including its two max-heights — stay in the
+    // stylesheet. The band describes the *test* run; the log it does not
+    // describe gets the column to itself, which is what Xcode does when you
+    // switch reports.
+    function showView(tab) {
+      var panel = document.getElementById(tab.getAttribute('aria-controls'));
+      if (!panel) {
+        return;
+      }
+
+      // Focus that is inside the panel about to be hidden would otherwise be
+      // stranded on a `display: none` element: the browser drops it to
+      // <body>, and a keyboard reader loses their place entirely. Moving it
+      // to the tab that caused the switch is both recoverable and where the
+      // reader already is.
+      var active = document.activeElement;
+      var leaving = document.querySelector('.view.active');
+      if (leaving && leaving !== panel && active && leaving.contains(active)) {
+        tab.focus();
+      }
+
+      for (var i = 0; i < viewTabs.length; i++) {
+        var each = viewTabs[i];
+        var eachPanel = document.getElementById(each.getAttribute('aria-controls'));
+        var selected = each === tab;
+        each.setAttribute('aria-selected', selected ? 'true' : 'false');
+        if (eachPanel) {
+          eachPanel.classList.toggle('active', selected);
+        }
+      }
+      setRovingTabStop(viewTabs, tab);
+      document.body.classList.toggle('logs-active', panel.id === 'view-logs');
+    }
+
+    rovingGroup(document.querySelector('[role=\"tablist\"]'), '[role=\"tab\"]', showView);
+    for (var t = 0; t < viewTabs.length; t++) {
+      viewTabs[t].addEventListener('click', function (e) {
+        showView(e.currentTarget);
+      }, false);
+    }
+
+    // ---- Devices -------------------------------------------------------
+    //
+    // The picker is the sidebar's whole job in one control: it lists every
+    // run, states each one's outcome, and activates the pair of per-view
+    // slices — the tests tree and the log — that belong to one destination.
+    // Both slices are switched together, so the Logs tab is never showing one
+    // destination's log while the Tests tab holds another's tree.
+    var devicePicker = document.getElementById('device-picker'),
+        deviceOptions = Array.prototype.slice.call(
+          document.querySelectorAll('.device-option')
+        ),
+        pickerCurrent = document.getElementById('device-picker-current');
+
+    function selectDevice(deviceId, el) {
+      for (var i = 0; i < deviceOptions.length; i++) {
+        deviceOptions[i].setAttribute(
+          'aria-current', deviceOptions[i] === el ? 'true' : 'false'
+        );
+      }
+
+      var previous = document.querySelectorAll('.run-view.active');
+      for (var p = 0; p < previous.length; p++) {
+        previous[p].classList.remove('active');
+      }
+
+      var tests = document.getElementById('tests_' + deviceId),
+          logs = document.getElementById('logs_' + deviceId);
+      if (tests) {
+        tests.classList.add('active');
+      }
+      if (logs) {
+        logs.classList.add('active');
+      }
+
+      // The selection belonged to the run that just left the layout, and a
+      // `display: none` row cannot be scrolled to or read out.
+      selectedListItem = null;
+      closeAttachment();
+
+      if (pickerCurrent && el) {
+        var label = el.querySelector('.device-row-name');
+        if (label) {
+          // textContent, never innerHTML: the destination name is
+          // test-plan-controlled text and this is the one place a script
+          // moves it between elements.
+          pickerCurrent.textContent = label.textContent.trim();
+        }
+      }
+      if (devicePicker) {
+        devicePicker.open = false;
+      }
+    }
+
+    if (devicePicker) {
+      // `<details>` has no Escape handling of its own, and a panel that
+      // covers the header is exactly the kind that needs one.
+      devicePicker.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && devicePicker.open) {
+          devicePicker.open = false;
+          devicePicker.querySelector('summary').focus();
+        }
+      });
+      document.addEventListener('click', function (e) {
+        if (devicePicker.open && !devicePicker.contains(e.target)) {
+          devicePicker.open = false;
+        }
+      }, false);
+    }
+
+    // ---- Rows ----------------------------------------------------------
 
     var listItems = document.querySelectorAll('.list-item');
 
@@ -1741,6 +2140,16 @@ struct HTMLTemplates
       }
 
       selectListItem(item);
+
+      // So the arrow keys carry on from the row just clicked. The tree is the
+      // focusable scroll region (#439, A2) and clicking inside it used to
+      // leave focus on <body>, which is why the key handler had to be on the
+      // document at all. `preventScroll`, because the row is already where
+      // the reader put it.
+      var tree = activeTree();
+      if (tree) {
+        tree.focus({ preventScroll: true });
+      }
     }
 
     function selectListItem(listItem) {
@@ -1751,49 +2160,123 @@ struct HTMLTemplates
       selectedListItem = listItem;
       selectedListItem.classList.add(\"selected\");
 
-      var firstAttachment = selectedListItem.querySelector('.attachment .preview-icon');
-
+      // A test row summons the sheet for the first attachment it holds; a row
+      // with none dismisses it. That is what makes the sheet on-demand rather
+      // than permanent: there is no placeholder state, because a sheet showing
+      // nothing is simply not in the layout.
+      var firstAttachment = selectedListItem.querySelector('.attachment .preview-button');
       if (firstAttachment == null) {
-        hideScreenshot();
-        hideLog();
-        hideVideo();
-        hideGif();
-        hideLinkAttachment();
-        showAttachmentPlaceholder();
+        closeAttachment();
         return;
       }
+      openAttachment(firstAttachment);
+    }
 
-      var path = firstAttachment.attributes[\"data\"].value;
-      var extension = path.split('.').pop();
-      var textExtension = [\"txt\", \"crash\", \"html\", \"log\"];
-      const photoExtensions = [\"png\", \"jpeg\", \"heic\"];
-      if (textExtension.indexOf(extension) != -1 || extension.startsWith(\"data:text/plain\")) {
-        showText(path);
-      } else if (extension == \"mp4\") {
-        showVideo(path);
-      } else if (photoExtensions.indexOf(extension) > 0 || extension.startsWith(\"data:image\")) {
-        showScreenshot(path);
-      } else if (extension == \"gif\") {
-        showGif(path);
+    // ---- The attachment sheet ------------------------------------------
+    //
+    // One entry point, taking the element that names the attachment rather
+    // than a path. Two things follow. The kind comes from `data-kind`, written
+    // by the template that knows it, instead of being sniffed off the end of a
+    // URL — which is what `data:` URIs defeated, and what made a `.png` taken
+    // from a row selection fall through to the download branch (the extension
+    // list was tested with `indexOf(...) > 0`, and \"png\" is at index 0). And
+    // the sheet can be titled with the attachment's own name, read out of the
+    // row as text, so the pane says what is in it.
+    function openAttachment(icon) {
+      var kind = icon.getAttribute('data-kind'),
+          path = icon.getAttribute('data');
+
+      hideAttachmentMedia();
+
+      if (kind === 'text') {
+        iframe.style.display = 'block';
+        iframe.src = path;
+      } else if (kind === 'video') {
+        var vid = document.getElementById('video-' + path);
+        video.style.display = 'block';
+        video.src = vid.src;
+        video.play();
+      } else if (kind === 'screenshot') {
+        var image = document.getElementById('screenshot-' + path);
+        screenshot.style.display = 'block';
+        screenshot.src = image.src;
+        screenshot.alt = image.alt;
+      } else if (kind === 'gif') {
+        var gf = document.getElementById('gif-' + path);
+        gif.style.display = 'block';
+        gif.src = gf.src;
+        gif.alt = gf.alt;
       } else {
-        showLinkAttachment(path);
+        var target = document.getElementById('file-attachment-' + path);
+        var link = fileAttachment.querySelector('a');
+        var name = attachmentNameOf(icon);
+        link.textContent = 'Download ' + (name || 'attachment');
+        link.href = target.href;
+        fileAttachment.style.display = 'block';
+      }
+
+      attachmentTitle.textContent = attachmentNameOf(icon) || 'Attachment';
+      document.body.classList.add('attachment-open');
+    }
+
+    /// The display name the tree already renders for this attachment. Read as
+    /// text and written as text, so a hostile file name cannot become markup
+    /// on the way between two elements of the same page.
+    function attachmentNameOf(icon) {
+      var row = icon.closest('.attachment');
+      var name = row ? row.querySelector('.row-name') : null;
+      return name ? name.textContent.trim() : '';
+    }
+
+    // Pausing belongs here rather than in `closeAttachment`, because the sheet
+    // is reused: opening a screenshot while a recording is playing hides the
+    // player and, without this, leaves it playing behind the image. The old
+    // pane had the same hole and no way to notice it — it never closed, so
+    // nothing ever stopped.
+    function hideAttachmentMedia() {
+      screenshot.style.display = 'none';
+      gif.style.display = 'none';
+      video.style.display = 'none';
+      iframe.style.display = 'none';
+      fileAttachment.style.display = 'none';
+      if (!video.paused) {
+        video.pause();
       }
     }
 
-    function selectDevice(deviceId, el) {
-      while (el && !el.classList.contains('device-info')) {
-        el = el.parentElement;
-      }
-
-      document.querySelectorAll('.device-info.selected')[0].classList.remove(\"selected\");
-      el.classList.add(\"selected\");
-
-      document.querySelectorAll('.run.active')[0].classList.remove(\"active\");
-      document.querySelectorAll('#device_' + deviceId)[0].classList.add(\"active\");
+    function closeAttachment() {
+      hideAttachmentMedia();
+      document.body.classList.remove('attachment-open');
     }
+
+    document.getElementById('attachment-close')
+      .addEventListener('click', function () {
+        closeAttachment();
+        var tree = activeTree();
+        if (tree) {
+          tree.focus({ preventScroll: true });
+        }
+      }, false);
+
+    // ---- Tree keyboard navigation --------------------------------------
 
     function keyDown(e) {
         e = e || window.event;
+
+        // The toolbars, the picker and the tabs are roving groups: the arrow
+        // keys belong to whichever one has focus, not to the tree. Before A3a
+        // no control in the page could take focus at all, so a document-level
+        // handler could not collide with anything; now it can, and the tree
+        // only claims the keys while it is the thing being read.
+        var tree = activeTree();
+        if (!tree) {
+          return;
+        }
+        var focused = document.activeElement;
+        if (focused && focused !== document.body && !tree.contains(focused)
+            && focused !== tree) {
+          return;
+        }
 
         var items = visibleListItems();
         if (e.keyCode == 40) {
@@ -1812,6 +2295,9 @@ struct HTMLTemplates
     }
 
     function foldCurrentListItem() {
+      if (!selectedListItem) {
+        return;
+      }
       var dropIcon = selectedListItem.querySelector('.drop-down-icon');
       if (dropIcon == null) {
         return;
@@ -1823,6 +2309,9 @@ struct HTMLTemplates
     }
 
     function unfoldCurrentListItem() {
+      if (!selectedListItem) {
+        return;
+      }
       var dropIcon = selectedListItem.querySelector('.drop-down-icon');
       if (dropIcon == null) {
         return;
@@ -1840,21 +2329,21 @@ struct HTMLTemplates
           if (item.offsetParent) {
             selectListItem(item);
 
-            var scrollView = document.querySelector('.run.active .tests');
-            if (!divInsideOfDiv(item, scrollView)) {
+            var scrollView = activeTree();
+            if (scrollView && !divInsideOfDiv(item, scrollView)) {
               scrollToItem(item);
             }
 
             return;
           }
         }
-      } else {
+      } else if (items.length) {
         selectListItem(items[0]);
       }
     }
 
     function scrollToItem(item) {
-      var scrollView = document.querySelector('.run.active .tests'),
+      var scrollView = activeTree(),
           itemBounds = item.getBoundingClientRect(),
           scrollBounds = scrollView.getBoundingClientRect();
 
@@ -1875,37 +2364,7 @@ struct HTMLTemplates
 
     document.onkeydown = keyDown;
 
-
-    function initDrag(e) {
-      sidebar = e.target.parentElement;
-      startX = e.clientX;
-      startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
-      originalSidebarWidth = sidebar.clientWidth;
-      document.documentElement.addEventListener('mousemove', doDrag, false);
-      document.documentElement.addEventListener('mouseup', stopDrag, false);
-
-      document.body.classList.add('dragging');
-    }
-
-    function doDrag(e) {
-      var newSidebarWidth,
-      distance = startX - e.clientX;
-
-      if (sidebar == leftSidebar) {
-        newSidebarWidth = Math.min(Math.max(originalSidebarWidth - distance, 200), 500);
-      } else if (sidebar == rightSidebar) {
-        newSidebarWidth = Math.min(Math.max(originalSidebarWidth + distance, 300), 800);
-      }
-
-      sidebar.style.width = newSidebarWidth + 'px';
-    }
-
-    function stopDrag(e) {
-      document.documentElement.removeEventListener('mousemove', doDrag, false);
-      document.documentElement.removeEventListener('mouseup', stopDrag, false);
-
-      document.body.classList.remove('dragging')
-    }
+    // ---- Disclosure ----------------------------------------------------
 
     function toggle(el, id) {
       el.classList.toggle('dropped');
@@ -1935,104 +2394,16 @@ struct HTMLTemplates
       }
     }
 
-    // These two are already the report's \"an attachment is / is not being
-    // shown\" hooks, so they are also where the narrow-screen bottom sheet
-    // learns whether to be in the layout at all (#439). On desktop the class
-    // is inert -- no rule outside the max-width query mentions it.
-    function showAttachmentPlaceholder() {
-      var placeholder = document.querySelector(\"#right-sidebar h2\");
-      placeholder.style.display = \"block\";
-      document.body.classList.remove('attachment-open');
-    }
-
-    function hideAttachmentPlaceholder() {
-      var placeholder = document.querySelector(\"#right-sidebar h2\");
-      placeholder.style.display = \"none\";
-      document.body.classList.add('attachment-open');
-    }
-
-    function hideLog() {
-      iframe.style.display = \"none\";
-    }
-
-    function showText(path) {
-      hideAttachmentPlaceholder();
-      hideScreenshot();
-      hideVideo();
-      hideGif();
-      hideLinkAttachment();
-      iframe.style.display = \"block\";
-      iframe.src = path;
-    }
-
-    function hideScreenshot() {
-      screenshot.style.display = \"none\";
-    }
-
-    function hideVideo() {
-      video.style.display = \"none\";
-    }
-
-    function hideGif() {
-      gif.style.display = \"none\";
-    }
-
-    function showScreenshot(filename) {
-      hideAttachmentPlaceholder();
-      hideLog();
-      hideVideo();
-      hideGif();
-      hideLinkAttachment();
-      var image = document.getElementById('screenshot-'+filename);
-      screenshot.style.display = \"block\";
-      screenshot.src = image.src;
-      screenshot.alt = image.alt;
-    }
-
-    function showVideo(filename) {
-      hideAttachmentPlaceholder();
-      hideLog();
-      hideScreenshot();
-      hideGif();
-      hideLinkAttachment();
-      var vid = document.getElementById('video-'+filename);
-      video.style.display = \"block\";
-      video.src = vid.src;
-      video.play();
-    }
-
-    function showGif(filename) {
-    hideAttachmentPlaceholder();
-    hideLog();
-    hideVideo();
-    hideScreenshot();
-    hideLinkAttachment();
-    var gf = document.getElementById('gif-'+filename);
-    gif.style.display = \"block\";
-    gif.src = gf.src;
-    gif.alt = gf.alt;
-    gif.play();
-    }
-    
-    function hideLinkAttachment() {
-      fileAttachment.style.display = \"none\";
-    }
-  
-    function showLinkAttachment(filename) {
-      hideAttachmentPlaceholder();
-      hideLog();
-      hideScreenshot();
-      hideVideo();
-      hideGif();
-      const fileAttachmentPath = document.getElementById(`file-attachment-${filename}`)
-      const link = document.querySelector(\"#file-attachment > a\")
-      link.textContent = `Download ${filename}`
-      link.href = fileAttachmentPath.href
-      fileAttachment.style.display = \"block\";
-    }
+    // ---- Status filters ------------------------------------------------
+    //
+    // The five functions A3b upgrades, unchanged in what they do. What
+    // changed is only what they are scoped to: `.run.active` named the shell's
+    // per-run pane, which the per-view split replaced with one slice per view.
+    // Everything downstream of the scope — which classes are shown, which are
+    // hidden, and the group-collapsing pass — is the same code it was.
 
     function setDisplayToElementsWithSelector(sel, display) {
-      [].forEach.call(document.querySelectorAll(sel), function (el) {
+      [].forEach.call(inActiveTests(sel), function (el) {
         el.style.display = display;
       });
     }
@@ -2045,58 +2416,67 @@ struct HTMLTemplates
       setDisplayToElementsWithSelector(sel, 'block');
     }
 
+    // The chosen filter, as an ARIA fact rather than a class: these are
+    // mutually exclusive, so the group is a radiogroup and `aria-checked`
+    // is the state a screen reader reads out.
     function selectedElement(el) {
-      el.parentElement.querySelectorAll('.selected')[0].classList.remove('selected');
-      el.classList.add('selected');
+      var group = el.closest('[role=\"radiogroup\"]');
+      var pills = Array.prototype.slice.call(group.querySelectorAll('[role=\"radio\"]'));
+      for (var i = 0; i < pills.length; i++) {
+        pills[i].setAttribute('aria-checked', pills[i] === el ? 'true' : 'false');
+      }
+      setRovingTabStop(pills, el);
     }
 
     function showAllScenarios(el) {
       selectedElement(el);
-      showElementsWithSelector('.run.active .test-summary.succeeded');
-      showElementsWithSelector('.run.active .test-summary.skipped');
-      showElementsWithSelector('.run.active .test-summary.failed');
-      showElementsWithSelector('.run.active .test-summary.mixed');
+      showElementsWithSelector('.test-summary.succeeded');
+      showElementsWithSelector('.test-summary.skipped');
+      showElementsWithSelector('.test-summary.failed');
+      showElementsWithSelector('.test-summary.mixed');
       hideSummaryGroupsIfNeeded();
     }
 
     function showSuccessfulScenariosOnly(el) {
       selectedElement(el);
-      showElementsWithSelector('.run.active .test-summary.succeeded');
-      hideElementsWithSelector('.run.active .test-summary.skipped');
-      hideElementsWithSelector('.run.active .test-summary.failed');
-      hideElementsWithSelector('.run.active .test-summary.mixed');
+      showElementsWithSelector('.test-summary.succeeded');
+      hideElementsWithSelector('.test-summary.skipped');
+      hideElementsWithSelector('.test-summary.failed');
+      hideElementsWithSelector('.test-summary.mixed');
       hideSummaryGroupsIfNeeded();
     }
 
     function showSkippedScenariosOnly(el) {
       selectedElement(el);
-      hideElementsWithSelector('.run.active .test-summary.succeeded');
-      showElementsWithSelector('.run.active .test-summary.skipped');
-      hideElementsWithSelector('.run.active .test-summary.failed');
-      hideElementsWithSelector('.run.active .test-summary.mixed');
+      hideElementsWithSelector('.test-summary.succeeded');
+      showElementsWithSelector('.test-summary.skipped');
+      hideElementsWithSelector('.test-summary.failed');
+      hideElementsWithSelector('.test-summary.mixed');
       hideSummaryGroupsIfNeeded();
     }
 
     function showFailedScenariosOnly(el) {
       selectedElement(el);
-      hideElementsWithSelector('.run.active .test-summary.succeeded');
-      hideElementsWithSelector('.run.active .test-summary.skipped');
-      showElementsWithSelector('.run.active .test-summary.failed');
-      hideElementsWithSelector('.run.active .test-summary.mixed');
+      hideElementsWithSelector('.test-summary.succeeded');
+      hideElementsWithSelector('.test-summary.skipped');
+      showElementsWithSelector('.test-summary.failed');
+      hideElementsWithSelector('.test-summary.mixed');
       hideSummaryGroupsIfNeeded();
     }
   
     function showMixedScenariosOnly(el) {
       selectedElement(el);
-      hideElementsWithSelector('.run.active .test-summary.succeeded');
-      hideElementsWithSelector('.run.active .test-summary.skipped');
-      hideElementsWithSelector('.run.active .test-summary.failed');
-      showElementsWithSelector('.run.active .test-summary.mixed');
+      hideElementsWithSelector('.test-summary.succeeded');
+      hideElementsWithSelector('.test-summary.skipped');
+      hideElementsWithSelector('.test-summary.failed');
+      showElementsWithSelector('.test-summary.mixed');
       hideSummaryGroupsIfNeeded();
     }
 
     function hideSummaryGroupsIfNeeded() {
-      var testSummaryGroups = Array.prototype.slice.call(document.querySelectorAll('.run.active .test-summary-group'));
+      var testSummaryGroups = Array.prototype.slice.call(
+        inActiveTests('.test-summary-group')
+      );
       for (var i = 0; i < testSummaryGroups.length; i++) {
           var testSummaryGroup = testSummaryGroups[i];
           var children = Array.prototype.slice.call(testSummaryGroup.children);
@@ -2114,29 +2494,26 @@ struct HTMLTemplates
       }
     }
 
-    // The summary header describes the *test* run — an outcome ring, a
-    // failure digest, per-device bars — and none of it says anything about
-    // the log the Logs tab shows. Xcode does the same thing: switching to a
-    // different report gives that report the whole column. A body class
-    // rather than a style written onto #run-summary, so the band's own rules
-    // (including its two max-heights) stay in the stylesheet and A3 can move
-    // the tabs without hunting for a display value in a script.
-    function showLogs(el) {
-      selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'flex');
-      setDisplayToElementsWithSelector('.tests', 'none');
-      document.body.classList.add('logs-active');
+    // Arrow keys inside a radiogroup both move focus and choose, which is the
+    // behaviour a native radio group has. The pill's own `onclick` is the one
+    // definition of what choosing does, so the handler dispatches to it rather
+    // than restating the mapping from pill to filter.
+    var filterGroups = document.querySelectorAll('.filter-pills');
+    for (var f = 0; f < filterGroups.length; f++) {
+      rovingGroup(filterGroups[f], '[role=\"radio\"]', function (pill) {
+        pill.onclick();
+      });
     }
 
-    function showTests(el) {
-      selectedElement(el);
-      setDisplayToElementsWithSelector('#logs', 'none');
-      setDisplayToElementsWithSelector('.tests', 'flex');
-      document.body.classList.remove('logs-active');
+    // ---- Boot ----------------------------------------------------------
+    //
+    // The first destination is the one the report opens on, which is the same
+    // rule the sidebar's first card followed.
+    if (deviceOptions.length) {
+      selectDevice(
+        deviceOptions[0].getAttribute('data-device'), deviceOptions[0]
+      );
     }
-
-    document.querySelectorAll('.device-info')[0].classList.add(\"selected\");
-    document.querySelectorAll('.run')[0].classList.add(\"active\");
 
     // Failure digest (#439, A1). Each row's button carries the failing test's
     // element id in `data-target`; nothing about the test reaches a script
@@ -2167,9 +2544,9 @@ struct HTMLTemplates
         return;
       }
 
-      var testsTab = document.querySelector('#test-log-toolbar li');
-      if (testsTab && !testsTab.classList.contains('selected')) {
-        showTests(testsTab);
+      var testsTab = document.getElementById('tab-tests');
+      if (testsTab && testsTab.getAttribute('aria-selected') !== 'true') {
+        showView(testsTab);
       }
 
       activateRunContaining(row);
@@ -2196,20 +2573,21 @@ struct HTMLTemplates
       row.scrollIntoView({ block: 'start' });
     }
 
-    // `.run` elements and `.device-info` cards are rendered from one list of
-    // runs, in order, so the nth card selects the nth run. Going through
-    // selectDevice rather than toggling the classes here keeps one definition
-    // of what \"active\" means.
+    // Going through selectDevice rather than toggling the classes here keeps
+    // one definition of what \"active\" means — including switching the log
+    // slice to match, which a jump into another destination's tree would
+    // otherwise leave pointing at the destination the reader just left.
     function activateRunContaining(el) {
-      var run = el.closest('.run');
-      if (!run || run.classList.contains('active')) {
+      var view = el.closest('.run-view');
+      if (!view || view.classList.contains('active')) {
         return;
       }
-      var runs = Array.prototype.slice.call(document.querySelectorAll('.run')),
-          cards = document.querySelectorAll('.device-info'),
-          index = runs.indexOf(run);
-      if (index >= 0 && cards[index]) {
-        selectDevice(run.id.replace('device_', ''), cards[index]);
+      var deviceId = view.id.replace('tests_', '');
+      var option = document.querySelector(
+        '.device-option[data-device=\"' + deviceId + '\"]'
+      );
+      if (option) {
+        selectDevice(deviceId, option);
       }
     }
 
@@ -2250,14 +2628,57 @@ struct HTMLTemplates
             <ul class=\"summary-legend\">
               [[LEGEND]]
             </ul>
-            <div class=\"device-bars\">
-              <p class=\"device-bars-head\">Devices &amp; Configurations</p>
-              [[DEVICE_BARS]]
-            </div>
           </div>
         </div>
         [[FAILURE_DIGEST]]
       </section>
+  """
+
+  /// The device picker (#439, A3a) — what the device sidebar and A1's
+  /// "Devices & Configurations" card became once they stopped being two
+  /// things.
+  ///
+  /// It sits in the title band, above the summary band rather than inside it,
+  /// which is the property that makes the shell work: the band stands down for
+  /// the Logs view, and picking a destination is not a thing you stop being
+  /// able to do because you are reading a log. Every navigation the sidebar
+  /// offered is here — list the runs, read each one's outcome, switch to one —
+  /// and two the sidebar could not: the per-device pass/fail split, and a
+  /// keyboard.
+  ///
+  /// `<details>` rather than a scripted popover, so the disclosure is the
+  /// browser's own: focusable, operable with Enter and Space, and announced as
+  /// expanded or collapsed with nothing bound to it.
+  static let devicePicker = """
+  <details id=\"device-picker\" class=\"device-picker\">
+            <summary>
+              <span class=\"picker-label\">Device</span>
+              <span class=\"picker-current\" id=\"device-picker-current\">[[CURRENT_DEVICE]]</span>
+              <span class=\"picker-chevron\" aria-hidden=\"true\"></span>
+            </summary>
+            <div class=\"picker-panel\">
+              [[DEVICE_OPTIONS]]
+            </div>
+          </details>
+  """
+
+  /// One destination in the picker.
+  ///
+  /// `data-device` carries the same identifier the `onclick` passes, because
+  /// two callers need it without going through a handler: the boot sequence,
+  /// which activates the first option, and a digest jump into another
+  /// destination's tree. Both are `IdentifierPath` digests — opaque by
+  /// construction, which is what `HTMLEscapingTests` pins.
+  static let deviceOption = """
+  <button type=\"button\" class=\"device-option\" data-device=\"[[DEVICE_IDENTIFIER]]\" aria-current=\"false\" onclick=\"selectDevice('[[DEVICE_IDENTIFIER]]', this);\">
+                <span class=\"device-option-head\">
+                  <span class=\"icon device-result [[DEVICE_STATUS_CLASS]]\"></span>
+                  <span class=\"device-row-name\">[[DEVICE_LABEL]]</span>
+                </span>
+                <svg class=\"segbar\" viewBox=\"0 0 100 8\" preserveAspectRatio=\"none\" aria-hidden=\"true\" focusable=\"false\">[[SEGMENTS]]</svg>
+                <span class=\"device-row-tally\">[[DEVICE_TALLY]]</span>
+                <span class=\"device-option-meta\">[[DEVICE_MODEL]]</span>
+              </button>
   """
 
   /// The ring. `aria-hidden` because the legend beside it already states every
@@ -2278,17 +2699,6 @@ struct HTMLTemplates
   /// rendered, but without it the row's text content is \"Passed1\".
   static let summaryLegendRow = """
   <li><span class=\"legend-swatch status-tint-[[STATUS_CLASS]]\"></span>[[LABEL]] <span class=\"legend-count\">[[COUNT]]</span></li>
-  """
-
-  /// One device row: name, proportional bar, and the same breakdown in words.
-  /// The bar is `aria-hidden` for the reason the ring is — the caption beside
-  /// it is the accessible reading of the identical fact.
-  static let summaryDeviceRow = """
-  <div class=\"device-row\">
-                <span class=\"device-row-name\">[[DEVICE_LABEL]]</span>
-                <svg class=\"segbar\" viewBox=\"0 0 100 8\" preserveAspectRatio=\"none\" aria-hidden=\"true\" focusable=\"false\">[[SEGMENTS]]</svg>
-                <span class=\"device-row-tally\">[[DEVICE_TALLY]]</span>
-              </div>
   """
 
   static let summaryBarSegment = """
@@ -2321,55 +2731,64 @@ struct HTMLTemplates
             </li>
   """
 
-  static let device = """
-    <ul class=\"device-info\" onclick=\"selectDevice('[[DEVICE_IDENTIFIER]]', this);\">
-    <li>[[DEVICE_RESULT]]<h3 class=\"device-name\">[[DEVICE_NAME]]</h3></li>
-    <li class=\"device-os\">iOS [[DEVICE_OS]]</li>
-    <li class=\"device-model\">Model: [[DEVICE_MODEL]]</li>
-    <li class=\"device-identifier\">Identifier: [[DEVICE_IDENTIFIER]]</li>
-  </ul>
-  """
-
-  /// One device's run.
+  /// One destination's tests view (#439, A3a).
+  ///
+  /// The view owns its whole surface: a toolbar of its own, a column header
+  /// that does not scroll away, and the tree. What it no longer shares with
+  /// anything is a shell — there is no device pane beside it and no attachment
+  /// pane reserved next to it, so at 1440px the tree is the window.
   ///
   /// `tabindex="0"` on the scrolling test list is an accessibility fix, not a
   /// layout one: axe's `scrollable-region-focusable` (serious) requires that a
   /// region a sighted user can scroll is reachable by a keyboard user too, and
-  /// a `div` with `overflow-y: scroll` and no focusable descendant is not. The
-  /// tree has always been that region — the gate stayed green only because the
-  /// synthetic fixture's rows happened to fall seven pixels short of
-  /// overflowing it, so the rule never fired on the one page CI checks. Any
-  /// real report has always tripped it. With the attribute the list takes
-  /// focus and Page Up/Down, Home and End scroll it; the arrow keys keep going
-  /// to the existing row navigation, which scrolls the same region by moving
-  /// the selection.
-  static let run = """
-  <div class=\"run\" id=\"device_[[DEVICE_IDENTIFIER]]\">
-    <div class=\"tests\" tabindex=\"0\">
-      <div class=\"tests-header\">
-        <ul class=\"toolbar toggle-toolbar\">
-          <li onclick=\"showAllScenarios(this);\" class=\"selected\">All ([[N_OF_TESTS]])</li>
-          <li onclick=\"showSuccessfulScenariosOnly(this);\">Passed ([[N_OF_PASSED_TESTS]])</li>
-          <li onclick=\"showSkippedScenariosOnly(this);\">Skipped ([[N_OF_SKIPPED_TESTS]])</li>
-          <li onclick=\"showFailedScenariosOnly(this);\">Failed ([[N_OF_FAILED_TESTS]])</li>
-          <li onclick=\"showMixedScenariosOnly(this);\">Mixed ([[N_OF_MIXED_TESTS]])</li>
-        </ul>
-        <ul class=\"toolbar table-header\">
-          <li>Test</li>
-          <li>Duration</li>
-        </ul>
+  /// a `div` with `overflow-y` and no focusable descendant is not. With the
+  /// attribute the list takes focus and Page Up/Down, Home and End scroll it;
+  /// the arrow keys keep going to the row navigation, which scrolls the same
+  /// region by moving the selection.
+  ///
+  /// The trailing group in the toolbar is empty on purpose. A3b's text filter
+  /// and its dropdowns (#460) land in it, and having the slot already laid out
+  /// — right-aligned, in the flex row, with the pills sized against it — is
+  /// what makes that an addition rather than a second toolbar redesign.
+  static let runTests = """
+  <div class=\"run-view\" id=\"tests_[[DEVICE_IDENTIFIER]]\">
+      <div class=\"view-toolbar\">
+        <div class=\"filter-pills\" role=\"radiogroup\" aria-label=\"Filter tests by status\">
+          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"true\" tabindex=\"0\" onclick=\"showAllScenarios(this);\">All ([[N_OF_TESTS]])</button>
+          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"false\" tabindex=\"-1\" onclick=\"showSuccessfulScenariosOnly(this);\">Passed ([[N_OF_PASSED_TESTS]])</button>
+          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"false\" tabindex=\"-1\" onclick=\"showSkippedScenariosOnly(this);\">Skipped ([[N_OF_SKIPPED_TESTS]])</button>
+          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"false\" tabindex=\"-1\" onclick=\"showFailedScenariosOnly(this);\">Failed ([[N_OF_FAILED_TESTS]])</button>
+          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"false\" tabindex=\"-1\" onclick=\"showMixedScenariosOnly(this);\">Mixed ([[N_OF_MIXED_TESTS]])</button>
+        </div>
+        <div class=\"view-toolbar-trailing\"></div>
       </div>
-      [[TEST_SUMMARIES]]
-    </div>
-    <div id=\"logs\">
-      <div id=\"logs-header\">
-        <ul class=\"toolbar toggle-toolbar\">
-          <li class=\"selected\">All Messages</li>
-        </ul>
+      <ul class=\"table-header\">
+        <li>Test</li>
+        <li>Duration</li>
+      </ul>
+      <div class=\"tests\" tabindex=\"0\">
+        [[TEST_SUMMARIES]]
       </div>
-      <iframe id=\"logs-iframe\" src=\"[[LOG_SOURCE]]\" title=\"Run log\" loading=\"lazy\"></iframe>
     </div>
-  </div>
+  """
+
+  /// One destination's log view (#439, A3a).
+  ///
+  /// Its own toolbar and its own frame, and — unlike the shell it replaces —
+  /// its own element ids. Before A3a every run rendered `id="logs"`,
+  /// `id="logs-header"` and `id="logs-iframe"`, so a report built from two
+  /// bundles emitted each of them twice; the page only behaved because the
+  /// duplicates were hidden inside an inactive run. The ids are per
+  /// destination now, which is also what lets the picker switch the log and
+  /// the tree together.
+  static let runLogs = """
+  <div class=\"run-view\" id=\"logs_[[DEVICE_IDENTIFIER]]\">
+      <div class=\"view-toolbar\">
+        <p class=\"view-toolbar-label\">All Messages</p>
+        <div class=\"view-toolbar-trailing\"></div>
+      </div>
+      <iframe class=\"logs-iframe\" src=\"[[LOG_SOURCE]]\" title=\"Run log\" loading=\"lazy\"></iframe>
+    </div>
   """
 
   static let testSummary = """
@@ -2483,20 +2902,35 @@ struct HTMLTemplates
   </div>
   """
 
+  /// The attachment rows (#439, A3a).
+  ///
+  /// One handler for all five kinds, taking the element rather than a path,
+  /// and a `data-kind` written by the template that already knows which kind
+  /// this is. What that replaces is a script that took the path and guessed
+  /// from the characters after the last dot — which cannot work for a `data:`
+  /// URI (inline rendering mode's whole output) and did not work for `.png`
+  /// either, because the extension list was probed with `indexOf(...) > 0` and
+  /// `png` sits at index 0. Clicking the eye always worked; selecting the row
+  /// that held it sent a PNG to the download branch.
+  ///
+  /// `data`, not the handler, still carries the file name, and it is still
+  /// escaped on the way in: `HTMLEscapingTests` pins that no `onclick` may
+  /// carry attachment-derived text, because XML escaping cannot make a value
+  /// safe inside a JavaScript string literal.
   static let screenshot = """
   <p class=\"attachment list-item\">
     <span class=\"icon screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     <span class=\"row-name\">[[NAME]]</span>
-    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showScreenshot(this.getAttribute('data'))\"></span>
+    <button type=\"button\" class=\"preview-button\" aria-label=\"Preview attachment\" data-kind=\"screenshot\" data=\"[[FILENAME]]\" onclick=\"openAttachment(this)\"><span class=\"icon preview-icon\" aria-hidden=\"true\"></span></button>
     <img class=\"screenshot\" src=\"[[SOURCE]]\" id=\"screenshot-[[FILENAME]]\" alt=\"[[NAME]]\" loading=\"lazy\"/>
   </p>
   """
 
   static let gif = """
-  <p class="attachment list-item">
-    <span class="icon screenshot-icon" style="margin-left: [[PADDING]]px"></span>
-    <span class="row-name">[[NAME]]</span>
-  <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showGif(this.getAttribute('data'))\"></span>
+  <p class=\"attachment list-item\">
+    <span class=\"icon screenshot-icon\" style=\"margin-left: [[PADDING]]px\"></span>
+    <span class=\"row-name\">[[NAME]]</span>
+    <button type=\"button\" class=\"preview-button\" aria-label=\"Preview attachment\" data-kind=\"gif\" data=\"[[FILENAME]]\" onclick=\"openAttachment(this)\"><span class=\"icon preview-icon\" aria-hidden=\"true\"></span></button>
     <img class=\"gif\" src=\"[[SOURCE]]\" id=\"gif-[[FILENAME]]\" alt=\"[[NAME]]\" loading=\"lazy\"/>
   </p>
   """
@@ -2505,8 +2939,8 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon video-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     <span class=\"row-name\">[[NAME]]</span>
-    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showVideo(this.getAttribute('data'))\"></span>
-    <video class=\"video\" controls src=\"[[SOURCE]]\" id=\"video-[[FILENAME]]\" preload=\"none\"/>
+    <button type=\"button\" class=\"preview-button\" aria-label=\"Preview attachment\" data-kind=\"video\" data=\"[[FILENAME]]\" onclick=\"openAttachment(this)\"><span class=\"icon preview-icon\" aria-hidden=\"true\"></span></button>
+    <video class=\"video\" controls src=\"[[SOURCE]]\" id=\"video-[[FILENAME]]\" preload=\"none\"></video>
   </p>
   """
 
@@ -2514,7 +2948,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     <span class=\"row-name\">[[NAME]]</span>
-    <span class=\"icon preview-icon\" data=\"[[SOURCE]]\" onclick=\"showText(this.getAttribute('data'))\"></span>
+    <button type=\"button\" class=\"preview-button\" aria-label=\"Preview attachment\" data-kind=\"text\" data=\"[[SOURCE]]\" onclick=\"openAttachment(this)\"><span class=\"icon preview-icon\" aria-hidden=\"true\"></span></button>
   </p>
   """
 
@@ -2522,7 +2956,7 @@ struct HTMLTemplates
   <p class=\"attachment list-item\">
     <span class=\"icon text-icon\" style=\"margin-left: [[PADDING]]px\"></span>
     <span class=\"row-name\">[[NAME]]</span>
-    <span class=\"icon preview-icon\" data=\"[[FILENAME]]\" onclick=\"showLinkAttachment(this.getAttribute('data'))\"></span>
+    <button type=\"button\" class=\"preview-button\" aria-label=\"Preview attachment\" data-kind=\"link\" data=\"[[FILENAME]]\" onclick=\"openAttachment(this)\"><span class=\"icon preview-icon\" aria-hidden=\"true\"></span></button>
     <a class=\"file-attachment-link\" href=\"[[SOURCE]]\" id=\"file-attachment-[[FILENAME]]\"></a>
   </p>
   """

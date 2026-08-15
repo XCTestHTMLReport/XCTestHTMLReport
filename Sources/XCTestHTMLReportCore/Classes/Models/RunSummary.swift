@@ -73,7 +73,7 @@ struct RunSummary {
 
     init(runs: [Run]) {
         tally = runs.map(\.tally).reduce(.empty, +)
-        devices = runs.map(DeviceRow.init)
+        devices = runs.enumerated().map { DeviceRow(run: $1, ordinal: $0 + 1) }
         failures = runs.flatMap(\.failureRows)
         duration = runs.reduce(0) { $0 + $1.duration }
         if runs.contains(where: { $0.status == .failure }) {
@@ -173,16 +173,54 @@ extension RunSummary {
         }
     }
 
-    /// One "Devices & Configurations" row.
+    /// One destination, as the device picker renders it (#439, A3a).
+    ///
+    /// A1 built this to draw a row in the summary band's "Devices &
+    /// Configurations" card. A3a makes the same row the picker's option, which
+    /// is the whole of the "one control, not two" decision: the thing that
+    /// states a destination's pass/fail split and the thing that switches to
+    /// it are now the same element, so they cannot disagree and neither has to
+    /// be found twice.
+    ///
+    /// That costs three fields the card did not need — the element handle to
+    /// switch to, the model to identify the destination by, and the run's own
+    /// outcome for the glyph. All three come from the same `Run`; nothing new
+    /// is read out of a bundle, so the differential is untouched.
     struct DeviceRow {
         let name: String
         let osVersion: String
+        let model: String
+        /// This run's 1-based position in the report.
+        ///
+        /// Rendered only when there is more than one run, and then only
+        /// because a report can hold two runs whose destination fields are
+        /// byte-for-byte equal: merging a bundle with itself, or two bundles
+        /// recorded on one simulator, which is what `ReproducibilityTests`'
+        /// duplicate-bundle case is built out of. Without it the picker offers
+        /// two options a reader cannot tell apart whenever the tallies also
+        /// match. The sidebar's answer was its `Identifier:` line, a path
+        /// digest that differed per run and meant nothing; a position is the
+        /// same fact in a form someone can act on.
+        ///
+        /// Derived from the run's index, not read from a bundle, so it agrees
+        /// across backends by construction — the runs are built in argument
+        /// order on both.
+        let ordinal: Int
+        /// The `IdentifierPath` digest that addresses this run's two per-view
+        /// slices, `tests_<id>` and `logs_<id>`. Opaque by construction, which
+        /// is what makes it safe to interpolate into the option's handler.
+        let identifier: String
+        let status: Status
         let tally: Tally
 
-        init(run: Run) {
+        init(run: Run, ordinal: Int) {
             name = run.runDestination.name
             osVersion = run.runDestination.targetDevice.osVersion
+            model = run.runDestination.targetDevice.model
+            identifier = run.runDestination.targetDevice.uniqueIdentifier
+            status = run.status
             tally = run.tally
+            self.ordinal = ordinal
         }
     }
 
