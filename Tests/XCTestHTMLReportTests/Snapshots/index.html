@@ -342,13 +342,29 @@
     flex: none;
   }
 
-  /* The title band: identity on the left, which run on the right. */
+  /* The title band: identity on the left, which run on the right.
+
+     Three items share one row, and which of them gives way when they do not
+     all fit is a decision rather than a default. Left to the defaults it
+     was the wrong one twice over: a flex item shrinks, but its automatic
+     minimum refuses to go below its own content, so the two items made of
+     text — which can elide — would not shrink at all, while the glyph, the
+     one item with no content to protect it, was squeezed from 24px to
+     nothing at 375px and the row still overflowed a `body` that sets
+     `overflow: hidden`. Stated outright below and on `.device-picker`: the
+     glyph keeps its size, the product name keeps its length, and the
+     picker's summary is the one that truncates — which is what the
+     narrow-width note further down already promised a reader. */
   #title {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
     border-bottom: 1px solid var(--color-border-light);
     padding: 6px var(--space-sm);
+  }
+
+  #title > .icon {
+    flex: none;
   }
 
   #title h1 {
@@ -377,6 +393,12 @@
     margin-left: auto;
     position: relative;
     font-size: var(--font-size-sm);
+    /* The cap below is a cap, not a size: a destination shorter than it
+       leaves the control at its content width. `min-width: 0` is what makes
+       the cap reachable at all — without it the automatic minimum holds the
+       control at the width of a name that does not wrap, and the max-width
+       never binds because the box never gets asked to shrink. */
+    min-width: 0;
   }
 
   .device-picker > summary {
@@ -413,7 +435,16 @@
   }
 
   /* The one line that has to survive a narrow window: it says which run is
-     on screen, so it truncates rather than wraps or pushes. */
+     on screen, so it truncates rather than wraps or pushes.
+
+     These three rules are not enough on their own, and the shape of what
+     was missing is worth stating: they let this span elide, but nothing was
+     ever asking it to. The `<details>` above it is a flex item whose
+     automatic minimum held it at the width of a name that does not wrap, so
+     the whole control sat off the side of a `body` that cannot scroll —
+     `text-overflow` had no overflow to work with. `overflow: hidden` here
+     is what waives this span's own automatic minimum; `.device-picker`'s
+     `min-width: 0` is what waives the one that mattered. */
   .picker-current {
     overflow: hidden;
     white-space: nowrap;
@@ -2481,6 +2512,16 @@
 
     // The selection belonged to the run that just left the layout, and a
     // `display: none` row cannot be scrolled to or read out.
+    //
+    // Both halves of it have to go. Dropping only the variable leaves the
+    // class on the outgoing row, which keeps painting itself selected while
+    // it is hidden and comes back still painted when the reader switches
+    // home — and since the script no longer holds that row, selecting a
+    // second one adds a fill rather than moving it: two rows wearing the
+    // selection at once, one of which the sheet is not answering for.
+    if (selectedListItem) {
+      selectedListItem.classList.remove("selected");
+    }
     selectedListItem = null;
     closeAttachment();
 
@@ -2493,8 +2534,27 @@
         pickerCurrent.textContent = label.textContent.trim();
       }
     }
-    if (devicePicker) {
+    if (devicePicker && devicePicker.open) {
+      // Closing the panel takes the option the reader just activated out of
+      // the layout, and a browser answers focus inside a hidden element by
+      // dropping it to <body> — the same failure `showView` guards against
+      // for the view tabs, and the reason Escape hands focus back to the
+      // summary below. The choose path lands in the same place, for three
+      // reasons: it is the control the reader opened, it is still in the
+      // layout, and it has just been renamed to the destination they chose,
+      // so what receives focus states the outcome. Landing in the switched
+      // view instead would move a reader into a region they did not ask to
+      // enter — picking a destination deliberately does not change which
+      // view is showing.
+      //
+      // Guarded on holding focus, because `selectDevice` also runs at boot
+      // and from a digest jump, where taking focus would steal it from the
+      // document's start or from the row just jumped to.
+      var pickerHeldFocus = devicePicker.contains(document.activeElement);
       devicePicker.open = false;
+      if (pickerHeldFocus) {
+        devicePicker.querySelector('summary').focus();
+      }
     }
   }
 

@@ -311,3 +311,78 @@ final class HTMLEscapingTests: XCTestCase {
         )
     }
 }
+
+/// Order, not escaping (#439, A3a review).
+///
+/// A separate extension because it pins a different failure: every value in
+/// the chain below is correctly escaped and still changes the markup around
+/// it, because a template filled by a chain of replacements fills the
+/// placeholders an earlier replacement *inserted* as readily as the ones the
+/// template author wrote.
+extension HTMLEscapingTests {
+    /// Escaping is not the only way a value can change the markup around it.
+    /// A template filled by a chain of `replacingOccurrences` fills the
+    /// placeholders an earlier replacement *inserted* just as readily as the
+    /// ones the template author wrote, so a destination named after a
+    /// placeholder is a second injection surface — one XML escaping cannot
+    /// see, because `[[` and `]]` are ordinary characters.
+    ///
+    /// It is not reachable as XSS: every value in this chain is either an
+    /// opaque digest or escaped leaf text. What it did before the A3a review
+    /// was corrupt the reading — a destination called `[[DEVICE_IDENTIFIER]]`
+    /// rendered a 32-character digest as its own name, and one called
+    /// `[[DEVICE_OPTIONS]]` pulled the picker's whole panel of buttons into
+    /// the collapsed summary's one-line span. Both orders are now the other
+    /// way round; this is what holds them there.
+    func testADestinationNamedAfterAPlaceholderIsNotFilledByIt() throws {
+        let html = placeholderNamedRunHTML()
+        let picker = try element("details", id: "device-picker", in: html)
+        let name = "Device [[DEVICE_IDENTIFIER]] and [[DEVICE_OPTIONS]]"
+        let label = "\(name) <span class=\"device-row-os\">1.0</span>"
+
+        XCTAssertTrue(
+            picker.contains(
+                "<span class=\"picker-current\" id=\"device-picker-current\">\(label)</span>"
+            ),
+            "the collapsed summary must hold the destination's own name — not a "
+                + "digest standing in for part of it, and not the panel of "
+                + "options that name spells"
+        )
+        XCTAssertTrue(
+            picker.contains("<span class=\"device-row-name\">\(label)</span>"),
+            "and the option must read the same way"
+        )
+        XCTAssertTrue(
+            picker.contains("Model [[DEVICE_TALLY]]"),
+            "the model is the other test-plan string in the chain"
+        )
+        XCTAssertEqual(
+            picker.components(separatedBy: "<button").count - 1, 1,
+            "one run is one option — a destination that names a placeholder "
+                + "must not be able to put a second control in the picker"
+        )
+    }
+
+    /// A run whose destination fields are the literal text of the placeholders
+    /// that render them.
+    private func placeholderNamedRunHTML() -> String {
+        let run = ParsedRun(
+            destination: ParsedDestination(
+                displayName: "Device [[DEVICE_IDENTIFIER]] and [[DEVICE_OPTIONS]]",
+                deviceIdentifier: "00000000-0000-0000-0000-000000000000",
+                modelName: "Model [[DEVICE_TALLY]]",
+                operatingSystemVersion: "1.0"
+            ),
+            logReference: SyntheticResult.logReference,
+            testables: SyntheticResult.parsedRun.testables
+        )
+        return Summary(
+            parsedRuns: [run],
+            payloads: SyntheticResult.payloads,
+            renderingMode: .linking,
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5,
+            bundleNames: ["Synthetic"]
+        ).generatedHtmlReport()
+    }
+}

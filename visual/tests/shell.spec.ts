@@ -102,6 +102,50 @@ test('the picker still switches destination from the Logs view', async ({ page }
     .toBeHidden();
 });
 
+// Switching destination abandons the selection, because the row it named goes
+// `display: none` with the run it belongs to. Abandoning it in the script and
+// leaving it painted in the page are different things, and the difference only
+// shows on the way back: the hidden row keeps its fill, returns still wearing
+// it, and — since the script no longer holds it — the next row selected gets a
+// second fill rather than moving the first. Two rows then claim a selection the
+// sheet is answering for one of.
+test('a destination round-trip leaves exactly one row highlighted', async ({ page }) => {
+  await page.goto(multiURL);
+
+  const [first, second] = await page.locator('.device-option')
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-device')));
+  const pick = async (device: string | null) => {
+    await page.locator('#device-picker summary').click();
+    await page.locator(`.device-option[data-device="${device}"]`).click();
+  };
+  // Document-wide, not scoped to the active run: a stale fill left behind in a
+  // hidden run is exactly what a scoped count cannot see.
+  const highlighted = page.locator('.list-item.selected');
+  const rows = page.locator('#view-tests .run-view.active .test-summary > p.list-item');
+
+  await rows.first().click();
+  await expect(highlighted, 'clicking a row selects it').toHaveCount(1);
+
+  await pick(second);
+  await expect(
+    highlighted,
+    'the selection belongs to the run that left, so nothing may still be painted',
+  ).toHaveCount(0);
+
+  await pick(first);
+  await expect(
+    highlighted,
+    'and it must not come back with the run it was abandoned in',
+  ).toHaveCount(0);
+
+  await rows.nth(1).click();
+  await expect(
+    highlighted,
+    'selecting after a round-trip must move the highlight, not add a second one',
+  ).toHaveCount(1);
+  await expect(highlighted.first()).toHaveText(await rows.nth(1).innerText());
+});
+
 test('a digest jump into another destination brings the picker with it', async ({ page }) => {
   await page.goto(multiURL);
 
@@ -231,6 +275,91 @@ test('nothing attachment-shaped exists while the Logs view is showing', async ({
   await expect(page.locator('#view-logs .preview-button')).toHaveCount(0);
 });
 
+// ---- 375px --------------------------------------------------------------
+
+// The length of the destination that found this: "iPhone 17 Pro Max 26.2 Run 1"
+// — a stock simulator on a report merged from two bundles, which is the
+// ordinary case, not a contrived one. Characters rather than pixels because
+// this suite runs on macOS locally and on Linux in CI and the two do not share
+// a font; what has to be pinned is that the name under test is as long as a
+// real one, and a count says that in a unit both platforms agree on.
+const REAL_DESTINATION = 'iPhone 17 Pro Max 26.2 Run 1';
+
+// `body` sets `overflow: hidden`, so a title band that does not fit is not
+// scrolled to — it is cut off, chevron and border and the tail of the name
+// with it. The rule that was supposed to prevent that is `text-overflow:
+// ellipsis` on the summary's name, and it did nothing: a flex item's automatic
+// minimum is its content's, a `nowrap` string's min-content is the whole
+// string, so nothing in the chain ever shrank and there was no overflow for
+// the ellipsis to elide.
+//
+// The gate this replaces could not have caught it. It measured the single-run
+// fixture, whose destination is short enough that the row fit — by squeezing
+// the run's status glyph from 24px to 11px, which is its own defect and is why
+// the glyph is measured below too. A short name hid a clip that every real
+// report shows, so this test states the length it needs and fails if the
+// fixture stops providing it.
+test(`the title band fits a 375px viewport with a ${REAL_DESTINATION.length}-character `
+  + 'destination', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto(multiURL);
+
+  // The longer of the fixture's two destinations, which is also the one a
+  // reader arrives at by switching — the picker is at its widest after use.
+  const second = (await page.locator('.device-option').nth(1).getAttribute('data-device'))!;
+  await page.locator('#device-picker summary').click();
+  await page.locator(`.device-option[data-device="${second}"]`).click();
+
+  const band = await page.evaluate(() => {
+    const right = (selector: string) =>
+      document.querySelector(selector)!.getBoundingClientRect().right;
+    const title = document.getElementById('title')!;
+    const current = document.getElementById('device-picker-current')!;
+    const glyph = document.querySelector('#title > .icon')!.getBoundingClientRect();
+    return {
+      viewport: document.documentElement.clientWidth,
+      body: document.body.scrollWidth,
+      titleOverflow: title.scrollWidth - title.clientWidth,
+      summaryRight: right('#device-picker > summary'),
+      chevronRight: right('.picker-chevron'),
+      name: current.textContent!.trim(),
+      truncated: current.scrollWidth > current.clientWidth,
+      glyph: { width: glyph.width, height: glyph.height },
+    };
+  });
+
+  // The precondition, in the pattern the axe gate uses: a name short enough to
+  // fit is a name this test passes for free, and it would say nothing about
+  // the clip. This is the assertion that keeps the fixture honest.
+  expect(
+    band.name.length,
+    `the fixture's destination must be at least as long as a real one `
+      + `("${REAL_DESTINATION}"), or this gate is measuring a name that fits — got "${band.name}"`,
+  ).toBeGreaterThanOrEqual(REAL_DESTINATION.length);
+
+  expect(band.body, 'nothing may sit sideways of a viewport that cannot scroll')
+    .toBeLessThanOrEqual(band.viewport);
+  expect(band.titleOverflow, 'the title band must fit the width it is given')
+    .toBeLessThanOrEqual(0);
+  expect(
+    band.summaryRight,
+    'the picker summary must end on screen — its border says where the control stops',
+  ).toBeLessThanOrEqual(band.viewport);
+  expect(
+    band.chevronRight,
+    'and the chevron must be on screen, since it is what says the control opens',
+  ).toBeLessThanOrEqual(band.viewport);
+  expect(
+    band.glyph.width,
+    'the run glyph must keep its shape rather than absorb the squeeze for everything else',
+  ).toBeCloseTo(band.glyph.height, 0);
+  expect(
+    band.truncated,
+    'and the name must give way by eliding: with a real destination at this '
+      + 'width its tail belongs under an ellipsis, not off the side of the screen',
+  ).toBe(true);
+});
+
 // ---- Keyboard -----------------------------------------------------------
 
 test('the view tabs are a keyboard-navigable tablist', async ({ page }) => {
@@ -269,18 +398,50 @@ test('the status filters are a keyboard-navigable radiogroup', async ({ page }) 
   expect(await rows(), 'and choosing must actually filter').toBeLessThan(all);
 });
 
-test('the picker opens and closes from the keyboard', async ({ page }) => {
-  await page.goto(reportURL);
+// Both ways out of the panel, on the fixture where choosing means something:
+// Escape, and choosing an option. Each closes a `<details>` while focus is
+// inside it, which the browser answers by dropping focus to `<body>` — the
+// same thing `showView` guards against for the view tabs, and a keyboard
+// reader's next Tab restarts from the top of the document.
+test('the picker opens, chooses and closes from the keyboard', async ({ page }) => {
+  await page.goto(multiURL);
 
   const summary = page.locator('#device-picker summary');
+  const options = page.locator('.device-option');
   await summary.focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('#device-picker')).toHaveAttribute('open', '');
-  await expect(
-    page.locator('.device-option').first(),
-    'the options are real buttons, so Tab reaches them',
-  ).toBeEnabled();
 
+  // Tab, not `focus()`: the claim is that the options are real buttons in the
+  // document's own order, so a keyboard reaches them without a widget.
+  await page.keyboard.press('Tab');
+  await expect(options.first(), 'Tab must step into the panel').toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(options.nth(1), 'and on through it').toBeFocused();
+
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#device-picker')).not.toHaveAttribute('open', '');
+  await expect(
+    page.locator('#device-picker-current'),
+    'the destination must actually have switched',
+  ).toHaveText('Synthetic Device Two 2.0 Run 2');
+
+  // Settled, because focus moves out of a hidden element over a frame: an
+  // immediate read still sees the option and passes for the wrong reason.
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
+  expect(
+    await page.evaluate(() => document.activeElement?.tagName),
+    'choosing must not drop a keyboard reader onto <body>',
+  ).not.toBe('BODY');
+  await expect(
+    summary,
+    'the summary is where the reader was and it now names what they chose',
+  ).toBeFocused();
+
+  await summary.focus();
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Escape');
   await expect(page.locator('#device-picker')).not.toHaveAttribute('open', '');
   await expect(summary, 'Escape must give focus back to the control it closed')

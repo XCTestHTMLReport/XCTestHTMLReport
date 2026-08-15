@@ -46,15 +46,21 @@ extension RunSummary: HTML {
         // need it badly — see `DeviceRow.ordinal`. Decided once, here, so every
         // option and the collapsed summary agree about whether they carry one.
         let numbered = devices.count > 1
+        // Options first, current second — see `deviceOption` for the rule. The
+        // other order let a destination named `[[DEVICE_OPTIONS]]` pull the
+        // whole panel of buttons into the collapsed summary's one-line span.
+        // This way round the only exposure left is a destination named
+        // `[[CURRENT_DEVICE]]`, which gets a copy of the current label inside
+        // an option: text where the other was controls.
         return HTMLTemplates.devicePicker
+            .replacingOccurrences(
+                of: "[[DEVICE_OPTIONS]]",
+                with: devices.map { Self.deviceOption($0, numbered: numbered) }.joined()
+            )
             .replacingOccurrences(
                 of: "[[CURRENT_DEVICE]]",
                 with: devices.first.map { Self.destinationLabel($0, numbered: numbered) }
                     ?? "No device"
-            )
-            .replacingOccurrences(
-                of: "[[DEVICE_OPTIONS]]",
-                with: devices.map { Self.deviceOption($0, numbered: numbered) }.joined()
             )
     }
 
@@ -127,10 +133,28 @@ extension RunSummary: HTML {
     /// there, in `data-device` and in the ids it addresses, where it is
     /// machinery rather than content.
     private static func deviceOption(_ device: DeviceRow, numbered: Bool) -> String {
+        // Order is a rule here, not a style: a chain of replacements fills
+        // placeholders that earlier replacements *inserted* as readily as the
+        // ones the template author wrote, so a value ends up protected by
+        // going in after every placeholder it could contain the literal text
+        // of — never before. This ran the other way round until the A3a
+        // review: the identifier was substituted last "so a model or a device
+        // name containing this placeholder could not be filled by it", which
+        // is exactly backwards, since by then the name is already in the
+        // string and its `[[DEVICE_IDENTIFIER]]` is a placeholder like any
+        // other. Nothing unsafe reached the page — the digest is opaque hex
+        // and every leaf is escaped before it is inserted — but a destination
+        // named after the placeholder rendered a digest in its own name.
+        //
+        // The identifier goes first because it is the one value here that is
+        // machine-derived: a 32-character digest that cannot contain a
+        // placeholder, so nothing it inserts can be filled by what follows.
+        // Of the two test-plan strings, the label goes ahead of the model
+        // rather than the other way round: neither can be protected from the
+        // other, and the worse of the two exposures is the one that inserts
+        // *markup* into leaf text, which is the label.
         HTMLTemplates.deviceOption
-            .replacingOccurrences(
-                of: "[[DEVICE_LABEL]]", with: destinationLabel(device, numbered: numbered)
-            )
+            .replacingOccurrences(of: "[[DEVICE_IDENTIFIER]]", with: device.identifier)
             .replacingOccurrences(
                 of: "[[DEVICE_STATUS_CLASS]]", with: iconClass(for: device.status)
             )
@@ -140,11 +164,11 @@ extension RunSummary: HTML {
                 with: spokenTally(device.tally).stringByEscapingXMLChars
             )
             .replacingOccurrences(
+                of: "[[DEVICE_LABEL]]", with: destinationLabel(device, numbered: numbered)
+            )
+            .replacingOccurrences(
                 of: "[[DEVICE_MODEL]]", with: device.model.stringByEscapingXMLChars
             )
-            // Last, so a model or a device name that happened to contain the
-            // literal text of this placeholder could not be filled by it.
-            .replacingOccurrences(of: "[[DEVICE_IDENTIFIER]]", with: device.identifier)
     }
 
     /// The bar's rects, in a 0–100 user-space viewBox so a segment's width is
