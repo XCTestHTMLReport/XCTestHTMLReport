@@ -11,6 +11,17 @@ on:
 permissions:
   contents: read
 
+# mise.toml's postinstall hook installs the git pre-commit hook, which is
+# meaningless on an ephemeral runner. Worse, these jobs install only the tools
+# they need, so `hk` is absent and the hook exits 127; mise treats that as a
+# warning and carries on, but a warning present in every run is a warning
+# nobody reads, and it would mask a postinstall failure that did matter.
+# `--no-hooks` is a global mise flag rather than a `mise install` option, so it
+# cannot be passed through the action's install_args -- this is the env form of
+# the same switch.
+env:
+  MISE_NO_HOOKS: 1
+
 jobs:
   shell:
     runs-on: ubuntu-latest
