@@ -1,0 +1,46 @@
+/// The pre-commit hook: the checks CI runs, on staged files only.
+///
+/// Installed by `mise install` (see the [hooks] block in mise.toml) rather
+/// than by cloning -- a repository that silently takes over your git config is
+/// worse than one that asks. Skip a single commit with `git commit --no-verify`.
+///
+/// The version pinned in the two lines below tracks the `hk` entry in
+/// mise.toml. The three move together.
+amends "package://github.com/jdx/hk/releases/download/v1.55.0/hk@1.55.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.55.0/hk@1.55.0#/Builtins.pkl"
+
+hooks {
+    ["pre-commit"] {
+        // Check, never fix. hk can run linters in their fixing mode and stash
+        // unstaged changes around it, but a hook that rewrites files under you
+        // produces commits whose contents you did not read.
+        fix = false
+
+        steps {
+            ["shellcheck"] = Builtins.shellcheck
+
+            // No builtin ships for SwiftFormat, so this step is spelled out.
+            // --lint reports rather than reformats, for the reason above.
+            ["swiftformat"] {
+                glob = List("*.swift")
+                check = "swiftformat --lint {{files}}"
+            }
+
+            // Two flags carry weight here. --force-exclude, because SwiftLint
+            // ignores its config's `excluded:` list for paths passed
+            // explicitly, and without it the hook would report violations that
+            // CI does not.
+            //
+            // And `exclude`, which mirrors .swiftlint.yml:22: SwiftLint exits
+            // nonzero with "No lintable files found" when every path it is
+            // handed is excluded, so a commit touching only HTMLTemplates.swift
+            // would fail on a file nobody lints. Skipping the step outright is
+            // safe -- zero lintable files means zero possible violations. Keep
+            // this list and .swiftlint.yml in step.
+            ["swiftlint"] = (Builtins.swiftlint) {
+                check = "swiftlint lint --quiet --force-exclude {{files}}"
+                exclude = List("**/HTMLTemplates.swift")
+            }
+        }
+    }
+}
