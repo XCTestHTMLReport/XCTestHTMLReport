@@ -178,14 +178,18 @@ public struct ParsedTestCase {
     ///
     /// So this converges the readers rather than reading something new: the
     /// fact was in both bundles and one of them was throwing it away.
-    /// `DifferentialTests.testExecutionCountsMatchAcrossBackends` is what holds
+    /// `DifferentialTests.testExecutionCountsAgreeAcrossBackends` is what holds
     /// them equal, and `1` is the floor — a test that ran once.
     ///
     /// A test that is *both* parameterized and repeated is not exercised by
-    /// any fixture, and the two readers derive it differently there (legacy
-    /// counts the product, modern the larger of the two); nothing in the
-    /// report depends on that shape today, and closing it needs a fixture
-    /// first.
+    /// any fixture, and what either reader derives for it is not knowable from
+    /// here: legacy's answer is however many sibling entries that format
+    /// happens to emit for the combination, and modern's turns on where the
+    /// `Repetition` nodes sit — `R` if they nest under `Arguments`, `max(R, A)`
+    /// if the two are siblings. Nothing in the report depends on that shape
+    /// today, and `testExecutionCountsAgreeAcrossBackends` is the gate that
+    /// would fail and name the identifier if a bundle ever carried one; closing
+    /// it needs that fixture first.
     public let executionCount: Int
     public let iterations: [ParsedIteration]
 }
