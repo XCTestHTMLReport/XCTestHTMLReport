@@ -153,6 +153,13 @@ struct HTMLTemplates
          Safari versions that predate it, then named fallbacks, and a
          generic family last so the chain can always terminate. */
       --font-family-base: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Helvetica, Arial, sans-serif;
+      /* The run log is the one thing in the report that is a *document* rather
+         than a layout, and its structure is columns of `-------- title
+         --------` rules and indentation — which only a monospace face keeps
+         aligned. `ui-monospace` first, so it is the platform's own coding
+         face where there is one, with the named fallbacks for browsers that
+         do not know the generic yet (#439, A3b). */
+      --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       --font-size-xs: 11px;
       --font-size-sm: 12px;
       --font-size-md: 13px;
@@ -787,7 +794,7 @@ struct HTMLTemplates
       overflow: auto;
       background-color: var(--color-surface);
       color: var(--color-text-primary);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-family: var(--font-family-mono);
       font-size: var(--font-size-xs);
       line-height: 1.5;
       white-space: pre-wrap;
