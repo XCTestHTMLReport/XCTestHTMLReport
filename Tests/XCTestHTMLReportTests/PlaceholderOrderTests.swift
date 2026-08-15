@@ -79,9 +79,17 @@ final class PlaceholderOrderTests: XCTestCase {
     func testTheOneReachablePlaceholderCanStillOnlyInsertText() {
         let html = currentDeviceNamedRunHTML()
 
+        // Scoped to the span the model lands in, not merely present somewhere in
+        // the document: this is the precondition, and a precondition that a
+        // stray copy elsewhere could satisfy is not one. It asserts the fixture
+        // arrived, deliberately not what the placeholder after it became — that
+        // is the behaviour under test, and pinning today's answer to it would
+        // make this test fail the day the seam stops rescanning what it
+        // inserted, which is the outcome it is arguing for.
         XCTAssertTrue(
-            html.contains("Model Two"),
-            "the fixture's model must reach the picker, or nothing here is under test"
+            html.contains("<span class=\"device-option-meta\">Model Two"),
+            "the fixture's model must reach the picker's option, or nothing here "
+                + "is under test"
         )
         XCTAssertEqual(
             occurrences(of: "class=\"device-option\"", in: html), 1,
