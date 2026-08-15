@@ -118,6 +118,34 @@ test('the name filter narrows the tree and composes with the pills', async ({ pa
   expect(passing, 'which still hides the failing rows').toBeLessThan(all);
 });
 
+// A filter over a tree has to read the tree, not only its leaves: typing the
+// name of a suite that is on screen must keep that suite and the tests inside
+// it, which is what the same query does in Xcode's outline. Matching leaves
+// alone would empty the pane on a name the reader can see.
+test('the name filter matches suite names too', async ({ page }) => {
+  await page.goto(reportURL);
+
+  const scope = '#view-tests .run-view.active';
+  const suite = page.locator(`${scope} .test-summary-group`).first();
+  const suiteName = (await suite.locator('.row-name').first().textContent())!.trim();
+  expect(suiteName.length, 'the fixture must name its suites').toBeGreaterThan(0);
+
+  const rowsUnderSuite = await suite.locator('.test-summary').count();
+  expect(rowsUnderSuite, 'and put tests inside them').toBeGreaterThan(0);
+  // The precondition that makes this a test of ancestry rather than of
+  // substring matching: no test row may carry the suite's name itself.
+  const selfNamed = await page.locator(`${scope} .test-summary > p.list-item > .row-name`)
+    .evaluateAll((els, name) => els.filter((el) => el.textContent!.includes(name)).length, suiteName);
+  expect(selfNamed, 'no row may match the suite name on its own').toBe(0);
+
+  await page.locator(`${scope} .tests-filter`).fill(suiteName);
+  await expect(suite, 'the suite the reader named must stay').toBeVisible();
+  expect(
+    await page.locator(`${scope} .test-summary:visible`).count(),
+    'and bring the tests inside it',
+  ).toBe(rowsUnderSuite);
+});
+
 // A suite whose every row a filter hid must go with them, however deep it is.
 // The pass A3b replaces bailed out on any group holding a sub-group, so the
 // legacy backend's two wrapper levels — "Selected tests" and

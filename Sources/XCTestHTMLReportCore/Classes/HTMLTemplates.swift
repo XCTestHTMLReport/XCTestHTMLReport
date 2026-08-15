@@ -2562,6 +2562,16 @@ struct HTMLTemplates
     }
 
     // A group's visibility is otherwise derived from its rows, below.
+    //
+    // The name is matched against the row *and every suite above it*, because
+    // a filter over a tree that only ever reads its leaves is one a reader
+    // finds out about the hard way: typing the name of a suite they can see
+    // would empty the pane. Matching an ancestor keeps that suite and the
+    // tests inside it, which is what the same query does in Xcode's outline.
+    //
+    // The status is a leaf question either way — a suite's own status is
+    // folded from its children, so filtering on it would put rows of every
+    // outcome under a heading claiming one.
     function rowMatches(row, status, query) {
       if (status !== 'all' && !row.classList.contains(status)) {
         return false;
@@ -2569,8 +2579,21 @@ struct HTMLTemplates
       if (!query) {
         return true;
       }
-      var name = row.querySelector('.row-name');
-      return !!name && name.textContent.toLowerCase().indexOf(query) >= 0;
+      var node = row;
+      while (node && !node.classList.contains('tests')) {
+        if (node.classList.contains('test-summary')
+          || node.classList.contains('test-summary-group')) {
+          // The first `.row-name` inside a row is its own: a suite's heading
+          // precedes its children, and a retried test's precedes its
+          // iterations.
+          var name = node.querySelector('.row-name');
+          if (name && name.textContent.toLowerCase().indexOf(query) >= 0) {
+            return true;
+          }
+        }
+        node = node.parentElement;
+      }
+      return false;
     }
 
     // How many times the run executed what a row stands for: the `data-runs`
