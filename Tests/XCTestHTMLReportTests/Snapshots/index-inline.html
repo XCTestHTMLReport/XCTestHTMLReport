@@ -146,6 +146,13 @@
        Safari versions that predate it, then named fallbacks, and a
        generic family last so the chain can always terminate. */
     --font-family-base: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    /* The run log is the one thing in the report that is a *document* rather
+       than a layout, and its structure is columns of `-------- title
+       --------` rules and indentation — which only a monospace face keeps
+       aligned. `ui-monospace` first, so it is the platform's own coding
+       face where there is one, with the named fallbacks for browsers that
+       do not know the generic yet (#439, A3b). */
+    --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --font-size-xs: 11px;
     --font-size-sm: 12px;
     --font-size-md: 13px;
@@ -626,9 +633,8 @@
   }
 
   /* The per-view toolbar. Left group is the view's own controls; the
-     trailing group is deliberately empty and deliberately present — it is
-     where A3b's text filter and its dropdowns land (#460), and reserving it
-     here is what keeps that from being a re-layout. */
+     trailing group holds the Filter field, which is where A3a reserved the
+     slot for it and where Xcode's own test report puts one. */
   .view-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -648,23 +654,63 @@
     gap: var(--space-xs);
   }
 
-  /* A label, not a control. The Logs view has one scope and no way to change
-     it, and the shipped markup said otherwise: `<li class="selected">All
-     Messages</li>` in a `toggle-toolbar`, wearing a selected pill's fill and
-     hover with nothing bound to it. Dressing an inert string as the chosen
-     one of several options is the kind of thing a keyboard user finds out
-     the hard way. Real log filters are #460's, and land in the trailing slot
-     beside this. */
-  .view-toolbar-label {
+  /* A count, and a live one (#439, A3b).
+
+     This is the slot A3a's inert "All Messages" label occupied. That label
+     was a placeholder for a control the Logs view could not have — nothing
+     in the page can filter a document on another origin — and the honest
+     replacement is not a better-dressed label but a real filter beside a
+     figure that answers to it: `23 executions` on Tests, `312 lines` on
+     Logs, both recomputed whenever a filter changes what is showing.
+
+     Styled as text rather than as a pill on purpose: the pills beside it are
+     controls, and something that looks like the chosen one of several
+     options while being unclickable is exactly what the label it replaces
+     got wrong. */
+  .view-toolbar-count {
     padding: 2px var(--space-sm);
     color: var(--color-text-muted);
     font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The Filter field. One control shape for both views, because they are the
+     same question asked of different content — which rows, which lines.
+
+     `type="search"` for the browser's own clear affordance and for the
+     Escape-clears behaviour a reader already has in every other search
+     field; nothing here re-implements either. The width is capped rather
+     than fixed so the field gives way first at 375px, where the pills are
+     what a reader cannot do without. */
+  .view-filter {
+    width: 100%;
+    max-width: 180px;
+    min-width: 0;
+    padding: 2px var(--space-sm);
+    border: 1px solid var(--color-border-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font: inherit;
+    font-size: var(--font-size-xs);
+  }
+
+  .view-filter::placeholder {
+    color: var(--color-text-muted);
+    /* Chrome renders a placeholder at the UA's own opacity, which would put
+       an already-muted token below the 4.5:1 the token was sized for. */
+    opacity: 1;
+  }
+
+  .view-filter:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
   }
 
   /* The status filters. Buttons in a radiogroup, because they are mutually
      exclusive and only one can be in effect — `aria-checked` says which,
-     where the old `<li class="selected">` said nothing at all. A3b upgrades
-     what they filter; the five functions behind them are unchanged. */
+     where the old `<li class="selected">` said nothing at all. A3b renders
+     them from the run's own tally: see `Run.filterPillsHTML`. */
   .filter-pills {
     display: flex;
     flex-wrap: wrap;
@@ -724,10 +770,34 @@
     margin-left: auto;
   }
 
-  .logs-iframe {
-    border: 0;
+  /* The run log (#439, A3b), in the document rather than behind an iframe.
+
+     `white-space: pre-wrap` rather than `pre`: the log carries indented
+     section headers whose leading tabs are the structure, so the whitespace
+     has to survive — but a line that runs past the window has to wrap rather
+     than push the page sideways, which is what `pre` would do inside a
+     `body` that is `overflow: hidden`. `overflow-wrap: anywhere` covers the
+     one shape wrapping cannot otherwise break: the absolute paths the log
+     prints, which have no spaces in them. */
+  .log-body {
     flex: 1;
     min-height: 0;
+    margin: 0;
+    padding: var(--space-sm);
+    overflow: auto;
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    tab-size: 2;
+  }
+
+  .log-body:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
   }
 
   /* Icons (#439).
@@ -1909,8 +1979,8 @@
                 <span class="icon device-result failure"></span>
                 <span class="device-row-name">Synthetic Device <span class="device-row-os">1.0</span></span>
               </span>
-              <svg class="segbar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="status-tint-succeeded" x="0.0000" y="0" width="20.0000" height="8"></rect><rect class="status-tint-failed" x="20.0000" y="0" width="20.0000" height="8"></rect><rect class="status-tint-skipped" x="40.0000" y="0" width="20.0000" height="8"></rect><rect class="status-tint-mixed" x="60.0000" y="0" width="20.0000" height="8"></rect><rect class="status-tint-expected-failure" x="80.0000" y="0" width="20.0000" height="8"></rect></svg>
-              <span class="device-row-tally">1 passed, 1 failed, 1 skipped, 1 mixed, 1 expected failure</span>
+              <svg class="segbar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect class="status-tint-succeeded" x="0.0000" y="0" width="33.3333" height="8"></rect><rect class="status-tint-failed" x="33.3333" y="0" width="16.6667" height="8"></rect><rect class="status-tint-skipped" x="50.0000" y="0" width="16.6667" height="8"></rect><rect class="status-tint-mixed" x="66.6667" y="0" width="16.6667" height="8"></rect><rect class="status-tint-expected-failure" x="83.3333" y="0" width="16.6667" height="8"></rect></svg>
+              <span class="device-row-tally">2 passed, 1 failed, 1 skipped, 1 mixed, 1 expected failure</span>
               <span class="device-option-meta">Synthetic Model</span>
             </button>
           </div>
@@ -1921,18 +1991,18 @@
         <h2 id="run-summary-heading">
           <span class="icon failure"></span>
           Tests
-          <span class="summary-meta">Duration <span class="summary-duration">(9.00s)</span> &middot; 1 device</span>
+          <span class="summary-meta">Duration <span class="summary-duration">(10.50s)</span> &middot; 1 device</span>
         </h2>
         <div class="summary-grid">
           <div class="donut">
             <svg class="donut-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
               <circle class="donut-track" cx="60" cy="60" r="48"></circle>
-              <circle class="donut-seg status-tint-succeeded" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="0.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-failed" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="-20.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-skipped" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="-40.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-mixed" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="-60.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-expected-failure" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="20.0000 80.0000" stroke-dashoffset="-80.0000" transform="rotate(-90 60 60)"></circle>
+              <circle class="donut-seg status-tint-succeeded" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="33.3333 66.6667" stroke-dashoffset="0.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-failed" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="16.6667 83.3333" stroke-dashoffset="-33.3333" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-skipped" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="16.6667 83.3333" stroke-dashoffset="-50.0000" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-mixed" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="16.6667 83.3333" stroke-dashoffset="-66.6667" transform="rotate(-90 60 60)"></circle><circle class="donut-seg status-tint-expected-failure" cx="60" cy="60" r="48" pathLength="100" stroke-dasharray="16.6667 83.3333" stroke-dashoffset="-83.3333" transform="rotate(-90 60 60)"></circle>
             </svg>
-            <span class="donut-center"><strong>5</strong><small>Tests</small></span>
+            <span class="donut-center"><strong>6</strong><small>Tests</small></span>
           </div>
           <ul class="summary-legend">
-            <li><span class="legend-swatch status-tint-succeeded"></span>Passed <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-failed"></span>Failed <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-skipped"></span>Skipped <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-mixed"></span>Mixed <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-expected-failure"></span>Expected failures <span class="legend-count">1</span></li>
+            <li><span class="legend-swatch status-tint-succeeded"></span>Passed <span class="legend-count">2</span></li><li><span class="legend-swatch status-tint-failed"></span>Failed <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-skipped"></span>Skipped <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-mixed"></span>Mixed <span class="legend-count">1</span></li><li><span class="legend-swatch status-tint-expected-failure"></span>Expected failures <span class="legend-count">1</span></li>
           </ul>
         </div>
       </div>
@@ -1961,13 +2031,17 @@
         <div class="run-view" id="tests_42230e298d9d9e832714ebad20e680c6">
     <div class="view-toolbar">
       <div class="filter-pills" role="radiogroup" aria-label="Filter tests by status">
-        <button type="button" role="radio" class="pill" aria-checked="true" tabindex="0" onclick="showAllScenarios(this);">All (5)</button>
-        <button type="button" role="radio" class="pill" aria-checked="false" tabindex="-1" onclick="showSuccessfulScenariosOnly(this);">Passed (1)</button>
-        <button type="button" role="radio" class="pill" aria-checked="false" tabindex="-1" onclick="showSkippedScenariosOnly(this);">Skipped (1)</button>
-        <button type="button" role="radio" class="pill" aria-checked="false" tabindex="-1" onclick="showFailedScenariosOnly(this);">Failed (1)</button>
-        <button type="button" role="radio" class="pill" aria-checked="false" tabindex="-1" onclick="showMixedScenariosOnly(this);">Mixed (1)</button>
+        <button type="button" role="radio" class="pill" data-filter="all" aria-checked="true" tabindex="0">All (6)</button>
+          <button type="button" role="radio" class="pill" data-filter="succeeded" aria-checked="false" tabindex="-1">Passed (2)</button>
+          <button type="button" role="radio" class="pill" data-filter="failed" aria-checked="false" tabindex="-1">Failed (1)</button>
+          <button type="button" role="radio" class="pill" data-filter="skipped" aria-checked="false" tabindex="-1">Skipped (1)</button>
+          <button type="button" role="radio" class="pill" data-filter="mixed" aria-checked="false" tabindex="-1">Mixed (1)</button>
+          <button type="button" role="radio" class="pill" data-filter="expected-failure" aria-checked="false" tabindex="-1">Expected failures (1)</button>
       </div>
-      <div class="view-toolbar-trailing"></div>
+      <p class="view-toolbar-count" aria-live="polite">9 executions</p>
+      <div class="view-toolbar-trailing">
+        <input type="search" class="view-filter tests-filter" placeholder="Filter" aria-label="Filter tests by name" autocomplete="off">
+      </div>
     </div>
     <ul class="table-header">
       <li>Test</li>
@@ -2104,6 +2178,80 @@
 </div>
       </div>
   </div>  <img class="screenshot-tail" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" id="screenshot-screenshot.png" alt="Screenshot" loading="lazy"/>
+  <div class="test-summary succeeded" data-runs="3">
+      <p class="list-item">
+          <span class="icon drop-down-icon" onclick="toggle(this, '0b826fba7727d72ce840258316314d96')"></span>
+          <span class="icon test-result-icon"></span>
+          <span class="row-name">testParameterized()</span>
+            <span class="row-note row-arguments">3 arguments</span>
+          <span class="row-duration">(1.50s)</span>
+      </p>
+      <div id="activities-0b826fba7727d72ce840258316314d96" class="activities">
+          <img class="screenshot-flow" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" id="screenshot-screenshot.png" alt="Screenshot" loading="lazy"/>
+          <div class="activity  no-drop-down">
+  <p class="list-item">
+    <span style="margin-left: 38px" class="padding"></span>
+    <span class="icon drop-down-icon" onclick="toggle(this, 'cfb3666c0d21f7c6c49701e17aa04b6a')"></span>
+    <span class="row-name">Start Test</span>
+    <span class="icon paperclip-icon" style="display: none"></span>
+  </p>
+  <div id="attachments-cfb3666c0d21f7c6c49701e17aa04b6a" class="attachments">
+      
+  </div>
+  <div id="activities-cfb3666c0d21f7c6c49701e17aa04b6a" class="sub-activities">
+      
+  </div>
+</div><div class="activity  ">
+  <p class="list-item">
+    <span style="margin-left: 20px" class="padding"></span>
+    <span class="icon drop-down-icon" onclick="toggle(this, '7f68515b542c73fa411846f548f3bc9f')"></span>
+    <span class="row-name">Attachments</span>
+    <span class="icon paperclip-icon" style="display: inline-block"></span>
+  </p>
+  <div id="attachments-7f68515b542c73fa411846f548f3bc9f" class="attachments">
+      <p class="attachment list-item">
+  <span class="icon screenshot-icon" style="margin-left: 36px"></span>
+  <span class="row-name">Screenshot</span>
+  <button type="button" class="preview-button" aria-label="Preview attachment" data-kind="screenshot" data="screenshot.png" onclick="openAttachment(this)"><span class="icon preview-icon" aria-hidden="true"></span></button>
+  <img class="screenshot" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" id="screenshot-screenshot.png" alt="Screenshot" loading="lazy"/>
+</p><p class="attachment list-item">
+  <span class="icon text-icon" style="margin-left: 36px"></span>
+  <span class="row-name">Log</span>
+  <button type="button" class="preview-button" aria-label="Preview attachment" data-kind="text" data="data:text/plain;base64,c3ludGhldGljIGF0dGFjaG1lbnQgYm9keQo=" onclick="openAttachment(this)"><span class="icon preview-icon" aria-hidden="true"></span></button>
+</p>
+  </div>
+  <div id="activities-7f68515b542c73fa411846f548f3bc9f" class="sub-activities">
+      
+  </div>
+</div><div class="activity  ">
+  <p class="list-item">
+    <span style="margin-left: 20px" class="padding"></span>
+    <span class="icon drop-down-icon" onclick="toggle(this, '3fe83024c6f1adf7c5d6d4825883b168')"></span>
+    <span class="row-name">Nested</span>
+    <span class="icon paperclip-icon" style="display: none"></span>
+  </p>
+  <div id="attachments-3fe83024c6f1adf7c5d6d4825883b168" class="attachments">
+      
+  </div>
+  <div id="activities-3fe83024c6f1adf7c5d6d4825883b168" class="sub-activities">
+      <div class="activity  no-drop-down">
+  <p class="list-item">
+    <span style="margin-left: 48px" class="padding"></span>
+    <span class="icon drop-down-icon" onclick="toggle(this, '1ef9e05a2a4d97f6be64befb9b950dfc')"></span>
+    <span class="row-name">Inner step</span>
+    <span class="icon paperclip-icon" style="display: none"></span>
+  </p>
+  <div id="attachments-1ef9e05a2a4d97f6be64befb9b950dfc" class="attachments">
+      
+  </div>
+  <div id="activities-1ef9e05a2a4d97f6be64befb9b950dfc" class="sub-activities">
+      
+  </div>
+</div>
+  </div>
+</div>
+      </div>
+  </div>  <img class="screenshot-tail" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==" id="screenshot-screenshot.png" alt="Screenshot" loading="lazy"/>
   <div class="test-summary succeeded">
       <p class="list-item">
           <span class="icon drop-down-icon" onclick="toggle(this, '16170791d4b96668f53ace117678c387')"></span>
@@ -2176,7 +2324,7 @@
   </div>
 </div>
       </div>
-  </div>  <div class="test-summary mixed">
+  </div>  <div class="test-summary mixed" data-runs="2">
       <p class="list-item">
           <span class="icon drop-down-icon dropped" onclick="toggle(this, '751413da1b48c31cffea0e4c31cc99bc')"></span>
           <span class="icon test-result-icon"></span>
@@ -2324,10 +2472,14 @@
       <section class="view" id="view-logs" role="tabpanel" aria-labelledby="tab-logs">
         <div class="run-view" id="logs_42230e298d9d9e832714ebad20e680c6">
     <div class="view-toolbar">
-      <p class="view-toolbar-label">All Messages</p>
-      <div class="view-toolbar-trailing"></div>
+      <p class="view-toolbar-count" aria-live="polite">2 lines</p>
+      <div class="view-toolbar-trailing">
+        <input type="search" class="view-filter log-filter" placeholder="Filter" aria-label="Filter log lines" autocomplete="off">
+      </div>
     </div>
-    <iframe class="logs-iframe" src="data:text/plain;base64,U3ludGhldGljIHJ1biBsb2cgbGluZSBvbmUKU3ludGhldGljIHJ1biBsb2cgbGluZSB0d28K" title="Run log" loading="lazy"></iframe>
+    <pre class="log-body" tabindex="0">Synthetic run log line one
+Synthetic run log line two
+</pre>
   </div>
       </section>
     </main>
@@ -2371,11 +2523,6 @@
   function activeTree() {
     var view = activeTestsView();
     return view ? view.querySelector('.tests') : null;
-  }
-
-  function inActiveTests(selector) {
-    var view = activeTestsView();
-    return view ? view.querySelectorAll(selector) : [];
   }
 
   // ---- Roving focus --------------------------------------------------
@@ -2849,26 +2996,153 @@
     }
   }
 
-  // ---- Status filters ------------------------------------------------
+  // ---- Filters (#439, A3b; #460) -------------------------------------
   //
-  // The five functions A3b upgrades, unchanged in what they do. What
-  // changed is only what they are scoped to: `.run.active` named the shell's
-  // per-run pane, which the per-view split replaced with one slice per view.
-  // Everything downstream of the scope — which classes are shown, which are
-  // hidden, and the group-collapsing pass — is the same code it was.
+  // What A3a left here was five functions, one per pill, each naming the
+  // four row classes it shows or hides. That shape is why #460 existed: an
+  // expected failure carries none of those four classes, so no function
+  // mentioned it, so "Passed" left it on screen and "All" — which sets
+  // `display: block` on the four it knows — left it at whatever it already
+  // was. The group pass below then read it as hidden, and a suite whose every
+  // test was an expected failure disappeared from a report the moment the
+  // reader touched any filter, including "All".
+  //
+  // One function replaces the five. A row is shown when it matches *both* of
+  // the view's filters, and the status one is a class comparison against
+  // `data-filter` rather than a list of classes written out here — so a
+  // status added to `Status` gets a pill and gets filtered, with nothing in
+  // this file to update. `unknown` is filtered today for exactly that
+  // reason, having had the same gap as `expectedFailure` and no issue.
+  //
+  // State lives on the view, not in a variable: a report holds one tests
+  // slice per destination and each keeps its own filters, so switching
+  // destination and switching back does not silently reset what the reader
+  // chose.
 
-  function setDisplayToElementsWithSelector(sel, display) {
-    [].forEach.call(inActiveTests(sel), function (el) {
-      el.style.display = display;
+  function statusOf(view) {
+    return view.getAttribute('data-filter-status') || 'all';
+  }
+
+  function queryOf(view) {
+    return view.getAttribute('data-filter-text') || '';
+  }
+
+  // What the filter treats as a row, which is what the *report* treats as a
+  // test: every `.test-summary`, plus a suite heading with nothing inside
+  // it. `Run.allTests` flattens the tree to its leaves and a childless group
+  // is one of them — the shape a crashed target leaves behind, which
+  // `TruncationFaultTests` is built out of — so it is counted in the pills
+  // and has to be filtered by them. It also had the same defect #460 names:
+  // the group pass below skips a group with no rows in it, so before this
+  // nothing could hide one whatever the reader chose.
+  function filterableRows(view) {
+    var rows = Array.prototype.slice.call(
+      view.querySelectorAll('.test-summary, .test-summary-group')
+    );
+    return rows.filter(function (row) {
+      return !row.classList.contains('test-summary-group')
+        || row.querySelector('.test-summary, .test-summary-group') === null;
     });
   }
 
-  function hideElementsWithSelector(sel) {
-    setDisplayToElementsWithSelector(sel, 'none');
+  // A group's visibility is otherwise derived from its rows, below.
+  //
+  // The name is matched against the row *and every suite above it*, because
+  // a filter over a tree that only ever reads its leaves is one a reader
+  // finds out about the hard way: typing the name of a suite they can see
+  // would empty the pane. Matching an ancestor keeps that suite and the
+  // tests inside it, which is what the same query does in Xcode's outline.
+  //
+  // The status is a leaf question either way — a suite's own status is
+  // folded from its children, so filtering on it would put rows of every
+  // outcome under a heading claiming one.
+  function rowMatches(row, status, query) {
+    if (status !== 'all' && !row.classList.contains(status)) {
+      return false;
+    }
+    if (!query) {
+      return true;
+    }
+    var node = row;
+    while (node && !node.classList.contains('tests')) {
+      if (node.classList.contains('test-summary')
+        || node.classList.contains('test-summary-group')) {
+        // The first `.row-name` inside a row is its own: a suite's heading
+        // precedes its children, and a retried test's precedes its
+        // iterations.
+        var name = node.querySelector('.row-name');
+        if (name && name.textContent.toLowerCase().indexOf(query) >= 0) {
+          return true;
+        }
+      }
+      node = node.parentElement;
+    }
+    return false;
   }
 
-  function showElementsWithSelector(sel) {
-    setDisplayToElementsWithSelector(sel, 'block');
+  // How many times the run executed what a row stands for: the `data-runs`
+  // the template writes when a test was parameterized or repeated, and 1
+  // otherwise — which is why the attribute is absent on almost every row.
+  function executionsOf(row) {
+    return parseInt(row.getAttribute('data-runs'), 10) || 1;
+  }
+
+  function applyTestFilters(view) {
+    if (!view) {
+      return;
+    }
+    var status = statusOf(view),
+        query = queryOf(view),
+        rows = filterableRows(view);
+    for (var i = 0; i < rows.length; i++) {
+      var shown = rowMatches(rows[i], status, query);
+      rows[i].style.display = shown ? 'block' : 'none';
+      // A test's tail screenshots are emitted *between* rows rather than
+      // inside one (A2), so they are siblings the row's own `display` does
+      // not reach. Left behind, a filtered-out test leaves its screenshots in
+      // the tree with no row to belong to — 200px pictures of a test the
+      // reader asked not to see.
+      //
+      // A loop, not one sibling: `TestScreenshotFlow` emits the *last three*
+      // screenshots of a test (`suffix(tailCount)`), so a test with several
+      // is preceded by several. The synthetic fixture has such a row, which
+      // is why the gate on this counts every tail rather than the first.
+      var tail = rows[i].previousElementSibling;
+      while (tail && tail.classList.contains('screenshot-tail')) {
+        tail.style.display = shown ? 'block' : 'none';
+        tail = tail.previousElementSibling;
+      }
+    }
+    hideSummaryGroupsIfNeeded(view);
+    countExecutionsOnScreen(view);
+  }
+
+  // Counted off the rows rather than accumulated while deciding them, so
+  // that anything which changes what is on screen can restate the figure by
+  // calling this — the digest jump reveals a row the filter hid, and a count
+  // that only the filter could write would keep announcing the filter's
+  // number at a pane that no longer holds it.
+  function countExecutionsOnScreen(view) {
+    if (!view) {
+      return;
+    }
+    var rows = filterableRows(view),
+        executions = 0;
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].style.display !== 'none') {
+        executions += executionsOf(rows[i]);
+      }
+    }
+    setCount(view, executions === 1 ? '1 execution' : executions + ' executions');
+  }
+
+  // The toolbar figure this view answers with. One writer, so the rendered
+  // value and every recomputation of it are the same sentence.
+  function setCount(view, text) {
+    var count = view.querySelector('.view-toolbar-count');
+    if (count) {
+      count.textContent = text;
+    }
   }
 
   // The chosen filter, as an ARIA fact rather than a class: these are
@@ -2883,81 +3157,124 @@
     setRovingTabStop(pills, el);
   }
 
-  function showAllScenarios(el) {
-    selectedElement(el);
-    showElementsWithSelector('.test-summary.succeeded');
-    showElementsWithSelector('.test-summary.skipped');
-    showElementsWithSelector('.test-summary.failed');
-    showElementsWithSelector('.test-summary.mixed');
-    hideSummaryGroupsIfNeeded();
+  function chooseStatus(pill) {
+    var view = pill.closest('.run-view');
+    if (!view) {
+      return;
+    }
+    selectedElement(pill);
+    view.setAttribute('data-filter-status', pill.getAttribute('data-filter') || 'all');
+    applyTestFilters(view);
   }
 
-  function showSuccessfulScenariosOnly(el) {
-    selectedElement(el);
-    showElementsWithSelector('.test-summary.succeeded');
-    hideElementsWithSelector('.test-summary.skipped');
-    hideElementsWithSelector('.test-summary.failed');
-    hideElementsWithSelector('.test-summary.mixed');
-    hideSummaryGroupsIfNeeded();
-  }
-
-  function showSkippedScenariosOnly(el) {
-    selectedElement(el);
-    hideElementsWithSelector('.test-summary.succeeded');
-    showElementsWithSelector('.test-summary.skipped');
-    hideElementsWithSelector('.test-summary.failed');
-    hideElementsWithSelector('.test-summary.mixed');
-    hideSummaryGroupsIfNeeded();
-  }
-
-  function showFailedScenariosOnly(el) {
-    selectedElement(el);
-    hideElementsWithSelector('.test-summary.succeeded');
-    hideElementsWithSelector('.test-summary.skipped');
-    showElementsWithSelector('.test-summary.failed');
-    hideElementsWithSelector('.test-summary.mixed');
-    hideSummaryGroupsIfNeeded();
-  }
-
-  function showMixedScenariosOnly(el) {
-    selectedElement(el);
-    hideElementsWithSelector('.test-summary.succeeded');
-    hideElementsWithSelector('.test-summary.skipped');
-    hideElementsWithSelector('.test-summary.failed');
-    showElementsWithSelector('.test-summary.mixed');
-    hideSummaryGroupsIfNeeded();
-  }
-
-  function hideSummaryGroupsIfNeeded() {
-    var testSummaryGroups = Array.prototype.slice.call(
-      inActiveTests('.test-summary-group')
+  // A suite is shown when anything under it is, and the walk is bottom-up so
+  // a parent reads children that have already been decided.
+  //
+  // The pass this replaces bailed out on any group holding a sub-group
+  // (`testSummaryGroupChildren.length > 0`), so the legacy backend's two
+  // wrapper levels — "Selected tests" and "<target>.xctest", which hold
+  // only other groups — were never hidden by anything. A filter that
+  // selected two rows left them under three empty headings. Deciding
+  // deepest-first is what makes one rule cover both cases: `querySelectorAll`
+  // yields document order, and an ancestor always precedes its descendants
+  // in it, so iterating backwards visits every child before its parent.
+  //
+  // A group with no rows and no sub-groups is skipped, not because it cannot
+  // be decided but because it already has been: `applyTestFilters` treats a
+  // childless suite as a row, since that is what `Run.allTests` counts it as.
+  function hideSummaryGroupsIfNeeded(view) {
+    var groups = Array.prototype.slice.call(
+      view.querySelectorAll('.test-summary-group')
     );
-    for (var i = 0; i < testSummaryGroups.length; i++) {
-        var testSummaryGroup = testSummaryGroups[i];
-        var children = Array.prototype.slice.call(testSummaryGroup.children);
-        var testSummaryChildren = children.filter(function(a) { return a.classList.contains('test-summary'); });
-        var testSummaryGroupChildren = children.filter(function(a) { return a.classList.contains('test-summary-group'); });
-        if (testSummaryChildren == 0 || testSummaryGroupChildren.length > 0) {
-          continue;
-        }
-
-        if (testSummaryChildren.filter(function(a) { return a.style.display == 'block' }).length == 0) {
-          testSummaryGroup.style.display = 'none';
-        } else {
-          testSummaryGroup.style.display = 'block';
-        }
+    for (var i = groups.length - 1; i >= 0; i--) {
+      var group = groups[i];
+      var children = Array.prototype.slice.call(group.children).filter(function (child) {
+        return child.classList.contains('test-summary')
+          || child.classList.contains('test-summary-group');
+      });
+      if (children.length === 0) {
+        continue;
+      }
+      var anyShown = children.some(function (child) {
+        return child.style.display !== 'none';
+      });
+      group.style.display = anyShown ? 'block' : 'none';
     }
   }
 
+  var filterPills = document.querySelectorAll('.filter-pills [role="radio"]');
+  for (var fp = 0; fp < filterPills.length; fp++) {
+    filterPills[fp].addEventListener('click', function (e) {
+      chooseStatus(e.currentTarget);
+    }, false);
+  }
+
   // Arrow keys inside a radiogroup both move focus and choose, which is the
-  // behaviour a native radio group has. The pill's own `onclick` is the one
-  // definition of what choosing does, so the handler dispatches to it rather
-  // than restating the mapping from pill to filter.
+  // behaviour a native radio group has.
   var filterGroups = document.querySelectorAll('.filter-pills');
   for (var f = 0; f < filterGroups.length; f++) {
-    rovingGroup(filterGroups[f], '[role="radio"]', function (pill) {
-      pill.onclick();
-    });
+    rovingGroup(filterGroups[f], '[role="radio"]', chooseStatus);
+  }
+
+  // The name filter. Composes with the pills rather than replacing them:
+  // both are read by `applyTestFilters`, so "Failed" and "one" together
+  // mean the failing tests whose names contain "one", which is what a
+  // reader who set both is asking for.
+  var testFilters = document.querySelectorAll('.tests-filter');
+  for (var tf = 0; tf < testFilters.length; tf++) {
+    testFilters[tf].addEventListener('input', function (e) {
+      var view = e.currentTarget.closest('.run-view');
+      if (!view) {
+        return;
+      }
+      view.setAttribute('data-filter-text', e.currentTarget.value.trim().toLowerCase());
+      applyTestFilters(view);
+    }, false);
+  }
+
+  // ---- The log filter ------------------------------------------------
+  //
+  // The log is one text document, so the only filter its content supports is
+  // over its lines — which is the control Xcode's own Log view puts in this
+  // same corner. It is possible at all because A3b renders the log in the
+  // page: behind the `iframe` it replaces, the log was a foreign origin and
+  // nothing here could have read a line of it.
+  //
+  // The lines are split once, on first use, and kept on the element. The
+  // `<pre>` stays a single text node either way — a line per element would
+  // be one node per line of a log that can run to six figures.
+  var logFilters = document.querySelectorAll('.log-filter');
+  for (var lf = 0; lf < logFilters.length; lf++) {
+    logFilters[lf].addEventListener('input', function (e) {
+      var view = e.currentTarget.closest('.run-view'),
+          body = view && view.querySelector('.log-body');
+      if (!body) {
+        return;
+      }
+      if (!body.logLines) {
+        var text = body.textContent;
+        // A trailing newline ends the last line rather than starting an
+        // empty one, which is what the rendered count already assumes.
+        if (text.charAt(text.length - 1) === '\n') {
+          text = text.slice(0, -1);
+        }
+        body.logLines = text === '' ? [] : text.split('\n');
+      }
+      var query = e.currentTarget.value.trim().toLowerCase(),
+          lines = body.logLines,
+          kept = query
+            ? lines.filter(function (line) {
+                return line.toLowerCase().indexOf(query) >= 0;
+              })
+            : lines;
+      body.textContent = kept.join('\n');
+      setCount(
+        view,
+        query
+          ? kept.length + ' of ' + lines.length + (lines.length === 1 ? ' line' : ' lines')
+          : lines.length + (lines.length === 1 ? ' line' : ' lines')
+      );
+    }, false);
   }
 
   // ---- Boot ----------------------------------------------------------
@@ -3006,14 +3323,26 @@
 
     activateRunContaining(row);
 
-    // The filter writes `display: none` onto the element itself, and its
-    // group as well. Clearing both un-hides this one row without resetting
-    // the filter the reader chose.
+    // The filter writes `display: none` onto the element itself and onto
+    // every suite above it that the row was the last visible thing in.
+    // Clearing the whole chain un-hides this one row without resetting the
+    // filter the reader chose — the nearest suite alone is not enough, since
+    // A3b's group pass hides a wrapper whose every child went, which the
+    // pass it replaces never did.
     row.style.display = 'block';
-    var group = row.closest('.test-summary-group');
-    if (group) {
-      group.style.display = 'block';
+    var ancestor = row.parentElement;
+    while (ancestor && !ancestor.classList.contains('tests')) {
+      if (ancestor.classList.contains('test-summary-group')) {
+        ancestor.style.display = 'block';
+      }
+      ancestor = ancestor.parentElement;
     }
+
+    // A row appearing is a change to what the pane holds, so the toolbar
+    // restates its figure through the same writer the filter uses. The count
+    // is `aria-live`: silence here is a reader being told nothing while a
+    // test they did not filter for arrives on screen.
+    countExecutionsOnScreen(row.closest('.run-view'));
 
     disclosure.style.display = 'block';
     var chevron = row.querySelector('.drop-down-icon');

@@ -156,6 +156,7 @@ struct ModernResultReader: ResultReader {
     private func parseTestCase(_ node: TestNode) -> ParsedTestCase {
         let repetitions = (node.children ?? []).filter { $0.nodeType == "Repetition" }
         let identifier = node.nodeIdentifier ?? ""
+        let argumentSets = Self.arguments(of: node)
 
         let iterations: [ParsedIteration]
         if repetitions.isEmpty {
@@ -203,7 +204,14 @@ struct ModernResultReader: ResultReader {
                 ? (node.name ?? "")
                 : (identifier.components(separatedBy: "/").last ?? node.name ?? ""),
             identifier: identifier,
-            arguments: Self.arguments(of: node),
+            arguments: argumentSets,
+            // Repetitions are executions the format lists individually; an
+            // unrepeated parameterized case has one per argument set, in
+            // `Arguments` children the renderer collapses into a single row.
+            // Either way this is how many times the test ran — the number
+            // legacy recovers from its sibling entries. See
+            // `ParsedTestCase.executionCount`.
+            executionCount: max(repetitions.count, argumentSets.count, 1),
             iterations: iterations
         )
     }

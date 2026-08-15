@@ -87,6 +87,13 @@ struct LegacyResultReader: ResultReader {
                 identifier: identifier,
                 // Legacy has no counterpart to Swift Testing's Arguments nodes.
                 arguments: [],
+                // Counted here, before the merge below folds them: this is the
+                // one point at which legacy still knows a parameterized case
+                // ran three times. `mergingArgumentExecutions` exists to make
+                // the two backends agree on the *rows*, and it did that by
+                // discarding the number — which is why the report could state
+                // 21 tests and never 23 runs. See `ParsedTestCase.executionCount`.
+                executionCount: max(entries.count, 1),
                 iterations: Self.strippingLoneIterationNumber(
                     Self.mergingArgumentExecutions(iterations)
                 )

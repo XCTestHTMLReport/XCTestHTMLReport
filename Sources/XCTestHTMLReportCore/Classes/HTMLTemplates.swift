@@ -153,6 +153,13 @@ struct HTMLTemplates
          Safari versions that predate it, then named fallbacks, and a
          generic family last so the chain can always terminate. */
       --font-family-base: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Helvetica, Arial, sans-serif;
+      /* The run log is the one thing in the report that is a *document* rather
+         than a layout, and its structure is columns of `-------- title
+         --------` rules and indentation — which only a monospace face keeps
+         aligned. `ui-monospace` first, so it is the platform's own coding
+         face where there is one, with the named fallbacks for browsers that
+         do not know the generic yet (#439, A3b). */
+      --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       --font-size-xs: 11px;
       --font-size-sm: 12px;
       --font-size-md: 13px;
@@ -633,9 +640,8 @@ struct HTMLTemplates
     }
 
     /* The per-view toolbar. Left group is the view's own controls; the
-       trailing group is deliberately empty and deliberately present — it is
-       where A3b's text filter and its dropdowns land (#460), and reserving it
-       here is what keeps that from being a re-layout. */
+       trailing group holds the Filter field, which is where A3a reserved the
+       slot for it and where Xcode's own test report puts one. */
     .view-toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -655,23 +661,63 @@ struct HTMLTemplates
       gap: var(--space-xs);
     }
 
-    /* A label, not a control. The Logs view has one scope and no way to change
-       it, and the shipped markup said otherwise: `<li class="selected">All
-       Messages</li>` in a `toggle-toolbar`, wearing a selected pill's fill and
-       hover with nothing bound to it. Dressing an inert string as the chosen
-       one of several options is the kind of thing a keyboard user finds out
-       the hard way. Real log filters are #460's, and land in the trailing slot
-       beside this. */
-    .view-toolbar-label {
+    /* A count, and a live one (#439, A3b).
+
+       This is the slot A3a's inert "All Messages" label occupied. That label
+       was a placeholder for a control the Logs view could not have — nothing
+       in the page can filter a document on another origin — and the honest
+       replacement is not a better-dressed label but a real filter beside a
+       figure that answers to it: `23 executions` on Tests, `312 lines` on
+       Logs, both recomputed whenever a filter changes what is showing.
+
+       Styled as text rather than as a pill on purpose: the pills beside it are
+       controls, and something that looks like the chosen one of several
+       options while being unclickable is exactly what the label it replaces
+       got wrong. */
+    .view-toolbar-count {
       padding: 2px var(--space-sm);
       color: var(--color-text-muted);
       font-size: var(--font-size-xs);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* The Filter field. One control shape for both views, because they are the
+       same question asked of different content — which rows, which lines.
+
+       `type="search"` for the browser's own clear affordance and for the
+       Escape-clears behaviour a reader already has in every other search
+       field; nothing here re-implements either. The width is capped rather
+       than fixed so the field gives way first at 375px, where the pills are
+       what a reader cannot do without. */
+    .view-filter {
+      width: 100%;
+      max-width: 180px;
+      min-width: 0;
+      padding: 2px var(--space-sm);
+      border: 1px solid var(--color-border-control);
+      border-radius: var(--radius-sm);
+      background-color: var(--color-surface);
+      color: var(--color-text-primary);
+      font: inherit;
+      font-size: var(--font-size-xs);
+    }
+
+    .view-filter::placeholder {
+      color: var(--color-text-muted);
+      /* Chrome renders a placeholder at the UA's own opacity, which would put
+         an already-muted token below the 4.5:1 the token was sized for. */
+      opacity: 1;
+    }
+
+    .view-filter:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 1px;
     }
 
     /* The status filters. Buttons in a radiogroup, because they are mutually
        exclusive and only one can be in effect — `aria-checked` says which,
-       where the old `<li class="selected">` said nothing at all. A3b upgrades
-       what they filter; the five functions behind them are unchanged. */
+       where the old `<li class="selected">` said nothing at all. A3b renders
+       them from the run's own tally: see `Run.filterPillsHTML`. */
     .filter-pills {
       display: flex;
       flex-wrap: wrap;
@@ -731,10 +777,34 @@ struct HTMLTemplates
       margin-left: auto;
     }
 
-    .logs-iframe {
-      border: 0;
+    /* The run log (#439, A3b), in the document rather than behind an iframe.
+
+       `white-space: pre-wrap` rather than `pre`: the log carries indented
+       section headers whose leading tabs are the structure, so the whitespace
+       has to survive — but a line that runs past the window has to wrap rather
+       than push the page sideways, which is what `pre` would do inside a
+       `body` that is `overflow: hidden`. `overflow-wrap: anywhere` covers the
+       one shape wrapping cannot otherwise break: the absolute paths the log
+       prints, which have no spaces in them. */
+    .log-body {
       flex: 1;
       min-height: 0;
+      margin: 0;
+      padding: var(--space-sm);
+      overflow: auto;
+      background-color: var(--color-surface);
+      color: var(--color-text-primary);
+      font-family: var(--font-family-mono);
+      font-size: var(--font-size-xs);
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      tab-size: 2;
+    }
+
+    .log-body:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: -2px;
     }
 
     /* Icons (#439).
@@ -1978,11 +2048,6 @@ struct HTMLTemplates
       return view ? view.querySelector('.tests') : null;
     }
 
-    function inActiveTests(selector) {
-      var view = activeTestsView();
-      return view ? view.querySelectorAll(selector) : [];
-    }
-
     // ---- Roving focus --------------------------------------------------
     //
     // Shared by the view tabs and the status filters, which are the two
@@ -2454,26 +2519,153 @@ struct HTMLTemplates
       }
     }
 
-    // ---- Status filters ------------------------------------------------
+    // ---- Filters (#439, A3b; #460) -------------------------------------
     //
-    // The five functions A3b upgrades, unchanged in what they do. What
-    // changed is only what they are scoped to: `.run.active` named the shell's
-    // per-run pane, which the per-view split replaced with one slice per view.
-    // Everything downstream of the scope — which classes are shown, which are
-    // hidden, and the group-collapsing pass — is the same code it was.
+    // What A3a left here was five functions, one per pill, each naming the
+    // four row classes it shows or hides. That shape is why #460 existed: an
+    // expected failure carries none of those four classes, so no function
+    // mentioned it, so \"Passed\" left it on screen and \"All\" — which sets
+    // `display: block` on the four it knows — left it at whatever it already
+    // was. The group pass below then read it as hidden, and a suite whose every
+    // test was an expected failure disappeared from a report the moment the
+    // reader touched any filter, including \"All\".
+    //
+    // One function replaces the five. A row is shown when it matches *both* of
+    // the view's filters, and the status one is a class comparison against
+    // `data-filter` rather than a list of classes written out here — so a
+    // status added to `Status` gets a pill and gets filtered, with nothing in
+    // this file to update. `unknown` is filtered today for exactly that
+    // reason, having had the same gap as `expectedFailure` and no issue.
+    //
+    // State lives on the view, not in a variable: a report holds one tests
+    // slice per destination and each keeps its own filters, so switching
+    // destination and switching back does not silently reset what the reader
+    // chose.
 
-    function setDisplayToElementsWithSelector(sel, display) {
-      [].forEach.call(inActiveTests(sel), function (el) {
-        el.style.display = display;
+    function statusOf(view) {
+      return view.getAttribute('data-filter-status') || 'all';
+    }
+
+    function queryOf(view) {
+      return view.getAttribute('data-filter-text') || '';
+    }
+
+    // What the filter treats as a row, which is what the *report* treats as a
+    // test: every `.test-summary`, plus a suite heading with nothing inside
+    // it. `Run.allTests` flattens the tree to its leaves and a childless group
+    // is one of them — the shape a crashed target leaves behind, which
+    // `TruncationFaultTests` is built out of — so it is counted in the pills
+    // and has to be filtered by them. It also had the same defect #460 names:
+    // the group pass below skips a group with no rows in it, so before this
+    // nothing could hide one whatever the reader chose.
+    function filterableRows(view) {
+      var rows = Array.prototype.slice.call(
+        view.querySelectorAll('.test-summary, .test-summary-group')
+      );
+      return rows.filter(function (row) {
+        return !row.classList.contains('test-summary-group')
+          || row.querySelector('.test-summary, .test-summary-group') === null;
       });
     }
 
-    function hideElementsWithSelector(sel) {
-      setDisplayToElementsWithSelector(sel, 'none');
+    // A group's visibility is otherwise derived from its rows, below.
+    //
+    // The name is matched against the row *and every suite above it*, because
+    // a filter over a tree that only ever reads its leaves is one a reader
+    // finds out about the hard way: typing the name of a suite they can see
+    // would empty the pane. Matching an ancestor keeps that suite and the
+    // tests inside it, which is what the same query does in Xcode's outline.
+    //
+    // The status is a leaf question either way — a suite's own status is
+    // folded from its children, so filtering on it would put rows of every
+    // outcome under a heading claiming one.
+    function rowMatches(row, status, query) {
+      if (status !== 'all' && !row.classList.contains(status)) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      var node = row;
+      while (node && !node.classList.contains('tests')) {
+        if (node.classList.contains('test-summary')
+          || node.classList.contains('test-summary-group')) {
+          // The first `.row-name` inside a row is its own: a suite's heading
+          // precedes its children, and a retried test's precedes its
+          // iterations.
+          var name = node.querySelector('.row-name');
+          if (name && name.textContent.toLowerCase().indexOf(query) >= 0) {
+            return true;
+          }
+        }
+        node = node.parentElement;
+      }
+      return false;
     }
 
-    function showElementsWithSelector(sel) {
-      setDisplayToElementsWithSelector(sel, 'block');
+    // How many times the run executed what a row stands for: the `data-runs`
+    // the template writes when a test was parameterized or repeated, and 1
+    // otherwise — which is why the attribute is absent on almost every row.
+    function executionsOf(row) {
+      return parseInt(row.getAttribute('data-runs'), 10) || 1;
+    }
+
+    function applyTestFilters(view) {
+      if (!view) {
+        return;
+      }
+      var status = statusOf(view),
+          query = queryOf(view),
+          rows = filterableRows(view);
+      for (var i = 0; i < rows.length; i++) {
+        var shown = rowMatches(rows[i], status, query);
+        rows[i].style.display = shown ? 'block' : 'none';
+        // A test's tail screenshots are emitted *between* rows rather than
+        // inside one (A2), so they are siblings the row's own `display` does
+        // not reach. Left behind, a filtered-out test leaves its screenshots in
+        // the tree with no row to belong to — 200px pictures of a test the
+        // reader asked not to see.
+        //
+        // A loop, not one sibling: `TestScreenshotFlow` emits the *last three*
+        // screenshots of a test (`suffix(tailCount)`), so a test with several
+        // is preceded by several. The synthetic fixture has such a row, which
+        // is why the gate on this counts every tail rather than the first.
+        var tail = rows[i].previousElementSibling;
+        while (tail && tail.classList.contains('screenshot-tail')) {
+          tail.style.display = shown ? 'block' : 'none';
+          tail = tail.previousElementSibling;
+        }
+      }
+      hideSummaryGroupsIfNeeded(view);
+      countExecutionsOnScreen(view);
+    }
+
+    // Counted off the rows rather than accumulated while deciding them, so
+    // that anything which changes what is on screen can restate the figure by
+    // calling this — the digest jump reveals a row the filter hid, and a count
+    // that only the filter could write would keep announcing the filter's
+    // number at a pane that no longer holds it.
+    function countExecutionsOnScreen(view) {
+      if (!view) {
+        return;
+      }
+      var rows = filterableRows(view),
+          executions = 0;
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].style.display !== 'none') {
+          executions += executionsOf(rows[i]);
+        }
+      }
+      setCount(view, executions === 1 ? '1 execution' : executions + ' executions');
+    }
+
+    // The toolbar figure this view answers with. One writer, so the rendered
+    // value and every recomputation of it are the same sentence.
+    function setCount(view, text) {
+      var count = view.querySelector('.view-toolbar-count');
+      if (count) {
+        count.textContent = text;
+      }
     }
 
     // The chosen filter, as an ARIA fact rather than a class: these are
@@ -2488,81 +2680,124 @@ struct HTMLTemplates
       setRovingTabStop(pills, el);
     }
 
-    function showAllScenarios(el) {
-      selectedElement(el);
-      showElementsWithSelector('.test-summary.succeeded');
-      showElementsWithSelector('.test-summary.skipped');
-      showElementsWithSelector('.test-summary.failed');
-      showElementsWithSelector('.test-summary.mixed');
-      hideSummaryGroupsIfNeeded();
+    function chooseStatus(pill) {
+      var view = pill.closest('.run-view');
+      if (!view) {
+        return;
+      }
+      selectedElement(pill);
+      view.setAttribute('data-filter-status', pill.getAttribute('data-filter') || 'all');
+      applyTestFilters(view);
     }
 
-    function showSuccessfulScenariosOnly(el) {
-      selectedElement(el);
-      showElementsWithSelector('.test-summary.succeeded');
-      hideElementsWithSelector('.test-summary.skipped');
-      hideElementsWithSelector('.test-summary.failed');
-      hideElementsWithSelector('.test-summary.mixed');
-      hideSummaryGroupsIfNeeded();
-    }
-
-    function showSkippedScenariosOnly(el) {
-      selectedElement(el);
-      hideElementsWithSelector('.test-summary.succeeded');
-      showElementsWithSelector('.test-summary.skipped');
-      hideElementsWithSelector('.test-summary.failed');
-      hideElementsWithSelector('.test-summary.mixed');
-      hideSummaryGroupsIfNeeded();
-    }
-
-    function showFailedScenariosOnly(el) {
-      selectedElement(el);
-      hideElementsWithSelector('.test-summary.succeeded');
-      hideElementsWithSelector('.test-summary.skipped');
-      showElementsWithSelector('.test-summary.failed');
-      hideElementsWithSelector('.test-summary.mixed');
-      hideSummaryGroupsIfNeeded();
-    }
-  
-    function showMixedScenariosOnly(el) {
-      selectedElement(el);
-      hideElementsWithSelector('.test-summary.succeeded');
-      hideElementsWithSelector('.test-summary.skipped');
-      hideElementsWithSelector('.test-summary.failed');
-      showElementsWithSelector('.test-summary.mixed');
-      hideSummaryGroupsIfNeeded();
-    }
-
-    function hideSummaryGroupsIfNeeded() {
-      var testSummaryGroups = Array.prototype.slice.call(
-        inActiveTests('.test-summary-group')
+    // A suite is shown when anything under it is, and the walk is bottom-up so
+    // a parent reads children that have already been decided.
+    //
+    // The pass this replaces bailed out on any group holding a sub-group
+    // (`testSummaryGroupChildren.length > 0`), so the legacy backend's two
+    // wrapper levels — \"Selected tests\" and \"<target>.xctest\", which hold
+    // only other groups — were never hidden by anything. A filter that
+    // selected two rows left them under three empty headings. Deciding
+    // deepest-first is what makes one rule cover both cases: `querySelectorAll`
+    // yields document order, and an ancestor always precedes its descendants
+    // in it, so iterating backwards visits every child before its parent.
+    //
+    // A group with no rows and no sub-groups is skipped, not because it cannot
+    // be decided but because it already has been: `applyTestFilters` treats a
+    // childless suite as a row, since that is what `Run.allTests` counts it as.
+    function hideSummaryGroupsIfNeeded(view) {
+      var groups = Array.prototype.slice.call(
+        view.querySelectorAll('.test-summary-group')
       );
-      for (var i = 0; i < testSummaryGroups.length; i++) {
-          var testSummaryGroup = testSummaryGroups[i];
-          var children = Array.prototype.slice.call(testSummaryGroup.children);
-          var testSummaryChildren = children.filter(function(a) { return a.classList.contains('test-summary'); });
-          var testSummaryGroupChildren = children.filter(function(a) { return a.classList.contains('test-summary-group'); });
-          if (testSummaryChildren == 0 || testSummaryGroupChildren.length > 0) {
-            continue;
-          }
-
-          if (testSummaryChildren.filter(function(a) { return a.style.display == 'block' }).length == 0) {
-            testSummaryGroup.style.display = 'none';
-          } else {
-            testSummaryGroup.style.display = 'block';
-          }
+      for (var i = groups.length - 1; i >= 0; i--) {
+        var group = groups[i];
+        var children = Array.prototype.slice.call(group.children).filter(function (child) {
+          return child.classList.contains('test-summary')
+            || child.classList.contains('test-summary-group');
+        });
+        if (children.length === 0) {
+          continue;
+        }
+        var anyShown = children.some(function (child) {
+          return child.style.display !== 'none';
+        });
+        group.style.display = anyShown ? 'block' : 'none';
       }
     }
 
+    var filterPills = document.querySelectorAll('.filter-pills [role=\"radio\"]');
+    for (var fp = 0; fp < filterPills.length; fp++) {
+      filterPills[fp].addEventListener('click', function (e) {
+        chooseStatus(e.currentTarget);
+      }, false);
+    }
+
     // Arrow keys inside a radiogroup both move focus and choose, which is the
-    // behaviour a native radio group has. The pill's own `onclick` is the one
-    // definition of what choosing does, so the handler dispatches to it rather
-    // than restating the mapping from pill to filter.
+    // behaviour a native radio group has.
     var filterGroups = document.querySelectorAll('.filter-pills');
     for (var f = 0; f < filterGroups.length; f++) {
-      rovingGroup(filterGroups[f], '[role=\"radio\"]', function (pill) {
-        pill.onclick();
-      });
+      rovingGroup(filterGroups[f], '[role=\"radio\"]', chooseStatus);
+    }
+
+    // The name filter. Composes with the pills rather than replacing them:
+    // both are read by `applyTestFilters`, so \"Failed\" and \"one\" together
+    // mean the failing tests whose names contain \"one\", which is what a
+    // reader who set both is asking for.
+    var testFilters = document.querySelectorAll('.tests-filter');
+    for (var tf = 0; tf < testFilters.length; tf++) {
+      testFilters[tf].addEventListener('input', function (e) {
+        var view = e.currentTarget.closest('.run-view');
+        if (!view) {
+          return;
+        }
+        view.setAttribute('data-filter-text', e.currentTarget.value.trim().toLowerCase());
+        applyTestFilters(view);
+      }, false);
+    }
+
+    // ---- The log filter ------------------------------------------------
+    //
+    // The log is one text document, so the only filter its content supports is
+    // over its lines — which is the control Xcode's own Log view puts in this
+    // same corner. It is possible at all because A3b renders the log in the
+    // page: behind the `iframe` it replaces, the log was a foreign origin and
+    // nothing here could have read a line of it.
+    //
+    // The lines are split once, on first use, and kept on the element. The
+    // `<pre>` stays a single text node either way — a line per element would
+    // be one node per line of a log that can run to six figures.
+    var logFilters = document.querySelectorAll('.log-filter');
+    for (var lf = 0; lf < logFilters.length; lf++) {
+      logFilters[lf].addEventListener('input', function (e) {
+        var view = e.currentTarget.closest('.run-view'),
+            body = view && view.querySelector('.log-body');
+        if (!body) {
+          return;
+        }
+        if (!body.logLines) {
+          var text = body.textContent;
+          // A trailing newline ends the last line rather than starting an
+          // empty one, which is what the rendered count already assumes.
+          if (text.charAt(text.length - 1) === '\\n') {
+            text = text.slice(0, -1);
+          }
+          body.logLines = text === '' ? [] : text.split('\\n');
+        }
+        var query = e.currentTarget.value.trim().toLowerCase(),
+            lines = body.logLines,
+            kept = query
+              ? lines.filter(function (line) {
+                  return line.toLowerCase().indexOf(query) >= 0;
+                })
+              : lines;
+        body.textContent = kept.join('\\n');
+        setCount(
+          view,
+          query
+            ? kept.length + ' of ' + lines.length + (lines.length === 1 ? ' line' : ' lines')
+            : lines.length + (lines.length === 1 ? ' line' : ' lines')
+        );
+      }, false);
     }
 
     // ---- Boot ----------------------------------------------------------
@@ -2611,14 +2846,26 @@ struct HTMLTemplates
 
       activateRunContaining(row);
 
-      // The filter writes `display: none` onto the element itself, and its
-      // group as well. Clearing both un-hides this one row without resetting
-      // the filter the reader chose.
+      // The filter writes `display: none` onto the element itself and onto
+      // every suite above it that the row was the last visible thing in.
+      // Clearing the whole chain un-hides this one row without resetting the
+      // filter the reader chose — the nearest suite alone is not enough, since
+      // A3b's group pass hides a wrapper whose every child went, which the
+      // pass it replaces never did.
       row.style.display = 'block';
-      var group = row.closest('.test-summary-group');
-      if (group) {
-        group.style.display = 'block';
+      var ancestor = row.parentElement;
+      while (ancestor && !ancestor.classList.contains('tests')) {
+        if (ancestor.classList.contains('test-summary-group')) {
+          ancestor.style.display = 'block';
+        }
+        ancestor = ancestor.parentElement;
       }
+
+      // A row appearing is a change to what the pane holds, so the toolbar
+      // restates its figure through the same writer the filter uses. The count
+      // is `aria-live`: silence here is a reader being told nothing while a
+      // test they did not filter for arrives on screen.
+      countExecutionsOnScreen(row.closest('.run-view'));
 
       disclosure.style.display = 'block';
       var chevron = row.querySelector('.drop-down-icon');
@@ -2806,21 +3053,28 @@ struct HTMLTemplates
   /// the arrow keys keep going to the row navigation, which scrolls the same
   /// region by moving the selection.
   ///
-  /// The trailing group in the toolbar is empty on purpose. A3b's text filter
-  /// and its dropdowns (#460) land in it, and having the slot already laid out
-  /// — right-aligned, in the flex row, with the pills sized against it — is
-  /// what makes that an addition rather than a second toolbar redesign.
+  /// The toolbar is A3b's (#439, #460). A3a laid out the row and reserved the
+  /// trailing group; what lands in it is Xcode's own control — a Filter field,
+  /// right-aligned, in the same place Xcode's test report puts one.
+  ///
+  /// The pills are rendered from the run's `Tally` rather than written out
+  /// here, so the row states the outcomes the run actually produced instead of
+  /// a fixed five that could never include a sixth. See `Run.filterPillsHTML`.
+  ///
+  /// The executions count sits between the two: `21 tests` is the pill row's
+  /// business and `23 executions` is a different number about the same run —
+  /// Xcode states both, side by side, and it is `aria-live` because the filter
+  /// changes it and a change nobody is told about is not a reading.
   static let runTests = """
   <div class=\"run-view\" id=\"tests_[[DEVICE_IDENTIFIER]]\">
       <div class=\"view-toolbar\">
         <div class=\"filter-pills\" role=\"radiogroup\" aria-label=\"Filter tests by status\">
-          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"true\" tabindex=\"0\" onclick=\"showAllScenarios(this);\">All ([[N_OF_TESTS]])</button>
-          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"false\" tabindex=\"-1\" onclick=\"showSuccessfulScenariosOnly(this);\">Passed ([[N_OF_PASSED_TESTS]])</button>
-          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"false\" tabindex=\"-1\" onclick=\"showSkippedScenariosOnly(this);\">Skipped ([[N_OF_SKIPPED_TESTS]])</button>
-          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"false\" tabindex=\"-1\" onclick=\"showFailedScenariosOnly(this);\">Failed ([[N_OF_FAILED_TESTS]])</button>
-          <button type=\"button\" role=\"radio\" class=\"pill\" aria-checked=\"false\" tabindex=\"-1\" onclick=\"showMixedScenariosOnly(this);\">Mixed ([[N_OF_MIXED_TESTS]])</button>
+          [[FILTER_PILLS]]
         </div>
-        <div class=\"view-toolbar-trailing\"></div>
+        <p class=\"view-toolbar-count\" aria-live=\"polite\">[[EXECUTIONS_LABEL]]</p>
+        <div class=\"view-toolbar-trailing\">
+          <input type=\"search\" class=\"view-filter tests-filter\" placeholder=\"Filter\" aria-label=\"Filter tests by name\" autocomplete=\"off\">
+        </div>
       </div>
       <ul class=\"table-header\">
         <li>Test</li>
@@ -2832,22 +3086,48 @@ struct HTMLTemplates
     </div>
   """
 
+  /// One status filter (#439, A3b).
+  ///
+  /// `data-filter` names the row class the pill selects — `all`, or a
+  /// `Status.cssClass` — instead of an `onclick` naming one of five functions.
+  /// That is what lets the script hold a single mapping from pill to rows, and
+  /// what makes adding a status a change to `Status` rather than to the page's
+  /// JavaScript.
+  static let filterPill = """
+  <button type=\"button\" role=\"radio\" class=\"pill\" data-filter=\"[[FILTER]]\" aria-checked=\"[[CHECKED]]\" tabindex=\"[[TABINDEX]]\">[[LABEL]] ([[COUNT]])</button>
+  """
+
   /// One destination's log view (#439, A3a).
   ///
-  /// Its own toolbar and its own frame, and — unlike the shell it replaces —
-  /// its own element ids. Before A3a every run rendered `id="logs"`,
-  /// `id="logs-header"` and `id="logs-iframe"`, so a report built from two
-  /// bundles emitted each of them twice; the page only behaved because the
-  /// duplicates were hidden inside an inactive run. The ids are per
-  /// destination now, which is also what lets the picker switch the log and
-  /// the tree together.
+  /// Its own toolbar and its own element ids. Before A3a every run rendered
+  /// `id="logs"`, `id="logs-header"` and `id="logs-iframe"`, so a report built
+  /// from two bundles emitted each of them twice; the page only behaved
+  /// because the duplicates were hidden inside an inactive run. The ids are
+  /// per destination now, which is also what lets the picker switch the log
+  /// and the tree together.
+  ///
+  /// **The log is in the document** (#439, A3b), where it used to be an
+  /// `<iframe src>` pointing at a `file://` sibling or a `data:` URI. Both are
+  /// foreign origins, and two things followed from that which the report
+  /// shipped: nothing in the page could filter, search or scroll the log — so
+  /// A3a's toolbar carried an inert "All Messages" label where a control
+  /// belongs — and the log could not see the token layer, so in dark mode the
+  /// Logs view was a white slab with black text. See `Run.logText`.
+  ///
+  /// `<pre>` rather than a line per element: a filter that rebuilds one text
+  /// node is a string join, where a hundred thousand `<div>`s is a hundred
+  /// thousand nodes. `tabindex="0"` for the same reason the tests list carries
+  /// one — axe's `scrollable-region-focusable`: a region a mouse can scroll
+  /// has to be reachable by a keyboard too.
   static let runLogs = """
   <div class=\"run-view\" id=\"logs_[[DEVICE_IDENTIFIER]]\">
       <div class=\"view-toolbar\">
-        <p class=\"view-toolbar-label\">All Messages</p>
-        <div class=\"view-toolbar-trailing\"></div>
+        <p class=\"view-toolbar-count\" aria-live=\"polite\">[[LOG_LINES_LABEL]]</p>
+        <div class=\"view-toolbar-trailing\">
+          <input type=\"search\" class=\"view-filter log-filter\" placeholder=\"Filter\" aria-label=\"Filter log lines\" autocomplete=\"off\">
+        </div>
       </div>
-      <iframe class=\"logs-iframe\" src=\"[[LOG_SOURCE]]\" title=\"Run log\" loading=\"lazy\"></iframe>
+      <pre class=\"log-body\" tabindex=\"0\">[[LOG_TEXT]]</pre>
     </div>
   """
 
@@ -2881,13 +3161,19 @@ struct HTMLTemplates
   /// gone: the status badge beside it already says "this row is a test", the
   /// mockup has no equivalent, and it cost 20px of a 375px row to repeat a
   /// fact. Nothing selects it.
+  /// `data-runs` is how many times the run executed this test (#439, A3b) —
+  /// the number behind the toolbar's executions count, written onto the row so
+  /// the count can be re-derived from whichever rows a filter left showing.
+  /// Omitted when it is 1, which is every row that is not parameterized or
+  /// repeated, so the attribute costs nothing on the overwhelming majority of
+  /// a tree.
   static let testCase = """
     [[SCREENSHOT_TAIL]]
-    <div class=\"[[ITEM_CLASS]] [[ICON_CLASS]]\">
+    <div class=\"[[ITEM_CLASS]] [[ICON_CLASS]]\"[[RUNS_ATTR]]>
         <p class=\"list-item\">
             <span class=\"icon drop-down-icon\" onclick=\"toggle(this, '[[UUID]]')\"></span>
             <span class=\"icon test-result-icon\"></span>
-            <span class=\"row-name\">[[TITLE]]</span>
+            <span class=\"row-name\">[[TITLE]]</span>[[EXECUTION_NOTE]]
             <span class=\"row-duration\">([[DURATION]])</span>
         </p>
         <div id=\"activities-[[UUID]]\" class=\"activities\">
@@ -2898,7 +3184,7 @@ struct HTMLTemplates
   """
 
   static let testCaseWithIterations = """
-    <div class=\"[[ITEM_CLASS]] [[ICON_CLASS]]\">
+    <div class=\"[[ITEM_CLASS]] [[ICON_CLASS]]\"[[RUNS_ATTR]]>
         <p class=\"list-item\">
             <span class=\"icon drop-down-icon dropped\" onclick=\"toggle(this, '[[UUID]]')\"></span>
             <span class=\"icon test-result-icon\"></span>

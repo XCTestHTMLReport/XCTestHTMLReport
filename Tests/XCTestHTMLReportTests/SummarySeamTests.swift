@@ -22,31 +22,37 @@ final class SummarySeamTests: XCTestCase {
         XCTAssertTrue(html.hasPrefix("<!doctype html>"), "must render the index template")
         XCTAssertTrue(html.contains("SyntheticSuite"), "must render the fixture's group")
         XCTAssertTrue(html.contains(":root"), "must carry the token layer")
-        // `class`, not `id`: A3a (#439) gave every run its own log view, so
-        // the frame's `id="logs-iframe"` — which every run used to emit,
-        // duplicating it once per bundle — became a per-destination id and the
-        // class is what identifies the frame across them.
+        // A3b (#439) renders the log in the page, so the check that its
+        // reference resolved is that the `<pre>` holds something rather than
+        // that an iframe has a non-empty `src`. Same assertion, against the
+        // element the log actually lands in now.
         XCTAssertFalse(
-            html.contains("class=\"logs-iframe\" src=\"\""),
-            "the run's log reference must resolve to something, not degrade to an empty iframe"
+            html.contains("<pre class=\"log-body\" tabindex=\"0\"></pre>"),
+            "the run's log reference must resolve to something, not degrade to an empty pane"
         )
     }
 
     /// Distinct from `testRendersAFullPageWithoutAnXcresult`: that test proves
-    /// a log *reference* made it into the page under `.linking`, where the
-    /// iframe source is only a relative file name. This proves the log
-    /// *bytes* the fixture provides genuinely reach the rendered HTML, which
-    /// requires `.inline`, the one mode where `RenderingContent.data` embeds
-    /// them directly as the iframe's `data:` URI rather than pointing at a
-    /// file nothing in this synthetic pipeline ever writes.
-    func testInlineRenderingEmbedsTheActualLogBytes() {
-        let html = summary(renderingMode: .inline).generatedHtmlReport()
-        let expectedDataURI = "data:text/plain;base64,"
-            + StubPayloadProvider.logText.base64EncodedString()
-        XCTAssertTrue(
-            html.contains(expectedDataURI),
-            "the fixture's log bytes must be embedded verbatim, not merely referenced"
-        )
+    /// the log pane is not empty. This proves the *bytes* the fixture provides
+    /// are the bytes on the page.
+    ///
+    /// Asserted in **both** modes since A3b (#439). It used to be inline-only,
+    /// because inline was the one mode whose iframe carried the log's content
+    /// — a `data:` URI — while linking mode's carried a file name and nothing
+    /// in this synthetic pipeline ever wrote the file. Rendering the log in the
+    /// page removes that asymmetry: the same text reaches the same element
+    /// either way, and the mode now decides only whether a `.log` file is
+    /// written beside the report.
+    func testBothModesEmbedTheActualLogBytes() {
+        let expected = String(data: StubPayloadProvider.logText, encoding: .utf8) ?? ""
+        for mode in [Summary.RenderingMode.inline, .linking] {
+            let html = summary(renderingMode: mode).generatedHtmlReport()
+            XCTAssertTrue(
+                html.contains("<pre class=\"log-body\" tabindex=\"0\">\(expected)</pre>"),
+                "\(mode): the fixture's log bytes must be on the page verbatim, "
+                    + "not merely referenced"
+            )
+        }
     }
 
     func testRendersNoFaults() {

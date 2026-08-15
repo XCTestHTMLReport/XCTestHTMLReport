@@ -269,6 +269,7 @@ final class HTMLEscapingTests: XCTestCase {
                 name: "testHostile\(hostile)()",
                 identifier: "Suite\(hostile)/testHostile\(hostile)()",
                 arguments: [],
+                executionCount: 1,
                 iterations: [SyntheticResult.iteration(
                     number: nil,
                     status: .failed,

@@ -29,15 +29,16 @@ final class RunSummaryTests: XCTestCase {
     /// The six statuses partition the tests, so the ring is a whole circle
     /// rather than a circle with a gap in it.
     ///
-    /// The fixture puts exactly one test in each of five buckets, which is
-    /// also what makes the legend below assertable: any bucket that stopped
-    /// being counted would drop a row rather than change a number.
+    /// The fixture puts a test in each of five buckets — two in `passed`
+    /// since A3b added a parameterized case — which is also what makes the
+    /// legend below assertable: any bucket that stopped being counted would
+    /// drop a row rather than change a number.
     func testLegendCountsEveryStatusTheFixtureProduces() throws {
         let rows = try document().select("ul.summary-legend li").array()
         XCTAssertEqual(
             try rows.map { try $0.text() },
             [
-                "Passed 1",
+                "Passed 2",
                 "Failed 1",
                 "Skipped 1",
                 "Mixed 1",
@@ -47,7 +48,7 @@ final class RunSummaryTests: XCTestCase {
         )
 
         let total = try document().select(".donut-center strong").text()
-        XCTAssertEqual(total, "5", "the ring's centre states the run's test count")
+        XCTAssertEqual(total, "6", "the ring's centre states the run's test count")
     }
 
     /// The bucket `Status` folds nowhere else: before #439 an expected failure
@@ -68,8 +69,13 @@ final class RunSummaryTests: XCTestCase {
 
     /// The header's duration is the sum of the *leaf* tests, never of the
     /// groups. The fixture makes the two answers different on purpose: its
-    /// group declares 6s while its five test cases add up to 9s (four at 1.5s
-    /// plus a retried one with two 1.5s iterations).
+    /// group declares 6s while its six test cases add up to 10.5s (five at
+    /// 1.5s plus a retried one with two 1.5s iterations).
+    ///
+    /// The parameterized case contributes 1.5s and not 4.5s, deliberately: it
+    /// is one iteration however many argument sets produced it, and both
+    /// readers collapse it that way. Its three executions are a count, not a
+    /// duration.
     ///
     /// This is the assertion that keeps the cross-backend differential green
     /// without an allow-list entry. `durationInSeconds` is null on every suite
@@ -78,7 +84,7 @@ final class RunSummaryTests: XCTestCase {
     /// and 0s on the other.
     func testDurationSumsLeafTestsAndNotGroups() throws {
         let meta = try document().select("#run-summary-heading .summary-meta").text()
-        XCTAssertEqual(meta, "Duration (9.00s) · 1 device")
+        XCTAssertEqual(meta, "Duration (10.50s) · 1 device")
 
         let group = SyntheticResult.parsedRun.testables[0].groups[0]
         XCTAssertEqual(group.duration, 6, "the fixture's group must disagree with its leaves")
@@ -97,11 +103,11 @@ final class RunSummaryTests: XCTestCase {
     /// moment that happens.
     func testTheHeadersDurationIsWrittenInAMaskedShape() throws {
         let rendered = summary().generatedHtmlReport()
-        try XCTAssertContains(rendered, "<span class=\"summary-duration\">(9.00s)</span>")
+        try XCTAssertContains(rendered, "<span class=\"summary-duration\">(10.50s)</span>")
 
         let masked = KnownLossMasker.mask(rendered, rules: ["durations"])
         XCTAssertFalse(
-            masked.contains("(9.00s)"),
+            masked.contains("(10.50s)"),
             "the durations rule must normalise the header's total, as it does "
                 + "every duration in the tree"
         )
@@ -238,7 +244,7 @@ final class RunSummaryTests: XCTestCase {
         )
         XCTAssertEqual(
             try XCTUnwrap(options.first).select(".device-row-tally").text(),
-            "1 passed, 1 failed, 1 skipped, 1 mixed, 1 expected failure",
+            "2 passed, 1 failed, 1 skipped, 1 mixed, 1 expected failure",
             "the bar is aria-hidden, so this caption is the only accessible "
                 + "reading of the proportions it draws"
         )

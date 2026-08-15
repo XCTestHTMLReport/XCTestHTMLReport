@@ -54,6 +54,7 @@ final class TruncationFaultTests: XCTestCase {
             name: name,
             identifier: "Synthetic/\(name)",
             arguments: [],
+            executionCount: 1,
             iterations: [ParsedIteration(
                 iterationNumber: nil, status: .passed, duration: 1, activities: []
             )]

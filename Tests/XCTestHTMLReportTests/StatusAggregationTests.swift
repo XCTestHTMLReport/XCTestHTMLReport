@@ -24,6 +24,7 @@ final class StatusAggregationTests: XCTestCase {
                         name: "test\(index)()",
                         identifier: "Suite/test\(index)()",
                         arguments: [],
+                        executionCount: 1,
                         iterations: [ParsedIteration(
                             iterationNumber: nil,
                             status: status,
