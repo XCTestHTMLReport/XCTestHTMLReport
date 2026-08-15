@@ -219,21 +219,82 @@ final class RunSummaryTests: XCTestCase {
         )
     }
 
-    /// One row per run, whatever the run count, because the ring only ever
+    /// One option per run, whatever the run count, because the ring only ever
     /// speaks for the whole report.
-    func testOneDeviceRowPerRun() throws {
+    ///
+    /// A1 drew these as rows in the summary band's third column and A3a moves
+    /// them into the header device picker (#439) — the "one control, not two"
+    /// decision: the thing that states a destination's split and the thing
+    /// that switches to it are the same element now. What the row *says* is
+    /// unchanged, which is why the assertions below are, and the classes they
+    /// name (`.device-row-name`, `.device-row-tally`) are still A1's.
+    func testOneDeviceOptionPerRun() throws {
         let page = try document()
-        let rows = try page.select(".device-row").array()
-        XCTAssertEqual(rows.count, 1)
+        let options = try page.select(".picker-panel .device-option").array()
+        XCTAssertEqual(options.count, 1)
         XCTAssertEqual(
-            try XCTUnwrap(rows.first).select(".device-row-name").text(),
+            try XCTUnwrap(options.first).select(".device-row-name").text(),
             "Synthetic Device 1.0"
         )
         XCTAssertEqual(
-            try XCTUnwrap(rows.first).select(".device-row-tally").text(),
+            try XCTUnwrap(options.first).select(".device-row-tally").text(),
             "1 passed, 1 failed, 1 skipped, 1 mixed, 1 expected failure",
             "the bar is aria-hidden, so this caption is the only accessible "
                 + "reading of the proportions it draws"
         )
+    }
+
+    /// The picker is the sidebar's whole job, so every navigation the sidebar
+    /// offered has to be reachable from it: which destinations exist, which
+    /// one is showing, each one's outcome, and a way to switch.
+    ///
+    /// It lives in the title band rather than in the summary band, and that
+    /// placement is load-bearing rather than aesthetic: the band stands down
+    /// for the Logs view (A2), so a picker inside it would make choosing a
+    /// destination impossible on exactly the view where a multi-run report
+    /// most needs it — every run has its own log.
+    func testThePickerCarriesEverythingTheDeviceSidebarDid() throws {
+        let page = try document()
+
+        let picker = try XCTUnwrap(
+            page.select("#title .device-picker").first(),
+            "the picker must sit in the title band, above the band that stands "
+                + "down for the Logs view"
+        )
+        XCTAssertEqual(
+            try picker.select("#device-picker-current").text(), "Synthetic Device 1.0",
+            "the collapsed picker must name the destination on screen"
+        )
+
+        let option = try XCTUnwrap(picker.select("button.device-option").first())
+        let handle = try option.attr("data-device")
+        XCTAssertFalse(handle.isEmpty, "an option must carry the handle it switches to")
+        // The attribute and the handler have to name the same run. The script
+        // reaches for the attribute in two places the handler cannot serve —
+        // the boot sequence, and a digest jump into another destination's tree
+        // — so a drift between them would leave those two selecting a
+        // different run from the one a click selects.
+        XCTAssertEqual(
+            try option.attr("onclick").groupMatch("selectDevice\\('([^']*)'"),
+            handle,
+            "the option's handler and its data-device must address one run"
+        )
+        XCTAssertFalse(
+            try option.select(".icon.device-result").isEmpty(),
+            "the sidebar card had a status cell; the picker states the outcome"
+        )
+        XCTAssertEqual(
+            try option.select(".device-option-meta").text(), "Synthetic Model",
+            "the sidebar named the model, so the picker does"
+        )
+
+        // Both per-view slices the option addresses must exist, or switching
+        // destination would leave one view showing the previous one's content.
+        for view in ["tests", "logs"] {
+            XCTAssertNotNil(
+                try page.getElementById("\(view)_\(handle)"),
+                "the picker's handle must address the \(view) view"
+            )
+        }
     }
 }

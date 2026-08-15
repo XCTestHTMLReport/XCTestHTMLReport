@@ -49,7 +49,7 @@ async function settleImages(page: import('@playwright/test').Page) {
 
 async function treeGeometryAtAxeViewport(page: import('@playwright/test').Page) {
   return page.evaluate(() => {
-    const tree = document.querySelector('.run.active .tests');
+    const tree = document.querySelector('#view-tests .run-view.active .tests');
     if (!tree) return null;
     return {
       overflow: tree.scrollHeight - tree.clientHeight,
@@ -59,6 +59,25 @@ async function treeGeometryAtAxeViewport(page: import('@playwright/test').Page) 
       rows: tree.querySelectorAll('p.list-item').length,
     };
   });
+}
+
+async function expectNoGatingViolations(page: import('@playwright/test').Page, state: string) {
+  const results = await new AxeBuilder({ page }).analyze();
+
+  const gating = results.violations.filter((v) => GATING_IMPACTS.includes(v.impact ?? ''));
+  const informational = results.violations.filter((v) => !GATING_IMPACTS.includes(v.impact ?? ''));
+
+  if (informational.length) {
+    console.log(
+      `Non-gating violations (${state}; triage onto #440):\n`
+        + informational.map((v) => `  [${v.impact}] ${v.id}: ${v.help}`).join('\n'),
+    );
+  }
+
+  expect(
+    gating.map((v) => `[${v.impact}] ${v.id}: ${v.help} (${v.nodes.length} nodes)`),
+    `critical/serious accessibility violations (${state})`,
+  ).toEqual([]);
 }
 
 test('reports no critical or serious accessibility violations', async ({ page }) => {
@@ -73,20 +92,51 @@ test('reports no critical or serious accessibility violations', async ({ page })
       + `not exercised and this gate cannot speak to it — measured ${JSON.stringify(tree)}`,
   ).toBeGreaterThan(0);
 
-  const results = await new AxeBuilder({ page }).analyze();
-
-  const gating = results.violations.filter((v) => GATING_IMPACTS.includes(v.impact ?? ''));
-  const informational = results.violations.filter((v) => !GATING_IMPACTS.includes(v.impact ?? ''));
-
-  if (informational.length) {
-    console.log(
-      'Non-gating violations (triage onto #440):\n'
-        + informational.map((v) => `  [${v.impact}] ${v.id}: ${v.help}`).join('\n'),
-    );
-  }
-
-  expect(
-    gating.map((v) => `[${v.impact}] ${v.id}: ${v.help} (${v.nodes.length} nodes)`),
-    'critical/serious accessibility violations',
-  ).toEqual([]);
+  await expectNoGatingViolations(page, 'the Tests view, as opened');
 });
+
+// A3a (#439) turned three permanent panes into surfaces that come and go, and
+// axe only sees what is in the DOM when it runs. Before, the device sidebar and
+// the attachment pane were always rendered and therefore always analysed; a
+// gate that only ever saw the opening state would now be blind to the picker's
+// panel, to the sheet, and to the whole Logs view — a coverage loss disguised
+// as a clean run.
+//
+// Each state below asserts its own precondition first, for the same reason the
+// tree's overflow is asserted above: a state that failed to open is a state
+// axe passes trivially, and nothing in the result would say so.
+const states: [string, (page: import('@playwright/test').Page) => Promise<void>][] = [
+  ['the device picker, open', async (page) => {
+    await page.locator('#device-picker summary').click();
+    await expect(
+      page.locator('.picker-panel .device-option').first(),
+      'the picker must actually be open, or axe analyses a closed disclosure',
+    ).toBeVisible();
+  }],
+  ['the attachment sheet, open', async (page) => {
+    await page.locator('.attachment .preview-button').first().evaluate((el: HTMLElement) => {
+      el.closest('.attachments')!.setAttribute('style', 'display: block');
+      el.click();
+    });
+    await expect(
+      page.locator('#attachment-sheet'),
+      'the sheet must be in the layout, or axe analyses a report with no sheet at all',
+    ).toBeVisible();
+  }],
+  ['the Logs view', async (page) => {
+    await page.locator('#tab-logs').click();
+    await expect(
+      page.locator('#view-logs .logs-iframe'),
+      'the log must be showing, or this state is the Tests view again',
+    ).toBeVisible();
+  }],
+];
+
+for (const [state, open] of states) {
+  test(`reports no critical or serious accessibility violations: ${state}`, async ({ page }) => {
+    await page.goto(reportURL);
+    await settleImages(page);
+    await open(page);
+    await expectNoGatingViolations(page, state);
+  });
+}

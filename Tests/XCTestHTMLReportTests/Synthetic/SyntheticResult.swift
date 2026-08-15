@@ -173,4 +173,29 @@ enum SyntheticResult {
     static var parsedResult: ParsedResult {
         ParsedResult(runs: [parsedRun])
     }
+
+    /// The same tree, run against a second destination (#439, A3a).
+    ///
+    /// Nothing about the report's *content* needs this; navigating it does. A
+    /// merged report is the case the device sidebar existed for, and the shell
+    /// that replaced the sidebar has to be shown doing the sidebar's whole job
+    /// — list the destinations, switch to one, and switch the log with the
+    /// tree, which the old shell could not be caught failing at because both
+    /// panes lived inside the run being switched.
+    ///
+    /// The single-run fixture stays the default everywhere else, including
+    /// both goldens, so this adds a case rather than changing one.
+    static var secondParsedRun: ParsedRun {
+        let base = parsedRun
+        return ParsedRun(
+            destination: ParsedDestination(
+                displayName: "Synthetic Device Two",
+                deviceIdentifier: "00000000-0000-0000-0000-000000000001",
+                modelName: "Synthetic Model Two",
+                operatingSystemVersion: "2.0"
+            ),
+            logReference: base.logReference,
+            testables: base.testables
+        )
+    }
 }

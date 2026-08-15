@@ -166,8 +166,8 @@ final class HTMLEscapingTests: XCTestCase {
     }
 
     /// The summary header (#439, A1) is a second place every hostile leaf
-    /// string reaches markup: the digest carries a test name and an assertion
-    /// message, the device row a destination name and an OS version.
+    /// string reaches markup: the digest carries a test name, a suite name and
+    /// an assertion message.
     ///
     /// Scoped to `#run-summary` rather than to the whole document on purpose.
     /// The tree below renders the same strings escaped, so a document-wide
@@ -176,18 +176,44 @@ final class HTMLEscapingTests: XCTestCase {
     func testTheSummaryHeaderEscapesEveryHostileValue() throws {
         let hostile = "\"'<>&"
         let escaped = "&quot;&apos;&lt;&gt;&amp;"
-        let header = try summaryHeader(in: hostileFailingRunHTML())
+        let header = try element("section", id: "run-summary", in: hostileFailingRunHTML())
 
         XCTAssertFalse(
             header.contains(hostile),
             "a raw hostile string reached the summary header"
         )
-        for value in ["testHostile\(escaped)()", "Device\(escaped)", "1.0\(escaped)",
-                      "Suite\(escaped)", "assertion\(escaped) failed"]
+        for value in ["testHostile\(escaped)()", "Suite\(escaped)",
+                      "assertion\(escaped) failed"]
         {
             XCTAssertTrue(
                 header.contains(value),
                 "the header must render '\(value)' — escaped, but present"
+            )
+        }
+    }
+
+    /// The device picker (#439, A3a) is the third, and the destination fields
+    /// moved into it wholesale: A1's device rows lived in `#run-summary` and
+    /// carried the name and the OS version, and the sidebar carried the model.
+    /// The picker carries all three, so the scoped assertion follows them
+    /// rather than staying pointed at a region they left.
+    ///
+    /// Scoped for the same reason the header's is: every one of these strings
+    /// is rendered escaped somewhere else on the page too, so a document-wide
+    /// check would pass on a picker that emitted a raw copy.
+    func testTheDevicePickerEscapesEveryHostileValue() throws {
+        let hostile = "\"'<>&"
+        let escaped = "&quot;&apos;&lt;&gt;&amp;"
+        let picker = try element("details", id: "device-picker", in: hostileFailingRunHTML())
+
+        XCTAssertFalse(
+            picker.contains(hostile),
+            "a raw hostile string reached the device picker"
+        )
+        for value in ["Device\(escaped)", "1.0\(escaped)", "Model\(escaped)"] {
+            XCTAssertTrue(
+                picker.contains(value),
+                "the picker must render '\(value)' — escaped, but present"
             )
         }
     }
@@ -210,15 +236,16 @@ final class HTMLEscapingTests: XCTestCase {
         XCTAssertEqual(offenders, [], "only opaque digests may address a row from the digest")
     }
 
-    /// The `<section id="run-summary">` element's source, which holds no
-    /// nested `<section>`, so the first close tag after it is its own.
-    private func summaryHeader(in html: String) throws -> String {
+    /// One element's source, by tag and id. Both regions this is used on hold
+    /// no nested element of their own tag, so the first matching close tag
+    /// after the open is that element's own.
+    private func element(_ tag: String, id: String, in html: String) throws -> String {
         let open = try XCTUnwrap(
-            html.range(of: "<section id=\"run-summary\""),
-            "the report must render a summary header"
+            html.range(of: "<\(tag) id=\"\(id)\""),
+            "the report must render <\(tag) id=\"\(id)\">"
         )
         let close = try XCTUnwrap(
-            html.range(of: "</section>", range: open.upperBound ..< html.endIndex)
+            html.range(of: "</\(tag)>", range: open.upperBound ..< html.endIndex)
         )
         return String(html[open.lowerBound ..< close.upperBound])
     }

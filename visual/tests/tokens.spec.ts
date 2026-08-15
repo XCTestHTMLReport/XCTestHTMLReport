@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
 const reportURL = pathToFileURL(resolve(__dirname, '../fixtures/report.html')).href;
+const multiURL = pathToFileURL(resolve(__dirname, '../fixtures/report-multi.html')).href;
 
 /** Every custom property declared on :root, read from the live stylesheet.
  *  Walks nested grouping rules (e.g. @media, @supports, @layer) recursively
@@ -148,26 +149,57 @@ async function textPairs(page: Page) {
   });
 }
 
-for (const scheme of ['light', 'dark'] as const) {
-  test(`text clears WCAG AA contrast floors in ${scheme} mode`, async ({ page }) => {
-    await page.emulateMedia({ colorScheme: scheme });
-    await page.goto(reportURL);
+/**
+ * Open every surface the shell can show before measuring (#439, A3a).
+ *
+ * `textPairs` reads the live cascade, which is what makes it survive a
+ * redesign — but it can only read what is in the layout, and A3a turned three
+ * permanent panes into surfaces that come and go. The picker's panel sits
+ * inside a closed `<details>` and the attachment sheet is not in the layout
+ * until something is in it, so on the opening state this walk sees neither:
+ * a colour used only on a picker option would go unmeasured while the gate
+ * reported green.
+ *
+ * Each step asserts what it opened, for the same reason the axe gate does —
+ * an open that silently failed is a state the check passes trivially.
+ */
+async function openEveryShellSurface(page: Page) {
+  await page.locator('#device-picker summary').click();
+  await expect(page.locator('.picker-panel .device-option').first()).toBeVisible();
 
-    const pairs = await textPairs(page);
-    expect(pairs.length, 'no text elements found — the fixture rendered nothing').toBeGreaterThan(0);
-
-    const failures: string[] = [];
-    for (const pair of pairs) {
-      // WCAG "large text": 18.66px bold, or 24px regular.
-      const large = pair.size >= 24 || (pair.bold && pair.size >= 18.66);
-      const floor = large ? 3.0 : 4.5;
-      const ratio = contrastRatio(pair.fg as [number, number, number], pair.bg as [number, number, number]);
-      if (ratio < floor) {
-        failures.push(`${pair.selector}: ${ratio.toFixed(2)}:1 < ${floor}:1`);
-      }
-    }
-    expect(failures, failures.join('\n')).toEqual([]);
+  await page.locator('.attachment .preview-button').first().evaluate((el: HTMLElement) => {
+    el.closest('.attachments')!.setAttribute('style', 'display: block');
+    el.click();
   });
+  await expect(page.locator('#attachment-sheet')).toBeVisible();
+}
+
+// Both fixtures, because one of them cannot show what the other does: the run
+// number an option carries is rendered only when a report holds several runs,
+// so the single-run fixture has no element to measure it on.
+for (const [fixture, url] of [['single-run', reportURL], ['multi-run', multiURL]] as const) {
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`text clears WCAG AA contrast floors in ${scheme} mode (${fixture})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto(url);
+      await openEveryShellSurface(page);
+
+      const pairs = await textPairs(page);
+      expect(pairs.length, 'no text elements found — the fixture rendered nothing').toBeGreaterThan(0);
+
+      const failures: string[] = [];
+      for (const pair of pairs) {
+        // WCAG "large text": 18.66px bold, or 24px regular.
+        const large = pair.size >= 24 || (pair.bold && pair.size >= 18.66);
+        const floor = large ? 3.0 : 4.5;
+        const ratio = contrastRatio(pair.fg as [number, number, number], pair.bg as [number, number, number]);
+        if (ratio < floor) {
+          failures.push(`${pair.selector}: ${ratio.toFixed(2)}:1 < ${floor}:1`);
+        }
+      }
+      expect(failures, failures.join('\n')).toEqual([]);
+    });
+  }
 }
 
 test('dark mode actually changes the palette', async ({ page }) => {

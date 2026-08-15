@@ -8,7 +8,7 @@
 
 import Foundation
 
-struct Run: HTML {
+struct Run {
     let file: PayloadProviding
     let runDestination: RunDestination
     let testSummaries: [TestSummary]
@@ -186,9 +186,42 @@ struct Run: HTML {
 
     // PRAGMA MARK: - HTML
 
-    var htmlTemplate = HTMLTemplates.run
+    /// A run renders into two places, not one (#439, A3a).
+    ///
+    /// The shell used to give each run a single pane holding its tree *and*
+    /// its log, and switched views by toggling display inside every pane at
+    /// once. Per-view surface ownership inverts that: the views are the outer
+    /// level, so a run contributes one slice to each. Two consequences worth
+    /// stating, because both were bugs before:
+    ///
+    /// - The views are contiguous regions of the document, which is what lets
+    ///   each be a single `tabpanel` a tab can point `aria-controls` at.
+    /// - The log's element ids are per destination. Every run used to emit
+    ///   `id="logs"`, `id="logs-header"` and `id="logs-iframe"`, so a report
+    ///   built from two bundles emitted each of them twice and only behaved
+    ///   because the duplicates sat inside a hidden pane.
+    ///
+    /// `HTML` gives a conformer exactly one template, so `Run` renders through
+    /// named properties instead of conforming. The substitution is the
+    /// protocol's own — same placeholder syntax, same verbatim-value rule, so
+    /// the escaping contract in `HTML`'s documentation still governs every
+    /// value below — applied to two templates from one dictionary, because one
+    /// source for the counts and the identifier is the point.
+    var testsViewHTML: String {
+        render(HTMLTemplates.runTests)
+    }
 
-    var htmlPlaceholderValues: [String: String] {
+    var logsViewHTML: String {
+        render(HTMLTemplates.runLogs)
+    }
+
+    private func render(_ template: String) -> String {
+        placeholderValues.reduce(template) { accumulator, entry in
+            accumulator.replacingOccurrences(of: "[[\(entry.key)]]", with: entry.value)
+        }
+    }
+
+    private var placeholderValues: [String: String] {
         [
             "DEVICE_IDENTIFIER": runDestination.targetDevice.uniqueIdentifier,
             "LOG_SOURCE": (logSource ?? "").stringByEscapingXMLChars,
