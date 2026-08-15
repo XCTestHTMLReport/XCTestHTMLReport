@@ -45,18 +45,10 @@ extension PayloadProviding {
         }
     }
 
-    func exportLogsContent(
-        reference: String,
-        renderingMode: Summary.RenderingMode,
-        fileName: String
-    ) -> RenderingContent {
-        switch renderingMode {
-        case .inline:
-            return exportLogsData(reference: reference)
-                .map(RenderingContent.data) ?? .none
-        case .linking:
-            return exportLogs(reference: reference, fileName: fileName)
-                .map(RenderingContent.url) ?? .none
-        }
-    }
+    // The log has no `exportLogsContent` counterpart to the above (#439, A3b).
+    // Both modes now need the log's *text* as well as its rendering content —
+    // the Logs view renders the log in the page rather than pointing an iframe
+    // at it — and one call returning only the content would leave inline mode
+    // exporting the same bytes twice. `Run.init` reads the data once and
+    // derives both.
 }

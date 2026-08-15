@@ -102,6 +102,76 @@ final class PlaceholderOrderTests: XCTestCase {
         )
     }
 
+    /// The per-view templates are *closed*, not merely ordered (#439, A3b).
+    ///
+    /// `Run` fills two templates from two lists rather than one dictionary, and
+    /// each list holds only what its own template needs — so the one value in
+    /// each that a test author controls goes in last, with nothing after it to
+    /// fill. That is stronger than ordering: a test named after the log's
+    /// placeholder is not merely filled late, it is unfillable, because the
+    /// Tests list has no such entry at all.
+    ///
+    /// Both directions, because the hazard is symmetric and a dictionary in
+    /// hash order could have substituted either value into the other.
+    func testATestNamedAfterTheLogsPlaceholderIsNotFilledByIt() {
+        let html = report(
+            testName: "test[[LOG_TEXT]]()",
+            log: "a line belonging to the log alone"
+        )
+
+        try? XCTAssertContains(html, "test[[LOG_TEXT]]()")
+        XCTAssertEqual(
+            occurrences(of: "a line belonging to the log alone", in: html), 1,
+            "the log belongs to the Logs view and nowhere else — a test that "
+                + "spells its placeholder must not pull it into the tree"
+        )
+    }
+
+    func testALogLineNamedAfterTheTreesPlaceholderIsNotFilledByIt() {
+        let html = report(
+            testName: "testOrdinary()",
+            log: "a log line reading [[TEST_SUMMARIES]]"
+        )
+
+        try? XCTAssertContains(html, "a log line reading [[TEST_SUMMARIES]]")
+        XCTAssertEqual(
+            occurrences(of: "testOrdinary()", in: html), 1,
+            "and the tree must not be pulled into the log by a line that "
+                + "spells its placeholder"
+        )
+    }
+
+    /// A run holding one named test and one crafted log.
+    private func report(testName: String, log: String) -> String {
+        let logReference = "crafted-log"
+        let run = ParsedRun(
+            destination: SyntheticResult.parsedRun.destination,
+            logReference: logReference,
+            testables: [ParsedTestable(
+                targetName: "SyntheticTests",
+                groups: [ParsedGroup(
+                    name: "SyntheticSuite",
+                    identifier: "SyntheticSuite",
+                    duration: 1,
+                    children: [.testCase(SyntheticResult.testCase(
+                        name: testName,
+                        iterations: [SyntheticResult.iteration(
+                            number: nil, status: .passed, activities: []
+                        )]
+                    ))]
+                )]
+            )]
+        )
+        return Summary(
+            parsedRuns: [run],
+            payloads: StubPayloadProvider(exports: [logReference: Data(log.utf8)]),
+            renderingMode: .linking,
+            downsizeImagesEnabled: false,
+            downsizeScaleFactor: 0.5,
+            bundleNames: ["Synthetic"]
+        ).generatedHtmlReport()
+    }
+
     private func occurrences(of needle: String, in haystack: String) -> Int {
         haystack.components(separatedBy: needle).count - 1
     }

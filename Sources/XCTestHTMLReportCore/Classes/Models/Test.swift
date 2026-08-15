@@ -8,63 +8,6 @@
 
 import Foundation
 
-/// `CaseIterable` so `StatusCSSClassTests` can assert its table covers every
-/// case: a status added without a `cssClass` draws no glyph at all, which is
-/// how `.expectedFailure` went unnoticed until #439.
-enum Status: String, CaseIterable {
-    case unknown = ""
-    case failure = "Failure"
-    case success = "Success"
-    case skipped = "Skipped"
-    case mixed = "Mixed"
-    case expectedFailure = "Expected Failure"
-
-    init(_ parsed: ParsedStatus) {
-        switch parsed {
-        case .passed:
-            self = .success
-        case .failed:
-            self = .failure
-        case .skipped:
-            self = .skipped
-        case .expectedFailure:
-            // Folded into `.unknown` until #439: with no case of its own an
-            // expected failure rendered an empty status class, which the
-            // stylesheet draws as a blank cell. Both readers already map
-            // xcresult's `Expected Failure` to `ParsedStatus.expectedFailure`
-            // (legacy and modern alike), so carrying it through to the
-            // renderer costs nothing and diverges neither backend.
-            self = .expectedFailure
-        case .unknown:
-            self = .unknown
-        }
-    }
-
-    /// The class the stylesheet draws a status glyph from.
-    ///
-    /// `.unknown` returns a name rather than the empty string it used to:
-    /// "no icon at all" and "an icon meaning we do not know" are different
-    /// statements, and only the second one is true. Note this is *not* the
-    /// same set the header counts use — `Run` buckets on the enum, and
-    /// expected failures deliberately land in no bucket.
-    var cssClass: String {
-        switch self {
-        case .failure:
-            return "failed"
-        case .success:
-            return "succeeded"
-        case .skipped:
-            return "skipped"
-        case .mixed:
-            return "mixed"
-        case .expectedFailure:
-            return "expected-failure"
-        case .unknown:
-            return "unknown"
-        }
-    }
-}
-
 /// What kind of node a row represents, and the CSS class the report's own
 /// stylesheet and JavaScript select on.
 ///
@@ -111,6 +54,13 @@ public struct TestGroup: Test {
     }
 
     var subTests: [Test] = []
+
+    /// A suite executes whatever its children did. An empty group is a leaf as
+    /// far as `Run.allTests` is concerned, and a leaf that ran once, so it
+    /// falls back to the protocol's default rather than summing to zero.
+    var executionCount: Int {
+        subTests.isEmpty ? 1 : subTests.reduce(0) { $0 + $1.executionCount }
+    }
 
     var descendantSubTests: [Test] {
         subTests.flatMap { subTest -> [Test] in
@@ -268,6 +218,18 @@ struct TestCase: Test {
 
     let iterations: [Iteration]
 
+    /// How many times the run executed this test (#439, A3b). Never below
+    /// `iterations.count`, since an iteration is an execution with a row.
+    let executionCount: Int
+
+    /// The executions the tree draws no row for. Non-zero on one shape any
+    /// fixture produces: an unrepeated parameterized `@Test(arguments:)`,
+    /// whose argument executions are one row on both backends. A repeated test
+    /// is excluded — its iterations are rows already.
+    var undrawnExecutions: Int {
+        iterations.count == 1 ? max(executionCount - 1, 0) : 0
+    }
+
     init(
         testCase: ParsedTestCase,
         identifierPath: IdentifierPath,
@@ -286,6 +248,8 @@ struct TestCase: Test {
         uuid = path.identifier
 
         Logger.substep("Initializing TestCase \(identifier)")
+
+        executionCount = max(testCase.executionCount, testCase.iterations.count)
 
         // The reader already merged repetitions into ordered iterations, so
         // each iteration's rendered position — and with it the
@@ -307,6 +271,32 @@ struct TestCase: Test {
 
 /// HTML conforming
 extension TestCase {
+    /// ` data-runs="3"`, or nothing. The whole attribute rather than its
+    /// value, so a row that ran once carries none — see
+    /// `HTMLTemplates.testCase`. Opaque by construction: an `Int`.
+    private var runsAttribute: String {
+        executionCount > 1 ? " data-runs=\"\(executionCount)\"" : ""
+    }
+
+    /// "3 arguments" beside the name — the option-A mockup's own tag for a
+    /// parameterized row, and what makes the toolbar's executions count
+    /// legible: without it a reader is told the run holds 23 executions of 21
+    /// tests with no way to see which rows account for the difference. Only
+    /// the *count* is stated, never the values, which only modern names.
+    ///
+    /// Rendered markup, and the element goes with it: an empty `<span>` on
+    /// every unparameterized row would be a tag per test to say nothing.
+    /// Nothing here needs escaping — a count and a fixed word.
+    private var executionNote: String {
+        let undrawn = undrawnExecutions
+        guard undrawn > 0 else {
+            return ""
+        }
+        let sets = undrawn + 1
+        return "\n            <span class=\"row-note row-arguments\">\(sets) argument"
+            + (sets == 1 ? "" : "s") + "</span>"
+    }
+
     var htmlPlaceholderValues: [String: String] {
         if iterations.count == 1 {
             let iteration = iterations[0]
@@ -316,6 +306,8 @@ extension TestCase {
                 "DURATION": duration.formattedSeconds,
                 "ICON_CLASS": status.cssClass,
                 "ITEM_CLASS": nodeKind.cssClass,
+                "RUNS_ATTR": runsAttribute,
+                "EXECUTION_NOTE": executionNote,
                 "SCREENSHOT_TAIL": iteration.testScreenshotFlow?.screenshotsTail
                     .accumulateHTMLAsString ?? "",
                 "SCREENSHOT_FLOW": iteration.testScreenshotFlow?.screenshots
@@ -329,6 +321,7 @@ extension TestCase {
                 "DURATION": duration.formattedSeconds,
                 "ICON_CLASS": status.cssClass,
                 "ITEM_CLASS": nodeKind.cssClass,
+                "RUNS_ATTR": runsAttribute,
                 "ITERATIONS": iterations.reduce("") { $0 + $1.html },
                 // Sorted because `Dictionary` iteration order is seeded per
                 // process: unsorted, "1 failed, 1 succeeded" renders as

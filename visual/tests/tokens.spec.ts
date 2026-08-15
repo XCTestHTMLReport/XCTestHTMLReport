@@ -174,6 +174,27 @@ async function openEveryShellSurface(page: Page) {
   await expect(page.locator('#attachment-sheet')).toBeVisible();
 }
 
+/**
+ * The Logs view is a second document as far as this walk is concerned (#439,
+ * A3b), and it has to be measured as one.
+ *
+ * The two views are mutually exclusive — the inactive one is `display: none`,
+ * which is exactly what `textPairs` skips — so one pass can only ever see one
+ * of them. That cost nothing while the log was an iframe, since a foreign
+ * document has no pairings this stylesheet is answerable for. It renders in
+ * the page now, which means the log's own colours, its toolbar count and its
+ * filter field are this sheet's business and would otherwise go unmeasured on
+ * every run.
+ */
+async function pairsAcrossBothViews(page: Page) {
+  const tests = await textPairs(page);
+  await page.locator('#tab-logs').click();
+  await expect(page.locator('#view-logs .run-view.active .log-body')).toBeVisible();
+  const logs = await textPairs(page);
+  expect(logs.length, 'the Logs view must contribute text of its own').toBeGreaterThan(0);
+  return tests.concat(logs);
+}
+
 // Both fixtures, because one of them cannot show what the other does: the run
 // number an option carries is rendered only when a report holds several runs,
 // so the single-run fixture has no element to measure it on.
@@ -184,7 +205,7 @@ for (const [fixture, url] of [['single-run', reportURL], ['multi-run', multiURL]
       await page.goto(url);
       await openEveryShellSurface(page);
 
-      const pairs = await textPairs(page);
+      const pairs = await pairsAcrossBothViews(page);
       expect(pairs.length, 'no text elements found — the fixture rendered nothing').toBeGreaterThan(0);
 
       const failures: string[] = [];

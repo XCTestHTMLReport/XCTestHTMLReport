@@ -159,6 +159,34 @@ public struct ParsedTestCase {
     /// the slot afterwards means reshaping the port and every reader with it.
     /// Not yet exercised by any fixture — see Task 8 of the migration plan.
     public let arguments: [String]
+    /// How many times the run actually executed this test (#439, A3b).
+    ///
+    /// Xcode's own toolbar states 21 tests and 23 *runs* on `TestResults`, and
+    /// the two differ for exactly one reason here: `parameterizedAddition`
+    /// executed once per argument set. `iterations` cannot carry that number —
+    /// both readers deliberately collapse argument executions into one row, so
+    /// a parameterized case has one iteration on either backend — and
+    /// `arguments` cannot either, because only the modern format names the
+    /// values.
+    ///
+    /// What *both* formats carry is the count, and this is where it lands:
+    ///
+    /// - legacy: the number of sibling metadata entries sharing the identifier,
+    ///   taken before `mergingArgumentExecutions` folds them;
+    /// - modern: the number of `Repetition` children, or of `Arguments`
+    ///   children when there are no repetitions.
+    ///
+    /// So this converges the readers rather than reading something new: the
+    /// fact was in both bundles and one of them was throwing it away.
+    /// `DifferentialTests.testExecutionCountsMatchAcrossBackends` is what holds
+    /// them equal, and `1` is the floor — a test that ran once.
+    ///
+    /// A test that is *both* parameterized and repeated is not exercised by
+    /// any fixture, and the two readers derive it differently there (legacy
+    /// counts the product, modern the larger of the two); nothing in the
+    /// report depends on that shape today, and closing it needs a fixture
+    /// first.
+    public let executionCount: Int
     public let iterations: [ParsedIteration]
 }
 

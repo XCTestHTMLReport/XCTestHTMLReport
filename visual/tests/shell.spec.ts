@@ -41,7 +41,7 @@ test('the picker lists every destination with its own outcome', async ({ page })
     await expect(
       options.nth(index).locator('.device-row-tally'),
       'every option states its own run in words, since the bar is aria-hidden',
-    ).toHaveText('1 passed, 1 failed, 1 skipped, 1 mixed, 1 expected failure');
+    ).toHaveText('2 passed, 1 failed, 1 skipped, 1 mixed, 1 expected failure');
   }
 
   await expect(
@@ -184,21 +184,68 @@ test('each view owns its own toolbar and nothing else renders under it', async (
   ).toBeHidden();
 });
 
-test('the trailing toolbar slot A3b fills is laid out and empty', async ({ page }) => {
+// The slot A3a reserved, now filled (#439, A3b). Right-aligned is the half
+// that made it a slot rather than a div, and it is where Xcode's own test
+// report puts its Filter field — so this asserts the position as well as the
+// presence.
+test('both views carry a filter field at the far end of their toolbar', async ({ page }) => {
   await page.goto(reportURL);
 
-  const trailing = page.locator('#view-tests .run-view.active .view-toolbar-trailing');
-  await expect(trailing, 'the slot must exist for #460 to land in').toHaveCount(1);
-  await expect(trailing, 'and be empty until it does').toHaveText('');
+  for (const [view, tab] of [['#view-tests', '#tab-tests'], ['#view-logs', '#tab-logs']]) {
+    await page.locator(tab).click();
+    const field = page.locator(`${view} .run-view.active .view-toolbar-trailing input.view-filter`);
+    await expect(field, `${view} must carry a filter field`).toHaveCount(1);
+    await expect(field).toBeVisible();
 
-  // Right-aligned, which is the half that makes it a slot rather than a div:
-  // A3b's filter field lands at the far end of the toolbar, as Xcode's does.
-  const [toolbarRight, slotRight] = await page.evaluate(() => {
+    const gap = await page.evaluate((selector) => {
+      const toolbar = document.querySelector(`${selector} .run-view.active .view-toolbar`)!;
+      const slot = toolbar.querySelector('.view-toolbar-trailing')!;
+      return toolbar.getBoundingClientRect().right - slot.getBoundingClientRect().right;
+    }, view);
+    expect(Math.abs(gap), `${view}'s filter must sit at the trailing edge`)
+      .toBeLessThanOrEqual(12);
+  }
+});
+
+// 375px, where the toolbar has the most to fit and the least room: six pills,
+// a count and a field. The pills wrap and the field gives way — `max-width`
+// on the field, `flex-wrap` on the row — and what must not happen is the
+// toolbar pushing the page sideways, because `body` is `overflow: hidden` and
+// anything past the right edge is not merely unscrolled but unreachable (the
+// A3a title-band defect, in the row below it).
+test('the filled toolbar stays inside a 375px window', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto(reportURL);
+
+  const geometry = await page.evaluate(() => {
     const toolbar = document.querySelector('#view-tests .run-view.active .view-toolbar')!;
-    const slot = toolbar.querySelector('.view-toolbar-trailing')!;
-    return [toolbar.getBoundingClientRect().right, slot.getBoundingClientRect().right];
+    const field = toolbar.querySelector('.view-filter')!;
+    const pills = [...toolbar.querySelectorAll('.pill')];
+    return {
+      toolbarRight: toolbar.getBoundingClientRect().right,
+      fieldRight: field.getBoundingClientRect().right,
+      fieldWidth: field.getBoundingClientRect().width,
+      pillRows: new Set(pills.map((p) => Math.round(p.getBoundingClientRect().top))).size,
+      pills: pills.length,
+      viewport: document.documentElement.clientWidth,
+      bodyScroll: document.documentElement.scrollWidth,
+    };
   });
-  expect(Math.abs(toolbarRight - slotRight)).toBeLessThanOrEqual(12);
+
+  // Precondition, in the A2 pattern: a toolbar that fitted on one line would
+  // pass every assertion below while proving nothing about the case this
+  // exists for.
+  expect(geometry.pills, 'the fixture must offer enough pills to crowd the row')
+    .toBeGreaterThanOrEqual(5);
+  expect(geometry.pillRows, 'and they must actually have wrapped at this width')
+    .toBeGreaterThan(1);
+
+  expect(geometry.fieldRight, 'the filter field must not overhang the toolbar')
+    .toBeLessThanOrEqual(geometry.toolbarRight + 1);
+  expect(geometry.fieldWidth, 'and must still be wide enough to type in')
+    .toBeGreaterThan(60);
+  expect(geometry.bodyScroll, 'nothing may push the page sideways')
+    .toBeLessThanOrEqual(geometry.viewport + 1);
 });
 
 // ---- The attachment sheet ----------------------------------------------

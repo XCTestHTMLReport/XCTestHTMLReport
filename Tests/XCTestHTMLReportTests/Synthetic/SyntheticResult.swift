@@ -84,12 +84,19 @@ enum SyntheticResult {
 
     static func testCase(
         name: String,
-        iterations: [ParsedIteration]
+        iterations: [ParsedIteration],
+        executionCount: Int = 1
     ) -> ParsedTestCase {
         ParsedTestCase(
             name: name,
             identifier: "Synthetic/\(name)",
+            // Left empty even for the parameterized case below: only the
+            // modern format names argument *values*, so a synthetic fixture
+            // that filled them would be modelling a shape the legacy backend
+            // cannot produce. The count is the part both backends carry, and
+            // it is what the report renders.
             arguments: [],
+            executionCount: max(executionCount, iterations.count),
             iterations: iterations
         )
     }
@@ -154,6 +161,21 @@ enum SyntheticResult {
                         iteration(number: 1, status: .failed, activities: [failureActivity]),
                         iteration(number: 2, status: .passed, activities: standardActivities),
                     ]
+                )),
+                // Three executions, one row — the parameterized shape (#439,
+                // A3b). Added so the synthetic render exercises the second of
+                // the toolbar's two numbers: without it every fixture has as
+                // many executions as tests, the counts agree by accident, and
+                // both the goldens and the browser suite would pass on a build
+                // that dropped `executionCount` entirely.
+                .testCase(testCase(
+                    name: "testParameterized()",
+                    iterations: [iteration(
+                        number: nil,
+                        status: .passed,
+                        activities: standardActivities
+                    )],
+                    executionCount: 3
                 )),
             ]
         )

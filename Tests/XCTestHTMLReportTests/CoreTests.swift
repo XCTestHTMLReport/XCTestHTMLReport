@@ -34,85 +34,18 @@ final class CoreTests: XCTestCase {
                     .select("div.view-toolbar .filter-pills > button[role=radio]")
             )
             let texts = try elements.eachText()
-            XCTAssertEqual(texts.count, 5)
-            XCTAssertEqual(texts[0].intGroupMatch("All \\((\\d+)\\)"), 4)
-            XCTAssertEqual(texts[1].intGroupMatch("Passed \\((\\d+)\\)"), 1)
-            XCTAssertEqual(texts[2].intGroupMatch("Skipped \\((\\d+)\\)"), 0)
-            XCTAssertEqual(texts[3].intGroupMatch("Failed \\((\\d+)\\)"), 1)
-            XCTAssertEqual(texts[4].intGroupMatch("Mixed \\((\\d+)\\)"), 1)
+            // A3b renders the pills from the run's own tally, so the row holds
+            // one pill per outcome the run produced rather than a fixed five
+            // (#439, A3b). Two consequences here, both asserted as the whole
+            // list because a count alone would not catch either: `RetryResults`
+            // skips nothing, so the "Skipped (0)" this used to assert is not
+            // offered; and `RetryTests` records an expected failure, which had
+            // no pill at all before #460.
+            XCTAssertEqual(
+                texts,
+                ["All (4)", "Passed (1)", "Failed (1)", "Mixed (1)", "Expected failures (1)"]
+            )
         })
-    }
-
-    func testResultStatusCount() throws {
-        let testResultsUrl = try XCTUnwrap(testResultsUrl)
-        let summary = Summary(
-            resultPaths: [testResultsUrl.path],
-            renderingMode: .linking,
-            downsizeImagesEnabled: false,
-            downsizeScaleFactor: 0.5
-        )
-
-        let document = try SwiftSoup.parse(summary.html)
-
-        try XCTContext.runActivity(named: "Test header contain the right number of results") { _ in
-            let elements = try XCTUnwrap(
-                document
-                    .select("div.view-toolbar .filter-pills > button[role=radio]")
-            )
-            let texts = try elements.eachText()
-            XCTAssertEqual(texts.count, 5)
-
-            let all = try XCTUnwrap(texts[0].intGroupMatch("All \\((\\d+)\\)"))
-            let passed = try XCTUnwrap(texts[1].intGroupMatch("Passed \\((\\d+)\\)"))
-            let skipped = try XCTUnwrap(texts[2].intGroupMatch("Skipped \\((\\d+)\\)"))
-            let failed = try XCTUnwrap(texts[3].intGroupMatch("Failed \\((\\d+)\\)"))
-            let mixed = try XCTUnwrap(texts[4].intGroupMatch("Mixed \\((\\d+)\\)"))
-
-            // Fixtures are regenerated on every run, so assert only what the
-            // sample sources actually determine, not the pass/fail split.
-            //
-            // The original reason for that caution -- the suites launched the
-            // app in setUp with continueAfterFailure = false, so a slow
-            // simulator turned a would-be pass into a failure -- no longer
-            // applies: #423 removed those launches. The caution stands anyway,
-            // because a run still depends on the simulator behaving, and an
-            // exact split would measure that rather than this project.
-            //
-            // 21 = 16 XCTest methods + 5 Swift Testing `@Test` functions in
-            // SwiftTestingSuite (SampleAppUnitTests target). Beyond the
-            // original 13 XCTest methods: FirstSuite.testAttachScreenshot was
-            // added by #393 to give the image rendering path a fixture, and
-            // testExpectedFailure + testWithPngAttachment by #439 for the
-            // redesign's status-icon and attachment-type work. The 4th `@Test`
-            // is parameterizedAddition, added by the xcresulttool migration
-            // (Task 8) to exercise `Arguments` nodes — its three argument sets
-            // merge into one row, exactly like repetitions — and the 5th is
-            // knownIssue (#439), Swift Testing's expected-failure counterpart.
-            XCTAssertEqual(all, 21, "One row per test method; fixed by the sample sources")
-            XCTAssertEqual(
-                skipped,
-                1,
-                "SampleAppUnitTests.testSkipped is an unconditional XCTSkipIf"
-            )
-            XCTAssertEqual(mixed, 0, "TestResults excludes RetryTests, so nothing can be mixed")
-            XCTAssertEqual(
-                passed + failed,
-                all - skipped - 2,
-                "Every remaining test lands in exactly one bucket, except the " +
-                    "two `Expected Failure` cases (testExpectedFailure and " +
-                    "knownIssue). These are the per-run *filter pills*, which " +
-                    "#439's A1 did not touch: they still offer five buckets " +
-                    "and an expected failure matches none of them. The summary " +
-                    "header added by A1 does count them — see " +
-                    "`testSummaryHeaderAccountsForExpectedFailures` below — so " +
-                    "the two readings disagree until A3 rebuilds the filters"
-            )
-            XCTAssertGreaterThanOrEqual(
-                failed, 6,
-                "Six sample tests fail deliberately (including SwiftTestingSuite.intentionalFailure); " +
-                    "a lower count means failures are being lost"
-            )
-        }
     }
 
     /// The summary header's counts, on the real fixture rather than the

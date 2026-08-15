@@ -126,9 +126,38 @@ const states: [string, (page: import('@playwright/test').Page) => Promise<void>]
   ['the Logs view', async (page) => {
     await page.locator('#tab-logs').click();
     await expect(
-      page.locator('#view-logs .logs-iframe'),
+      page.locator('#view-logs .run-view.active .log-body'),
       'the log must be showing, or this state is the Tests view again',
     ).toBeVisible();
+  }],
+  // A3b's controls are in the layout from the start, so the opening state
+  // already analyses them. What it does not analyse is the page they *produce*:
+  // a tree narrowed to one bucket and one name, where rows and whole suites
+  // carry `display: none` and the live count has been rewritten by script.
+  // That is a different document, and axe only ever sees the one in front of
+  // it.
+  ['the Tests view, filtered', async (page) => {
+    await page.locator('.pill', { hasText: /^Expected failures \(\d+\)$/ }).click();
+    await page.locator('#view-tests .run-view.active .tests-filter').fill('test');
+    await expect(
+      page.locator('#view-tests .run-view.active .test-summary:visible'),
+      'the filters must have left rows showing, or this state is an empty pane',
+    ).not.toHaveCount(0);
+    const [shown, total] = await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#view-tests .run-view.active .test-summary')];
+      return [rows.filter((r) => (r as HTMLElement).offsetParent !== null).length, rows.length];
+    });
+    expect(shown, 'and must have hidden some, or nothing was filtered').toBeLessThan(total);
+  }],
+  ['the Logs view, filtered', async (page) => {
+    await page.locator('#tab-logs').click();
+    const body = page.locator('#view-logs .run-view.active .log-body');
+    const before = (await body.textContent())!.length;
+    await page.locator('#view-logs .run-view.active .log-filter').fill('line two');
+    expect(
+      (await body.textContent())!.length,
+      'the filter must have narrowed the log, or this state is the log entire',
+    ).toBeLessThan(before);
   }],
 ];
 
