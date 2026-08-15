@@ -2616,8 +2616,7 @@ struct HTMLTemplates
       }
       var status = statusOf(view),
           query = queryOf(view),
-          rows = filterableRows(view),
-          executions = 0;
+          rows = filterableRows(view);
       for (var i = 0; i < rows.length; i++) {
         var shown = rowMatches(rows[i], status, query);
         rows[i].style.display = shown ? 'block' : 'none';
@@ -2636,11 +2635,27 @@ struct HTMLTemplates
           tail.style.display = shown ? 'block' : 'none';
           tail = tail.previousElementSibling;
         }
-        if (shown) {
+      }
+      hideSummaryGroupsIfNeeded(view);
+      countExecutionsOnScreen(view);
+    }
+
+    // Counted off the rows rather than accumulated while deciding them, so
+    // that anything which changes what is on screen can restate the figure by
+    // calling this — the digest jump reveals a row the filter hid, and a count
+    // that only the filter could write would keep announcing the filter's
+    // number at a pane that no longer holds it.
+    function countExecutionsOnScreen(view) {
+      if (!view) {
+        return;
+      }
+      var rows = filterableRows(view),
+          executions = 0;
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].style.display !== 'none') {
           executions += executionsOf(rows[i]);
         }
       }
-      hideSummaryGroupsIfNeeded(view);
       setCount(view, executions === 1 ? '1 execution' : executions + ' executions');
     }
 
@@ -2845,6 +2860,12 @@ struct HTMLTemplates
         }
         ancestor = ancestor.parentElement;
       }
+
+      // A row appearing is a change to what the pane holds, so the toolbar
+      // restates its figure through the same writer the filter uses. The count
+      // is `aria-live`: silence here is a reader being told nothing while a
+      // test they did not filter for arrives on screen.
+      countExecutionsOnScreen(row.closest('.run-view'));
 
       disclosure.style.display = 'block';
       var chevron = row.querySelector('.drop-down-icon');

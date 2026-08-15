@@ -315,6 +315,48 @@ test('a digest jump reveals a row the filter has hidden', async ({ page }) => {
   await expect(row, 'the jump must reveal it anyway').toBeVisible();
 });
 
+// …and the toolbar has to say so. Revealing the row is half the answer: the
+// count beside the pills is `aria-live`, so it is the whole of the notice a
+// screen-reader user gets that the pane changed. Left at the figure the filter
+// wrote, it announces nothing while a row appears, and states a total the
+// reader beside them can disprove by counting the screen.
+//
+// Summed from the rows rather than pinned to a literal, because the claim is
+// an invariant — the toolbar answers for what is visible — and a literal would
+// be a second fixture-dependent number to maintain beside the pill labels.
+test('a digest jump keeps the executions count level with the rows on screen', async ({ page }) => {
+  await page.goto(reportURL);
+
+  const scope = '#view-tests .run-view.active';
+  const count = page.locator(`${scope} .view-toolbar-count`);
+  const label = (executions: number) =>
+    executions === 1 ? '1 execution' : `${executions} executions`;
+  const executionsOnScreen = () =>
+    page.locator(`${scope} .test-summary:visible`).evaluateAll((rows) =>
+      rows.reduce(
+        (sum, row) => sum + (parseInt(row.getAttribute('data-runs') ?? '', 10) || 1),
+        0,
+      ));
+
+  // "Passed" hides every failing row, which is every row the digest lists.
+  await page.locator('.pill', { hasText: /^Passed \(\d+\)$/ }).click();
+  const filtered = await executionsOnScreen();
+  expect(filtered, 'the fixture must leave passing rows on screen').toBeGreaterThan(0);
+  await expect(count, 'the filter states its own figure').toHaveText(label(filtered));
+
+  await page.locator('.digest-jump').first().click();
+
+  const revealed = await executionsOnScreen();
+  expect(
+    revealed,
+    'the jump must have put a row the filter hid back on screen, or this asserts nothing',
+  ).toBeGreaterThan(filtered);
+  await expect(
+    count,
+    'so the count must follow the pane, not the pills that no longer describe it',
+  ).toHaveText(label(revealed));
+});
+
 // The narrow layout's scroll lock (#439, A2). Below 700px `#container` is a
 // column, so the tree is sized on the block axis by a flex item's automatic
 // minimum — its content's height. Without `min-height: 0` the list grew to
