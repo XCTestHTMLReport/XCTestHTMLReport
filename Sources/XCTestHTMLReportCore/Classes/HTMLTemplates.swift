@@ -2621,14 +2621,20 @@ struct HTMLTemplates
       for (var i = 0; i < rows.length; i++) {
         var shown = rowMatches(rows[i], status, query);
         rows[i].style.display = shown ? 'block' : 'none';
-        // A test's tail screenshot is emitted *between* rows rather than
-        // inside one (A2), so it is a sibling the row's own `display` does not
-        // reach. Left behind, a filtered-out test leaves its screenshot in the
-        // tree with no row to belong to — a 200px picture of a test the reader
-        // asked not to see.
+        // A test's tail screenshots are emitted *between* rows rather than
+        // inside one (A2), so they are siblings the row's own `display` does
+        // not reach. Left behind, a filtered-out test leaves its screenshots in
+        // the tree with no row to belong to — 200px pictures of a test the
+        // reader asked not to see.
+        //
+        // A loop, not one sibling: `TestScreenshotFlow` emits the *last three*
+        // screenshots of a test (`suffix(tailCount)`), so a test with several
+        // is preceded by several. The synthetic fixture has such a row, which
+        // is why the gate on this counts every tail rather than the first.
         var tail = rows[i].previousElementSibling;
-        if (tail && tail.classList.contains('screenshot-tail')) {
+        while (tail && tail.classList.contains('screenshot-tail')) {
           tail.style.display = shown ? 'block' : 'none';
+          tail = tail.previousElementSibling;
         }
         if (shown) {
           executions += executionsOf(rows[i]);

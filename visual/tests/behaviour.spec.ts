@@ -178,25 +178,44 @@ test('a suite goes when its last visible row does', async ({ page }) => {
 // A test's tail screenshot is emitted between rows rather than inside one
 // (A2), which put it outside everything the filters ever touched: a hidden
 // test left a 200px picture behind in the tree with no row to belong to.
-test('a filtered-out test takes its screenshot with it', async ({ page }) => {
+test('a filtered-out test takes its screenshots with it', async ({ page }) => {
   await page.goto(reportURL);
 
   const scope = '#view-tests .run-view.active';
   const tails = page.locator(`${scope} img.screenshot-tail`);
-  expect(await tails.count(), 'the fixture must render tail screenshots')
-    .toBeGreaterThan(0);
-  await expect(tails.first()).toBeVisible();
+  const visibleTails = () => page.locator(`${scope} img.screenshot-tail:visible`).count();
+
+  const total = await tails.count();
+  expect(total, 'the fixture must render tail screenshots').toBeGreaterThan(0);
+  expect(await visibleTails()).toBe(total);
+
+  // The precondition that makes this more than a one-sibling check:
+  // `TestScreenshotFlow` emits a test's *last three* screenshots, so a test
+  // with several is preceded by several, and a fix that walked back one
+  // sibling would leave the outer ones on screen. The fixture must contain
+  // such a run or this gate cannot see that difference.
+  const longestRun = await page.evaluate((selector) => {
+    const rows = [...document.querySelectorAll(`${selector} .test-summary`)];
+    return Math.max(...rows.map((row) => {
+      let n = 0;
+      let sibling = row.previousElementSibling;
+      while (sibling?.classList.contains('screenshot-tail')) { n++; sibling = sibling.previousElementSibling; }
+      return n;
+    }));
+  }, scope);
+  expect(longestRun, 'some row must carry more than one tail screenshot')
+    .toBeGreaterThan(1);
 
   // Skipped, because the fixture's screenshots hang off tests that passed or
   // failed — so this hides every row that owns one.
   await page.locator('.pill', { hasText: /^Skipped \(\d+\)$/ }).click();
-  await expect(
-    tails.first(),
-    'the screenshot belongs to a row the reader asked not to see',
-  ).toBeHidden();
+  expect(
+    await visibleTails(),
+    'every screenshot belongs to a row the reader asked not to see',
+  ).toBe(0);
 
   await page.locator('.pill', { hasText: /^All \(\d+\)$/ }).click();
-  await expect(tails.first(), 'and comes back with it').toBeVisible();
+  expect(await visibleTails(), 'and they all come back').toBe(total);
 });
 
 // Xcode's second number, and the reason it is `aria-live`: it answers to the
