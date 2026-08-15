@@ -349,9 +349,13 @@ test(`the title band fits a 375px viewport with a ${REAL_DESTINATION.length}-cha
     band.chevronRight,
     'and the chevron must be on screen, since it is what says the control opens',
   ).toBeLessThanOrEqual(band.viewport);
+  // Square, and not squarely nothing: the glyph is sized in one axis by a rule
+  // and in the other by the flex row, so "width matches height" alone would be
+  // satisfied by an element that had vanished in both.
+  expect(band.glyph.height, 'the run glyph must be in the layout').toBeGreaterThan(0);
   expect(
     band.glyph.width,
-    'the run glyph must keep its shape rather than absorb the squeeze for everything else',
+    'and must keep its shape rather than absorb the squeeze for everything else',
   ).toBeCloseTo(band.glyph.height, 0);
   expect(
     band.truncated,
