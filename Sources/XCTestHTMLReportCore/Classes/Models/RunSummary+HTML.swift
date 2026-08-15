@@ -51,7 +51,8 @@ extension RunSummary: HTML {
         // whole panel of buttons into the collapsed summary's one-line span.
         // This way round the only exposure left is a destination named
         // `[[CURRENT_DEVICE]]`, which gets a copy of the current label inside
-        // an option: text where the other was controls.
+        // an option: text where the other was controls. `PlaceholderOrderTests`
+        // pins both this order and that boundary.
         return HTMLTemplates.devicePicker
             .replacingOccurrences(
                 of: "[[DEVICE_OPTIONS]]",
