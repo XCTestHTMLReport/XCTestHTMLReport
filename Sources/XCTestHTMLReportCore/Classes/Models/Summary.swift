@@ -42,26 +42,18 @@ public struct Summary {
 
         bundleNames = Self.bundleNames(from: resultPaths)
 
-        // The CLI already rejects an explicit `legacy` the toolchain cannot
-        // honour in `validate()`. This arm is defence in depth for library
-        // consumers who never pass through the CLI: a non-throwing init
-        // cannot raise the error, so it records a fault — which reaches
-        // exit 3 through the existing path, and is therefore still not a
-        // silent substitution.
-        let resolved: ResultBackend
-        switch backend.resolve() {
-        case let .use(concrete):
-            resolved = concrete
-        case .legacyUnavailable:
-            faultCollector.record(
-                .legacyReaderUnavailable,
-                "legacy reader requested but unavailable on this toolchain"
-            )
-            resolved = .modern
-        }
+        let resolved = Self.resolveBackend(backend, faultCollector: faultCollector)
 
         for (resultIndex, resultPath) in resultPaths.enumerated() {
             Logger.step("Parsing \(resultPath)")
+            Logger.beginPhase(Self.readingPhaseLabel(
+                path: resultPath, index: resultIndex, total: resultPaths.count
+            ))
+            // `defer` rather than a call at the end of the body: this loop
+            // `continue`s on an unreadable bundle, which would otherwise leave
+            // the phase open and mis-pair every phase after it.
+            defer { Logger.endPhase() }
+
             let url = URL(fileURLWithPath: resultPath)
             let resultFile = ResultFile(url: url, faultCollector: faultCollector)
 
@@ -190,7 +182,14 @@ public struct Summary {
     /// Generate HTML report
     /// - Returns: Generated HTML report string
     public func generatedHtmlReport() -> String {
-        html
+        Logger.beginPhase("Rendering")
+        // Counted on the way out rather than up front: the count is only worth
+        // reporting alongside the time it took to render them.
+        defer {
+            let count = runs.reduce(0) { $0 + $1.allTests.count }
+            Logger.endPhase("Rendering \(count) test\(count == 1 ? "" : "s")")
+        }
+        return html
     }
 
     /// Generate JUnit report

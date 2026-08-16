@@ -98,6 +98,33 @@ Report successfully created at ./index.html
 
 This will create only one HTML Report in the path you passed with the -r option
 
+### Progress
+
+A large result bundle takes a while, and a silent run is hard to tell from a
+hung one. When standard error is a terminal, each phase is reported as it
+finishes, with the time it took:
+
+``` bash
+$ xchtmlreport TestResults.xcresult
+    Exporting 2531 attachments          4.8s
+  Reading TestResults.xcresult         18.2s
+  Rendering 1284 tests                 12.4s
+  Writing report                        0.9s
+Wrote ./index.html (412 MB)            36.3s
+
+Report successfully created at ./index.html
+```
+
+Those timings also answer "which part is slow?" on your own bundle rather than
+in the abstract. Indented lines are nested inside the line below them —
+attachment export happens during the read.
+
+The rules are `git`'s. Progress goes to **standard error**, so a pipeline
+reading the report path off stdout (`xchtmlreport … | xargs open`) is
+unaffected. It is off when standard error is not a terminal, so scripts and CI
+logs are unchanged. `--progress` forces it on anyway, and `--quiet` turns it
+off.
+
 ### Generate Junit Reports
 
 You can generate junit reports with the `-j` flag
