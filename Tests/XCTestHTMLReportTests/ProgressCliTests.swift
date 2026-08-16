@@ -15,6 +15,35 @@ final class ProgressCliTests: XCTestCase {
         Bundle.testBundle.url(forResource: "TestResults", withExtension: "xcresult")
     }
 
+    /// Every label the reporter can emit. The silence assertions below check
+    /// the whole set rather than one sample: a leak through any other phase
+    /// would otherwise pass unnoticed, which is the failure mode a negative
+    /// test is most prone to.
+    private static let progressLabels = [
+        "Reading ",
+        "Exporting ",
+        "Rendering ",
+        "Writing report",
+        "Wrote ",
+    ]
+
+    private func assertNoProgress(
+        in output: String?,
+        _ stream: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let text = output ?? ""
+        for label in Self.progressLabels {
+            XCTAssertFalse(
+                text.contains(label),
+                "progress label \"\(label)\" leaked onto \(stream):\n\(text)",
+                file: file,
+                line: line
+            )
+        }
+    }
+
     /// The guarantee for every existing script and CI job: nothing new appears.
     func testRedirectedRunEmitsNoProgress() throws {
         let url = try XCTUnwrap(testResultsUrl)
@@ -22,10 +51,7 @@ final class ProgressCliTests: XCTestCase {
         let (status, _, stderr) = try xchtmlreportCmd(args: ["-r", url.path])
 
         XCTAssertEqual(status, 0)
-        XCTAssertFalse(
-            (stderr ?? "").contains("Rendering"),
-            "a redirected run should stay silent, got stderr:\n\(stderr ?? "")"
-        )
+        assertNoProgress(in: stderr, "stderr")
     }
 
     func testProgressFlagForcesPhaseLinesOntoStderr() throws {
@@ -54,10 +80,7 @@ final class ProgressCliTests: XCTestCase {
 
         XCTAssertEqual(status, 0)
         let output = try XCTUnwrap(stdout)
-        XCTAssertFalse(
-            output.contains("Rendering"),
-            "progress must not pollute stdout, got:\n\(output)"
-        )
+        assertNoProgress(in: output, "stdout")
         XCTAssertTrue(
             output.contains("index.html"),
             "stdout should still carry the report path, got:\n\(output)"
@@ -72,9 +95,6 @@ final class ProgressCliTests: XCTestCase {
         )
 
         XCTAssertEqual(status, 0)
-        XCTAssertFalse(
-            (stderr ?? "").contains("Rendering"),
-            "--quiet should win over --progress, got stderr:\n\(stderr ?? "")"
-        )
+        assertNoProgress(in: stderr, "stderr")
     }
 }
