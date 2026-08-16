@@ -42,32 +42,13 @@ public struct Summary {
 
         bundleNames = Self.bundleNames(from: resultPaths)
 
-        // The CLI already rejects an explicit `legacy` the toolchain cannot
-        // honour in `validate()`. This arm is defence in depth for library
-        // consumers who never pass through the CLI: a non-throwing init
-        // cannot raise the error, so it records a fault — which reaches
-        // exit 3 through the existing path, and is therefore still not a
-        // silent substitution.
-        let resolved: ResultBackend
-        switch backend.resolve() {
-        case let .use(concrete):
-            resolved = concrete
-        case .legacyUnavailable:
-            faultCollector.record(
-                .legacyReaderUnavailable,
-                "legacy reader requested but unavailable on this toolchain"
-            )
-            resolved = .modern
-        }
+        let resolved = Self.resolveBackend(backend, faultCollector: faultCollector)
 
         for (resultIndex, resultPath) in resultPaths.enumerated() {
             Logger.step("Parsing \(resultPath)")
-            let name = URL(fileURLWithPath: resultPath).lastPathComponent
-            Logger.beginPhase(
-                resultPaths.count > 1
-                    ? "Reading \(name) (\(resultIndex + 1) of \(resultPaths.count))"
-                    : "Reading \(name)"
-            )
+            Logger.beginPhase(Self.readingPhaseLabel(
+                path: resultPath, index: resultIndex, total: resultPaths.count
+            ))
             // `defer` rather than a call at the end of the body: this loop
             // `continue`s on an unreadable bundle, which would otherwise leave
             // the phase open and mis-pair every phase after it.
