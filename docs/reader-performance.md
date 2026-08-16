@@ -15,9 +15,17 @@ xcresulttool 24514, bundle format 3.56, against `xchtmlreport` at
 
 ## Summary
 
-**Test count dominates. Attachment count barely matters.** A test case costs
-~115 ms on *both* readers; an attachment costs ~2 ms on modern and ~28 ms on
-legacy. Rendering and memory are non-issues at any scale tried.
+A test case costs ~110–115 ms on *both* readers. An attachment costs ~2 ms on
+modern and ~28 ms on legacy — and that difference changes which axis dominates,
+so the two readers need separate statements:
+
+- **Modern: test count dominates, attachment volume is nearly free.** 1,000
+  tests against 2,500 attachments is 23× (115.2s vs 5.0s).
+- **Legacy: both cost real time.** The same comparison is only 1.6× (110.0s vs
+  69.5s). 2,500 attachments take 69.5 seconds, so "attachments barely matter"
+  is a modern-reader claim, not a universal one.
+
+Rendering and memory were not primary bottlenecks at any size tested.
 
 ## Method
 
@@ -46,13 +54,15 @@ Timings come from `/usr/bin/time -l` for wall clock and peak RSS, and from
 | 1,000 | 161 MB | 2.3s | 28.1s | 28 ms |
 | 2,500 | **401 MB** | **5.0s** | **69.5s** | 28 ms |
 
-Both readers are linear in attachment count. Modern is ~14× faster because
-`ModernPayloadStore.ensureExported` runs **one** bulk `export attachments` for
-the whole bundle, where the legacy path exports one payload per attachment
-through XCResultKit, each its own `xcrun` process.
+Both readers are approximately linear in attachment count over the measured
+range. Modern is ~14× faster because `ModernPayloadStore.ensureExported` runs
+**one** bulk `export attachments` for the whole bundle, where the legacy path
+exports one payload per attachment through XCResultKit, each its own `xcrun`
+process.
 
 At the scale #237 describes — 401 MB, 2,500 attachments — the modern reader
-takes five seconds. Attachment volume alone does not produce a slow run.
+takes five seconds, so attachment volume alone does not produce a slow run
+*there*. On legacy the same bundle costs 69.5 seconds, which is not nothing.
 
 ## Sweep 2 — test count (1 activity + 2 attachments each, 40 KB)
 
@@ -62,9 +72,10 @@ takes five seconds. Attachment volume alone does not produce a slow run.
 | 400 | 38 MB | 45.6s | 44.0s | ~114 ms |
 | 1,000 | 95 MB | **115.2s** | **110.0s** | ~115 ms |
 
-Linear in test count, and **the modern reader is no faster than legacy**. This
-is the axis that matters: 1,000 tests cost roughly twenty times what 2,500
-attachments cost.
+Approximately linear in test count over the measured range, and **the modern
+reader is no faster than legacy** in these fixtures. On modern this is the axis
+that matters — 1,000 tests cost ~23× what 2,500 attachments do — while on
+legacy the two are within 1.6× of each other and both are expensive.
 
 ## Root cause
 
@@ -125,7 +136,11 @@ is free to change without deprecation. The whole #391 migration exists *because*
 Apple removed a supported interface after a deprecation period — an unsupported
 one offers no such warning. It is also unverified across Xcode versions, and
 attachment payload bytes still live in the content-addressed `Data/` store, so
-export would likely still go through `xcresulttool` (already O(1), so no loss).
+export would likely still go through `xcresulttool` — no loss, since the bulk
+export is already a single invocation. Note that this is constant in *process
+count*, not in work: it still reads and writes every payload byte, and sweep 1
+shows the export phase growing with volume (0.4s → 1.0s → 2.2s across 250 →
+1,000 → 2,500 attachments).
 
 Any move here is an architectural decision of the same weight as #391, not an
 optimisation to slip in.
