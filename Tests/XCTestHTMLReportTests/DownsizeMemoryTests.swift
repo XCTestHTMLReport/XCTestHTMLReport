@@ -30,6 +30,11 @@ final class DownsizeMemoryTests: XCTestCase {
     /// test near twenty seconds.
     private static let attachmentCount = 80
 
+    /// iPhone-class retina dimensions: the size that made #337 fatal.
+    private static let sourceWidth = 1290
+    private static let sourceHeight = 2796
+    private static let scaleFactor: CGFloat = 0.25
+
     private static let bytesPerMB: UInt64 = 1048576
 
     /// Per-attachment resident growth allowed. Two orders of magnitude above
@@ -37,9 +42,17 @@ final class DownsizeMemoryTests: XCTestCase {
     /// slack nor a busy CI machine can push it either way.
     private static let perAttachmentBudget: UInt64 = 5 * bytesPerMB
 
+    struct ResidentSizeUnavailable: Error {
+        let code: kern_return_t
+    }
+
     /// Resident size of this process, which is what the OOM killer reads.
     /// Heap accounting would miss the Cocoa image buffers this is about.
-    private func residentBytes() -> UInt64 {
+    ///
+    /// Throws rather than returning zero on failure: a zero here would make
+    /// `after - before` zero too, and the test would report success having
+    /// measured nothing at all.
+    private func residentBytes() throws -> UInt64 {
         var info = mach_task_basic_info()
         var count = mach_msg_type_number_t(
             MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size
@@ -49,7 +62,10 @@ final class DownsizeMemoryTests: XCTestCase {
                 task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
             }
         }
-        return result == KERN_SUCCESS ? info.resident_size : 0
+        guard result == KERN_SUCCESS else {
+            throw ResidentSizeUnavailable(code: result)
+        }
+        return info.resident_size
     }
 
     /// A retina-sized screenshot, striped so JPEG cannot collapse it to a few
@@ -71,10 +87,48 @@ final class DownsizeMemoryTests: XCTestCase {
         return image.jpegData(compression: 0.9)
     }
 
+    /// Proves the pooled path actually ran. Low memory is only evidence of a
+    /// working pool if the images were really decoded and re-encoded; if
+    /// downsizing silently became a no-op — the flag ignored, or
+    /// `AttachmentType.isImage` no longer recognising the extension — the
+    /// measurement would sail through while guarding nothing at all.
+    private func assertWasDownsized(
+        _ attachment: Attachment?,
+        source: Data,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        let rendered = try XCTUnwrap(attachment, file: file, line: line)
+        guard case let .data(renderedData) = rendered.content else {
+            return XCTFail(
+                "inline rendering should have produced data content",
+                file: file,
+                line: line
+            )
+        }
+        let renderedImage = try XCTUnwrap(NSImage(data: renderedData), file: file, line: line)
+        XCTAssertEqual(
+            renderedImage.size.width,
+            CGFloat(Self.sourceWidth) * Self.scaleFactor,
+            accuracy: 2,
+            "attachment was not downsized, so the image path under test never ran",
+            file: file,
+            line: line
+        )
+        XCTAssertLessThan(
+            renderedData.count,
+            source.count,
+            "downsized payload should be smaller than the source screenshot",
+            file: file,
+            line: line
+        )
+    }
+
     func testDownsizingDoesNotScaleMemoryWithAttachmentCount() throws {
         let reference = "payload-screenshot"
-        // iPhone-class retina dimensions: the size that made #337 fatal.
-        let source = try XCTUnwrap(screenshot(width: 1290, height: 2796))
+        let source = try XCTUnwrap(
+            screenshot(width: Self.sourceWidth, height: Self.sourceHeight)
+        )
         let provider = StubPayloadProvider(exports: [reference: source])
 
         let attachments = (0 ..< Self.attachmentCount).map { index in
@@ -99,24 +153,26 @@ final class DownsizeMemoryTests: XCTestCase {
             file: provider,
             renderingMode: .inline,
             downsizeImagesEnabled: true,
-            downsizeScaleFactor: 0.25
+            downsizeScaleFactor: Self.scaleFactor
         )
 
-        let before = residentBytes()
+        let before = try residentBytes()
         let activity = Activity(
             activity: parsed,
             identifierPath: IdentifierPath.root.appending("measured"),
             file: provider,
             renderingMode: .inline,
             downsizeImagesEnabled: true,
-            downsizeScaleFactor: 0.25
+            downsizeScaleFactor: Self.scaleFactor
         )
-        let after = residentBytes()
+        let after = try residentBytes()
 
         // Keep the result alive across the measurement: inline rendering holds
         // each downsized payload by design, and that retention is part of what
         // is being bounded. Releasing it early would measure the wrong thing.
         XCTAssertEqual(activity.attachments.count, Self.attachmentCount)
+
+        try assertWasDownsized(activity.attachments.first, source: source)
 
         let growth = after > before ? after - before : 0
         let perAttachment = growth / UInt64(Self.attachmentCount)
