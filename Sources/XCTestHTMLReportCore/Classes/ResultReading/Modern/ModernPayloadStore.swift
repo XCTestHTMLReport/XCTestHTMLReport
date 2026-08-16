@@ -150,6 +150,15 @@ final class ModernPayloadStore: PayloadProviding {
         }
         exportAttempted = true
 
+        // One bulk export for the whole bundle, so this phase runs once no
+        // matter how many attachments there are. It is also the phase most
+        // likely to dominate a large run, which is why it reports its count.
+        Logger.beginPhase("Exporting attachments")
+        defer {
+            let count = fileNamesByUUID.count
+            Logger.endPhase("Exporting \(count) attachment\(count == 1 ? "" : "s")")
+        }
+
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("xchtmlreport-attachments-\(UUID().uuidString)")
         do {

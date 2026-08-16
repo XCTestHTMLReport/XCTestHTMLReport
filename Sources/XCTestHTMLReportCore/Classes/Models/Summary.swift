@@ -62,6 +62,17 @@ public struct Summary {
 
         for (resultIndex, resultPath) in resultPaths.enumerated() {
             Logger.step("Parsing \(resultPath)")
+            let name = URL(fileURLWithPath: resultPath).lastPathComponent
+            Logger.beginPhase(
+                resultPaths.count > 1
+                    ? "Reading \(name) (\(resultIndex + 1) of \(resultPaths.count))"
+                    : "Reading \(name)"
+            )
+            // `defer` rather than a call at the end of the body: this loop
+            // `continue`s on an unreadable bundle, which would otherwise leave
+            // the phase open and mis-pair every phase after it.
+            defer { Logger.endPhase() }
+
             let url = URL(fileURLWithPath: resultPath)
             let resultFile = ResultFile(url: url, faultCollector: faultCollector)
 
@@ -190,7 +201,14 @@ public struct Summary {
     /// Generate HTML report
     /// - Returns: Generated HTML report string
     public func generatedHtmlReport() -> String {
-        html
+        Logger.beginPhase("Rendering")
+        // Counted on the way out rather than up front: the count is only worth
+        // reporting alongside the time it took to render them.
+        defer {
+            let count = runs.reduce(0) { $0 + $1.allTests.count }
+            Logger.endPhase("Rendering \(count) test\(count == 1 ? "" : "s")")
+        }
+        return html
     }
 
     /// Generate JUnit report

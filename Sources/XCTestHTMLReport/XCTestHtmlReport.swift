@@ -110,6 +110,17 @@ struct XCTestHtmlReport: ParsableCommand {
     )
     var lenient = false
 
+    @Flag(
+        name: .long,
+        help: ArgumentHelp(
+            "Report progress on standard error even when it is not a terminal"
+        )
+    )
+    var progress = false
+
+    @Flag(name: .shortAndLong, help: ArgumentHelp("Suppress progress reporting"))
+    var quiet = false
+
     @OptionGroup
     var htmlOptions: HtmlOptions
 
@@ -122,8 +133,27 @@ struct XCTestHtmlReport: ParsableCommand {
     @OptionGroup
     var jsonOptions: JsonOptions
 
+    private static func fileSizeDescription(of path: String) -> String {
+        guard let size = try? FileManager.default
+            .attributesOfItem(atPath: path)[.size] as? Int64
+        else {
+            return "size unknown"
+        }
+        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+
     func run() throws {
         Logger.verbose = verbose
+        // git's rule (see `Logger.shouldShowProgress`): a redirected run stays
+        // as silent as it was before this feature existed.
+        Logger.progressEnabled = Logger.shouldShowProgress(
+            isTerminal: isatty(STDERR_FILENO) == 1,
+            forced: progress,
+            quiet: quiet
+        )
+        // Outer phase: every other phase nests inside it, so its elapsed time
+        // is the whole run. Closed once the report has been written.
+        Logger.beginPhase("Wrote report")
 
         guard let path = htmlOptions.output ?? summaryOptions.finalResults.first?
             .dropLastPathComponent()
@@ -150,12 +180,19 @@ struct XCTestHtmlReport: ParsableCommand {
         Logger.step("Building HTML..")
         let html = summary.generatedHtmlReport()
 
+        Logger.beginPhase("Writing report")
         do {
             try html.write(toFile: indexPath, atomically: false, encoding: .utf8)
         } catch {
             Logger.error("An error has occured while creating the report")
             throw error
         }
+        Logger.endPhase()
+
+        // Closes the phase opened at the top of `run()`. The size is what makes
+        // the total meaningful: a slow run on a huge report is not the same
+        // complaint as a slow run on a small one (#237).
+        Logger.endPhase("Wrote \(indexPath) (\(Self.fileSizeDescription(of: indexPath)))")
 
         Logger.success("\nReport successfully created at \(indexPath)")
 
