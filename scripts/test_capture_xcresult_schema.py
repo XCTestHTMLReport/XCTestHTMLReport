@@ -218,6 +218,24 @@ class CaptureTests(unittest.TestCase):
             self.assertTrue(report[0]["database"]["shippedWithBundle"])
             self.assertFalse(report[1]["database"]["shippedWithBundle"])
 
+    def test_materialising_without_xcrun_is_not_fatal(self):
+        """These tests run on Linux in CI, where `xcrun` does not exist at all.
+        A missing executable raises rather than returning non-zero, so
+        `check=False` does not cover it — the same tolerance `probe()` already
+        has. Reproduced here by emptying PATH, which fails the same way on macOS.
+        """
+        with tempfile.TemporaryDirectory() as root:
+            bundle = make_bundle(root, "A.xcresult", ddl=None)
+
+            result = subprocess.run(
+                [sys.executable, SCRIPT, "--materialise", bundle],
+                capture_output=True, text=True, check=False,
+                env={**os.environ, "PATH": root},
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(json.loads(result.stdout)["bundles"][0]["database"]["present"])
+
     def test_materialising_an_unreadable_bundle_is_not_fatal(self):
         """`--materialise` shells out to xcresulttool, which cannot read these
         synthetic bundles. That must degrade to "no database" rather than take

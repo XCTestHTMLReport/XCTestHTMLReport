@@ -163,12 +163,20 @@ def materialise(bundle):
     learns nothing — which is exactly what the first run of this workflow did
     on both legs. Read once, then inspect.
     """
-    subprocess.run(
-        ["xcrun", "xcresulttool", "get", "test-results", "tests",
-         "--path", bundle, "--schema-version", "0.1.0"],
-        capture_output=True,
-        check=False,
-    )
+    try:
+        subprocess.run(
+            ["xcrun", "xcresulttool", "get", "test-results", "tests",
+             "--path", bundle, "--schema-version", "0.1.0"],
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        # No `xcrun` here at all, which is the case on the Linux runner that
+        # runs these tests. A missing executable raises rather than returning
+        # non-zero, so `check=False` does not cover it. Nothing to materialise
+        # is a fact for the capture to record, not a reason to abort it — the
+        # same tolerance `probe` has.
+        pass
 
 
 def read_database(bundle, force=False):
