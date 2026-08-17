@@ -204,6 +204,37 @@ class CaptureTests(unittest.TestCase):
                 {"xcodeBuildVersion": "17C52", "xcodeVersion": "26.2"}
             ])
 
+    def test_records_whether_the_database_was_shipped_with_the_bundle(self):
+        """`xcodebuild test` writes only Info.plist and the content-addressed
+        `Data/` store; `xcresulttool` builds the database on first read. The two
+        facts are different — "Apple ships a database" versus "a read produced
+        one" — and conflating them is what made the probe's first run report
+        `no database` on both legs and learn nothing."""
+        with tempfile.TemporaryDirectory() as root:
+            with_db = make_bundle(root, "A.xcresult", ddl=["CREATE TABLE T (x TEXT)"])
+            without = make_bundle(root, "B.xcresult", ddl=None)
+            report = capture(with_db, without)["bundles"]
+
+            self.assertTrue(report[0]["database"]["shippedWithBundle"])
+            self.assertFalse(report[1]["database"]["shippedWithBundle"])
+
+    def test_materialising_an_unreadable_bundle_is_not_fatal(self):
+        """`--materialise` shells out to xcresulttool, which cannot read these
+        synthetic bundles. That must degrade to "no database" rather than take
+        the whole capture down — the same tolerance the toolchain probes have."""
+        with tempfile.TemporaryDirectory() as root:
+            bundle = make_bundle(root, "A.xcresult", ddl=None)
+
+            result = subprocess.run(
+                [sys.executable, SCRIPT, "--materialise", bundle],
+                capture_output=True, text=True, check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            database = json.loads(result.stdout)["bundles"][0]["database"]
+            self.assertFalse(database["present"])
+            self.assertFalse(database["shippedWithBundle"])
+
     def test_reports_the_toolchain_it_ran_against(self):
         """A fingerprint with no toolchain attached cannot be compared to
         anything."""

@@ -19,18 +19,27 @@ and is empty. That leaves `Info.plist`'s `version` (3.56 on Xcode 26.2) — the
 only producer-written stamp in the bundle — whose documented meaning is the
 *legacy commands* format version, and the legacy commands are being removed.
 
-So this captures, per bundle: that version, whether the database exists at all
-(older bundles may predate the sqlite backend), and a fingerprint of the schema
-itself. Run it under several Xcode versions and the answer falls out of diffing
-the JSON: if the fingerprint moves and the version does not, there is nothing to
-gate on and the lead needs a different safety story.
+So this captures, per bundle: that version, whether a database exists, and a
+fingerprint of the schema. Run it under several Xcode versions and the answer
+falls out of diffing the JSON: if the fingerprint moves and the version does
+not, there is nothing to gate on and the lead needs a different safety story.
 
-The fingerprint is computed from each table's ordered (column, declared type)
-pairs, not from the DDL text, so it is insensitive to formatting by
-construction and sensitive to anything a reader could depend on.
+**The database is derived, not shipped.** `xcodebuild test` writes only
+`Info.plist` and the content-addressed `Data/` store; `xcresulttool` builds
+`database.sqlite3` on its first read of the bundle and leaves it behind. Delete
+it and the next query recreates it with an identical schema fingerprint. A
+freshly generated bundle therefore has none, which is what the first run of the
+probe workflow found on both legs — so `--materialise` reads each bundle once
+before inspecting it, and `shippedWithBundle` records whether one was there
+beforehand.
+
+The fingerprint is computed from each table's sorted (column, declared type)
+pairs, not from the DDL text, so it is insensitive to formatting and to Apple's
+nondeterministic column order, while remaining sensitive to anything a reader
+could depend on.
 
 Usage:
-    capture_xcresult_schema.py BUNDLE [BUNDLE ...] [-o OUT.json]
+    capture_xcresult_schema.py BUNDLE [BUNDLE ...] [--materialise] [-o OUT.json]
 """
 
 import argparse
@@ -142,10 +151,35 @@ def fingerprint(schema):
     return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def read_database(bundle):
+def materialise(bundle):
+    """Force the derived database into existence by reading the bundle once.
+
+    `database.sqlite3` is **not** written by `xcodebuild test`. A bundle fresh
+    off a test run contains only `Info.plist` and the content-addressed `Data/`
+    store; `xcresulttool` builds the database on its first read and leaves it
+    behind. Delete it and any query recreates it, with an identical schema.
+
+    So a probe that inspects a freshly generated bundle finds no database and
+    learns nothing — which is exactly what the first run of this workflow did
+    on both legs. Read once, then inspect.
+    """
+    subprocess.run(
+        ["xcrun", "xcresulttool", "get", "test-results", "tests",
+         "--path", bundle, "--schema-version", "0.1.0"],
+        capture_output=True,
+        check=False,
+    )
+
+
+def read_database(bundle, force=False):
     path = os.path.join(bundle, "database.sqlite3")
+    # Whether Apple ships it, recorded before anything can create it. Distinct
+    # from `present`, which after `--materialise` says only that a read worked.
+    shipped = os.path.exists(path)
+    if force and not shipped:
+        materialise(bundle)
     if not os.path.exists(path):
-        return {"present": False}
+        return {"present": False, "shippedWithBundle": shipped}
 
     connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     try:
@@ -160,6 +194,7 @@ def read_database(bundle):
         read_schema = {name: schema[name] for name in READ_TABLES if name in schema}
         report = {
             "present": True,
+            "shippedWithBundle": shipped,
             "userVersion": connection.execute("PRAGMA user_version").fetchone()[0],
             "applicationId": connection.execute("PRAGMA application_id").fetchone()[0],
             "tableCount": len(names),
@@ -174,11 +209,11 @@ def read_database(bundle):
     return report
 
 
-def capture_bundle(bundle):
+def capture_bundle(bundle, force=False):
     return {
         "name": os.path.basename(bundle),
         "infoPlist": read_info_plist(bundle),
-        "database": read_database(bundle),
+        "database": read_database(bundle, force=force),
     }
 
 
@@ -186,6 +221,12 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bundles", nargs="+", help=".xcresult bundles to inspect")
     parser.add_argument("-o", "--output", help="write JSON here instead of stdout")
+    parser.add_argument(
+        "--materialise",
+        action="store_true",
+        help="read each bundle once first, so the derived database exists "
+             "(a freshly generated bundle does not carry one)",
+    )
     args = parser.parse_args(argv)
 
     missing = [bundle for bundle in args.bundles if not os.path.isdir(bundle)]
@@ -194,7 +235,9 @@ def main(argv=None):
 
     report = {
         "toolchain": toolchain(),
-        "bundles": [capture_bundle(bundle) for bundle in args.bundles],
+        "bundles": [
+            capture_bundle(bundle, force=args.materialise) for bundle in args.bundles
+        ],
     }
     text = json.dumps(report, indent=2, sort_keys=True)
     if args.output:
