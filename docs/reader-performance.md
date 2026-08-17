@@ -9,8 +9,9 @@ are slowest?" — that nothing in the repository could answer.
 synthetic bundles. They are recorded to establish *shape* — what scales with
 what — not as a benchmark to defend.
 
-Measured 2026-08-16 on an Apple M1 Max (10 cores), macOS 15.6, Xcode 26.2,
-xcresulttool 24514, bundle format 3.56, against `xchtmlreport` at
+Sweeps measured 2026-08-16, call-level breakdowns and bundle inspection
+2026-08-17, on an Apple M1 Max (10 cores), macOS 15.6, Xcode 26.2, xcresulttool
+24514, bundle format 3.56, against `xchtmlreport` at
 [`bbea314`](https://github.com/XCTestHTMLReport/XCTestHTMLReport/commit/bbea314).
 
 ## Summary
@@ -79,7 +80,8 @@ legacy the two are within 1.6× of each other and both are expensive.
 
 ## Root cause
 
-One `xcresulttool` subprocess per test case, on both readers.
+At least one `xcresulttool` subprocess per test case, on both readers — and
+more than one where a test repeated, as the subsection below shows.
 `ModernResultReader.swift` says so where it happens:
 
 > One `activities` subprocess per exact test-case id — suite and bundle ids are
@@ -87,10 +89,41 @@ One `xcresulttool` subprocess per test case, on both readers.
 
 Legacy reaches the same shape through `getActionTestSummary(id:)` per test.
 
-The cost is process overhead, not work. At 1,000 tests the modern reader spent
-`real 115s / user 31s / sys 10s` — roughly **74 seconds waiting on
-subprocesses**. A single `activities` call for one test measures ~64 ms against
-a small bundle, essentially independent of bundle size.
+The cost is largely process overhead, not work. At 1,000 tests the modern
+reader spent `real 115s / user 31s / sys 10s` — roughly **74 seconds waiting on
+subprocesses**.
+
+Against the 16-test `TestResults` fixture, one `activities` call breaks down
+roughly as (n=20, warm):
+
+| | |
+| --- | ---: |
+| `xcrun` wrapper process | ~7 ms |
+| `xcresulttool` binary startup (`version`, no bundle) | ~9 ms |
+| opening the bundle, querying, serialising JSON | ~12 ms |
+| **total via `xcrun`** | **~35 ms** |
+
+An earlier draft of this document quoted 64 ms from a single cold sample; the
+figures here are twenty warm iterations and supersede it. Note this is a small
+bundle — the sweeps imply per-call cost grows with bundle size, which the 16-test
+fixture cannot show. Do not extrapolate the ~35 ms to the 115 ms seen at scale.
+
+### The same document is fetched more than once
+
+`parseTestCase` calls `activities(for:iteration:)` once per repetition with the
+**same identifier**, and each call spawns a subprocess, fetches the whole
+document, and keeps one `testRuns[index]`. Counted through a wrapping client:
+
+| fixture | calls | unique ids |
+| --- | ---: | ---: |
+| `RetryResults` | 6 | 4 |
+| `TestResults` | 16 | 16 |
+| `SanityResults` | 1 | 1 |
+
+So the spawn count is the *sum of repetitions*, not the *number of test cases*.
+The sweeps above used no retries, which is why this never appeared in them —
+and `-retry-tests-on-failure` is common in CI, so real runs land on the bad
+side of it.
 
 ## Ruled out
 
@@ -104,43 +137,255 @@ a small bundle, essentially independent of bundle size.
 
 ## Leads
 
-**Parallelise the per-test reads.** They are independent subprocesses issued
-serially inside `ModernResultReader.read()`. `Run.swift` already runs the later
-model-building phase concurrently at `cpuCount * 2`; the reads predate that
-phase and do not share it. Roughly 74 of 115 seconds at 1,000 tests is pure
-waiting, so this is the cheapest available win.
+Four, ordered by what they cost to adopt. The first two remove work outright
+and carry no architectural risk. The third overlaps work. The fourth replaces
+the interface.
 
-**Read `database.sqlite3` directly instead of shelling out.** Every `.xcresult`
-inspected carries one, holding a straightforward relational schema —
-`TestCases`, `TestSuites`, `TestCaseRuns`, `Activities`, `Attachments`,
-`TestIssues`, `ExpectedFailures`, `RepetitionPolicies`, `RunDestinations`,
-`Devices` — with foreign keys and indices. `Attachments` even carries an
-`xcResultKitPayloadRefId` column. One query returns every activity for every
-test, which is precisely what `xcresulttool` refuses to batch:
+### 1. Stop routing every call through `xcrun`
+
+`XCResultToolClient.execute` runs `/usr/bin/xcrun xcresulttool …`, so every
+query pays for `xcrun` resolving the tool and exec'ing it — an entire extra
+process, per test case:
 
 | | |
 | --- | ---: |
-| `xcresulttool ... activities --test-id` for **one** test | 64 ms |
-| one SQL query for **all 16** tests' activities + attachments | 28 ms |
+| `xcresulttool version`, invoked directly | 8.7 ms |
+| `xcresulttool version`, via `xcrun` | 15.3 ms |
+| one `activities` call, direct | 27.9 ms |
+| one `activities` call, via `xcrun` | 34.9 ms |
 
-Most of that 28 ms is `sqlite3` CLI startup; in-process it is a fraction of it.
+About 7 ms per call — roughly 7 seconds at 1,000 tests — for nothing. Resolve
+the path once with `xcrun --find xcresulttool` and invoke it directly, keeping
+`xcrun` only as the fallback when the lookup fails. Resolution still goes
+through `xcrun --find`, so `xcode-select` and `DEVELOPER_DIR` continue to
+choose the toolchain.
 
-This was never evaluated during the #391 migration. That design considered
-three options — contribute upstream to XCResultKit, vendor it, or read the new
+Done, along with lead 2. Measured end to end on the fixtures, `--result-reader
+modern`, n=10:
+
+| fixture | before | after | |
+| --- | ---: | ---: | ---: |
+| `RetryResults` (4 tests, 2 repeated) | 1,165 ms | 984 ms | −15.5% |
+| `TestResults` (21 tests, none repeated) | 2,761 ms | 2,671 ms | −3.3% |
+
+`TestResults` isolates lead 1, since nothing repeats there. `RetryResults` gets
+both. Small fixtures, so these are checks of direction and rough magnitude — the
+saving is per subprocess, so it grows with test count.
+
+### 2. Memoise the repeated activity fetches
+
+See "The same document is fetched more than once" above. Caching the decoded
+document per test identifier and indexing into it makes N repetitions cost one
+subprocess instead of N, with no change to what is rendered.
+
+Done, in `ActivitiesDocumentCache`. One decision it forced: a failed fetch used
+to record one fault per repetition and now records one per test. The fault still
+reaches `summary.faults` and still drives exit 3 — it is simply no longer
+counted once for every time the test happened to be retried.
+
+### Who leads 1 and 2 actually help, today
+
+Both live on the modern path, and `--result-reader auto` — the default — still
+**prefers the legacy reader** while the toolchain offers the `--legacy`
+commands. Legacy does most of its work through the third-party XCResultKit
+package, whose subprocesses neither lead touches; it reaches `XCResultToolClient`
+only for the run log, so it gets a little of lead 1 and none of lead 2.
+
+The wins are therefore real but largely banked against the future: they land in
+full when Apple removes the legacy commands and `auto` resolves to modern, which
+is the event #391 exists to prepare for. Anyone wanting them now can pass
+`--result-reader modern`. This is also why the benchmark above specifies the
+reader — measured on `auto`, it shows nothing.
+
+### 3. Parallelise the per-test reads
+
+They are independent subprocesses issued serially inside
+`ModernResultReader.read()`. `Run.swift` already runs the later model-building
+phase concurrently at `cpuCount * 2`; the reads predate that phase and do not
+share it.
+
+The shape is forced by the current code: `activities()` is called from inside a
+synchronous recursive tree walk, so it cannot simply be wrapped. It becomes two
+passes — walk collecting identifiers, fetch them concurrently into a dictionary,
+walk again reading from the dictionary.
+
+**How much this wins is unmeasured.** That 74 of 115 seconds is spent waiting
+says there is headroom, not how much is recoverable: process spawn serialises in
+the kernel, and how much of `xcresulttool`'s own time is CPU-bound is unknown.
+Measure before quoting a number.
+
+### 4. Read `database.sqlite3` directly
+
+Every `.xcresult` inspected carries one, holding a straightforward relational
+schema — 40 tables including `TestCases`, `TestSuites`, `TestCaseRuns`,
+`Activities`, `Attachments`, `TestIssues`, `ExpectedFailures`,
+`RepetitionPolicies`, `RunDestinations`, `Devices` — with foreign keys and
+indices. `Attachments` carries an `xcResultKitPayloadRefId` column. One query
+returns every activity for every test, which is precisely what `xcresulttool`
+refuses to batch (n=20, warm, 16-test fixture):
+
+| | |
+| --- | ---: |
+| `xcresulttool … activities --test-id` for **one** test, direct | 27.6 ms |
+| `sqlite3` CLI startup alone | 4.5 ms |
+| one SQL query for **all 16** tests' activities + attachments | 5.0 ms |
+
+The query itself is therefore about **0.5 ms for all 16 tests**; the rest is CLI
+startup, which an in-process reader does not pay. This is the only lead that
+*removes* the per-test term rather than dividing or overlapping it.
+
+**It also recovers data the JSON interface drops.** Two fields the #391 design
+recorded as unavoidable format losses are present and populated in the database:
+
+| field | in modern JSON | in `database.sqlite3` |
+| --- | --- | --- |
+| `Activities.activityType` | absent | 88/88 populated, 5 distinct types |
+| `Attachments.name` (user-supplied) | absent | 7/9 populated |
+
+`activityType` matters beyond fidelity. One of its values is
+`com.apple.dt.xctest.activity-type.attachmentContainer` — exactly the
+"attachment shadow" rows that `parseActivity(pruning:)` currently identifies by
+*heuristic* (childless, non-failure, `startTime` equal to an attachment's
+timestamp). The database names them outright, so a heuristic the port had to
+reverse-engineer becomes an explicit field.
+
+**Column order is nondeterministic, so any reader must address columns by
+name.** Every bundle Xcode 26.2 produces — including two from the same test run
+— declares each table's columns in a *different* order, with identical column
+sets. That is what a Swift dictionary's per-process iteration order does to
+generated DDL. `SELECT *` plus positional indexing would work on the bundle it
+was written against and silently mis-map fields on the next one.
+
+Attachment payload bytes still live in the content-addressed `Data/` store, so
+export would still go through `xcresulttool` — no loss, since the bulk export is
+already a single invocation. That invocation is constant in *process count*, not
+in work: sweep 1 shows the export phase growing with volume (0.4s → 1.0s → 2.2s
+across 250 → 1,000 → 2,500 attachments).
+
+This was never evaluated during the #391 migration. That design considered three
+options — contribute upstream to XCResultKit, vendor it, or read the new
 `xcresulttool` format directly — and all three assumed `xcresulttool` as the
 interface.
 
-**It is not a free win, and the risk runs the wrong way.** The database is
-undocumented and private; the bundle stamps a format version (3.56) that Apple
-is free to change without deprecation. The whole #391 migration exists *because*
-Apple removed a supported interface after a deprecation period — an unsupported
-one offers no such warning. It is also unverified across Xcode versions, and
-attachment payload bytes still live in the content-addressed `Data/` store, so
-export would likely still go through `xcresulttool` — no loss, since the bulk
-export is already a single invocation. Note that this is constant in *process
-count*, not in work: it still reads and writes every payload byte, and sweep 1
-shows the export phase growing with volume (0.4s → 1.0s → 2.2s across 250 →
-1,000 → 2,500 attachments).
+## The integration surface
 
-Any move here is an architectural decision of the same weight as #391, not an
-optimisation to slip in.
+The obvious way to avoid per-test subprocesses without reimplementing anything
+would be to link Apple's reader in-process. **There is nothing to link against.**
+
+`xcresulttool` is a 19 MB self-contained Mach-O executable. `otool -L` lists
+only system frameworks plus `libsqlite3.dylib`; there are no `.framework`
+references and no `dlopen` strings, so nothing is loaded at runtime either.
+Roughly 20,900 Swift symbols are statically bound into the binary, from modules
+including:
+
+```
+XCResultDataViews   XCResultTypesV3   XCResultStorage   XCSchemaSerialization
+XCResultKit_CASDB   XCResultKit_NIOCore   XCResultKit_OpenAPIRuntime_XCRK
+```
+
+Three things follow:
+
+- Apple's own framework family is called **XCResultKit** (unrelated to the
+  third-party Swift package of the same name), it is not shipped as a library,
+  and a Mach-O executable cannot be linked or `dlopen`ed. In-process use is not
+  available at any risk level, only reimplementation.
+- `libsqlite3` being its *only* non-system dependency is direct evidence that
+  the database is the actual storage engine, not a cache or secondary index —
+  reading it means reading the same source of truth Apple reads.
+- `XCResultTypesV3` matches the bundle's `version.major = 3`, which suggests the
+  stamped version tracks that types module.
+
+The NIO/OpenAPI modules are suggestive of a server mode, but nothing supports
+one: there are no route strings, no `--port`/`--host` options, and no hidden
+subcommand. Most likely they are linked transitively and incompletely stripped.
+Recorded so nobody re-derives it.
+
+Batching is also not available at the CLI: `activities` accepts exactly one
+`--test-id`, with no list, glob, or stdin form (`xcresulttool help get
+test-results activities`).
+
+## What a version gate could key on
+
+The natural safety valve for lead 4 is a fast path that runs only on schema
+versions we have validated, falling back to `xcresulttool` otherwise. The hard
+part is that **the bundle does not identify what produced it**:
+
+| candidate | finding |
+| --- | --- |
+| `PRAGMA user_version` | `0` — never set (all three fixtures) |
+| `PRAGMA application_id` | `0` — never set |
+| `PRAGMA schema_version` | `56` — SQLite's internal DDL-mutation counter, not a product version |
+| `DeveloperTools` table | exists with `xcodeVersion`, `xcodeBuildVersion` — **0 rows**; `Actions.developerTools_fk` is NULL |
+| `xcresulttool metadata get` | empty output |
+| `Info.plist` `version` | `{major 3, minor 56}` — producer-written, but see below |
+
+`Info.plist`'s 3.56 is the only producer-written stamp in the bundle, and it
+travels with the bundle rather than describing the reading machine — which is
+the property a gate needs, since the Xcode that produced a bundle and the one
+reading it are frequently different. But `xcresulttool version` labels that same
+number the *legacy commands format version*, and the legacy commands are being
+removed. Whether it keeps tracking the bundle format afterwards — and whether it
+bumps when the database schema changes — is unconfirmed and is the single most
+important thing to establish before building on it.
+
+A schema fingerprint of the tables actually read is a possible second layer. It
+must be computed from each table's *sorted* (column, type) pairs, never from the
+DDL text or column order — see the nondeterminism note above, which makes the
+naive version differ between two bundles from the same toolchain. Even done
+correctly it is over-sensitive (an added index or an unread table trips it) and
+under-sensitive (a change in what an existing column *means* leaves it
+identical). Over-sensitivity is safe — it degrades to correct-but-slow — so it
+composes as defence in depth, not as a gate on its own.
+
+### The probe
+
+`scripts/capture_xcresult_schema.py` captures all of the above per bundle — the
+version stamp, the storage backend, whether a database exists at all, the sorted
+schema fingerprint, and whether `DeveloperTools` ever gets populated — and
+`.github/workflows/xcresult-schema-probe.yml` runs it under two Xcode majors on
+demand, writing the comparison to the job summary.
+
+The Xcode 26.2 baseline, identical across all four fixtures:
+
+| | |
+| --- | --- |
+| `Info.plist` version | 3.56, backend `fileBacked2` |
+| tables | 40 |
+| schema fingerprint | `c4a11812ff3f…` |
+| read-tables fingerprint | `37e1edcd2861…` |
+| `DeveloperTools` | present, empty |
+
+What the second toolchain answers: whether the version stamp moves when the
+fingerprint does. If it does not, there is nothing in the bundle to gate on and
+lead 4 needs a different safety story before anyone writes a reader.
+
+## Risk, for lead 4 only
+
+The database is private and undocumented. Its failure mode is not a crash: it
+is a report that looks fine and is wrong, which for a reporting tool is the
+worst available outcome. Compare `XCResultToolClient`, which passes
+`--schema-version 0.1.0` precisely so that "an Apple schema revision fails
+loudly here rather than silently mis-decoding". The database offers no such
+handshake.
+
+Two things make this more tractable than it first appears, and an earlier draft
+of this document under-weighted both:
+
+- **A durable correctness oracle exists.** `DifferentialTests` currently compares
+  the legacy and modern readers, which only works while both formats exist. A
+  database reader would instead be differentially tested against the *modern*
+  `xcresulttool` reader — a pairing that survives legacy removal indefinitely,
+  provided the `xcresulttool` reader is kept as the reference implementation
+  rather than replaced.
+- **Drift is already detected automatically.** `toolchain-drift.yml` runs twice
+  weekly against stable *and* beta Xcode, regenerates every fixture from
+  scratch, runs the full suite, and files an issue on failure. The beta leg
+  gives roughly two months of warning before a change reaches GA.
+
+What those do not cover: fixtures only exercise shapes the sample app produces,
+so a schema change touching anything it never emits slips through; and between a
+change shipping and CI catching it, users get wrong reports. The risk becomes
+bounded and observable, not eliminated.
+
+Any move here remains an architectural decision of the same weight as #391, not
+an optimisation to slip in.
