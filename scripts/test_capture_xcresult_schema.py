@@ -182,6 +182,28 @@ class CaptureTests(unittest.TestCase):
                 {"xcodeBuildVersion": "17C52", "xcodeVersion": "26.2"}
             ])
 
+    def test_developer_tools_values_survive_a_reversed_column_order(self):
+        """Declared order and sorted order disagree here, which is the whole
+        point: columns are reported sorted, but `SELECT *` yields values in
+        physical order. Zip the two together and the Xcode version is filed
+        under the build-version key — a wrong answer to the one question this
+        probe exists to ask, and one that column-order nondeterminism
+        guarantees will eventually happen on a real bundle."""
+        with tempfile.TemporaryDirectory() as root:
+            bundle = make_bundle(
+                root,
+                "A.xcresult",
+                ddl=[
+                    "CREATE TABLE DeveloperTools (xcodeVersion TEXT, xcodeBuildVersion TEXT)",
+                    "INSERT INTO DeveloperTools VALUES ('26.2', '17C52')",
+                ],
+            )
+            report = capture(bundle)["bundles"][0]
+
+            self.assertEqual(report["database"]["developerTools"], [
+                {"xcodeBuildVersion": "17C52", "xcodeVersion": "26.2"}
+            ])
+
     def test_reports_the_toolchain_it_ran_against(self):
         """A fingerprint with no toolchain attached cannot be compared to
         anything."""

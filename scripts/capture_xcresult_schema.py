@@ -127,8 +127,13 @@ def developer_tools(connection, tables):
     bundle inspected on 26.2 does."""
     if "DeveloperTools" not in tables:
         return None
+    # Name the columns rather than `SELECT *`: `tables` is sorted by name while
+    # `SELECT *` yields physical order, and those disagree — column order is
+    # nondeterministic, see table_columns. Zipping the two together files each
+    # value under whichever key happens to sort into its position.
     columns = [name for name, _ in tables["DeveloperTools"]]
-    rows = connection.execute("SELECT * FROM DeveloperTools").fetchall()
+    projection = ", ".join(f'"{column}"' for column in columns)
+    rows = connection.execute(f"SELECT {projection} FROM DeveloperTools").fetchall()
     return [dict(zip(columns, row)) for row in rows]
 
 

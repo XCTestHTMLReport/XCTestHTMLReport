@@ -278,7 +278,7 @@ references and no `dlopen` strings, so nothing is loaded at runtime either.
 Roughly 20,900 Swift symbols are statically bound into the binary, from modules
 including:
 
-```
+```text
 XCResultDataViews   XCResultTypesV3   XCResultStorage   XCSchemaSerialization
 XCResultKit_CASDB   XCResultKit_NIOCore   XCResultKit_OpenAPIRuntime_XCRK
 ```
