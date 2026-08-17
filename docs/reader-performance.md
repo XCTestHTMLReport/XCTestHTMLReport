@@ -380,9 +380,13 @@ travels with the bundle rather than describing the reading machine — which is
 the property a gate needs, since the Xcode that produced a bundle and the one
 reading it are frequently different. But `xcresulttool version` labels that same
 number the *legacy commands format version*, and the legacy commands are being
-removed. Whether it keeps tracking the bundle format afterwards — and whether it
-bumps when the database schema changes — is unconfirmed and is the single most
-important thing to establish before building on it.
+removed.
+
+Whether it bumps when the database schema changes is now **measured, and it
+does** — see "What it found" below. What remains unconfirmed is what happens to
+the stamp once Apple removes the legacy commands it is named after: it may keep
+tracking the bundle format, freeze, or disappear. That is the open question a
+gate built on it inherits, and the probe is the thing that would notice.
 
 A schema fingerprint of the tables actually read is a possible second layer. It
 must be computed from each table's *sorted* (column, type) pairs, never from the
@@ -441,19 +445,44 @@ schema fingerprint, and whether `DeveloperTools` ever gets populated — and
 `.github/workflows/xcresult-schema-probe.yml` runs it under two Xcode majors on
 demand, writing the comparison to the job summary.
 
-The Xcode 26.2 baseline, identical across all four fixtures:
+### What it found: a gate is available, conservatively
 
-| | |
-| --- | --- |
-| `Info.plist` version | 3.56, backend `fileBacked2` |
-| tables | 40 |
-| schema fingerprint | `c4a11812ff3f…` |
-| read-tables fingerprint | `37e1edcd2861…` |
-| `DeveloperTools` | present, empty |
+Three data points, each identical across all four fixtures of its toolchain
+([run 32069604632](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/runs/32069604632)
+plus a local capture):
 
-What the second toolchain answers: whether the version stamp moves when the
-fingerprint does. If it does not, there is nothing in the bundle to gate on and
-lead 4 needs a different safety story before anyone writes a reader.
+| toolchain | `Info.plist` version | schema | read tables |
+| --- | --- | --- | --- |
+| Xcode 16.4 | 3.53 | `3bb3535db5f7…` | `861814457df8…` |
+| Xcode 26.2 | 3.56 | `c4a11812ff3f…` | `37e1edcd2861…` |
+| Xcode 26.6 | **3.58** | `c4a11812ff3f…` | `37e1edcd2861…` |
+
+**The schema really does drift, and it touches tables a reader would use.**
+Between 16.4 and 26.6, four tables changed — two of them in the read set:
+
+```text
+Activities             +warningIDs
+IssueTrackingMetadata  -comment  +matchIdentifier +title
+TestIssues             -isTopLevelFailure  →  +isTopLevel
+TestTags               -anchors -identifier
+```
+
+`TestIssues.isTopLevelFailure` being renamed to `isTopLevel` is the shape of
+change that matters: a reader written against one major and run against the
+other queries a column that no longer exists.
+
+**The version stamp is a conservative proxy, which is the safe direction.** It
+moved when the schema moved (3.53 → 3.56), and it also moved when the schema
+did *not* (3.56 → 3.58, identical fingerprints). Over-sensitivity costs only
+speed: a gate keyed on version rejects 3.58 as unfamiliar, falls back to
+`xcresulttool`, and stays correct. Under-sensitivity would have been fatal, and
+across these three points no version covers more than one schema.
+
+Two caveats before anyone leans on it. Three data points across two majors is
+not a guarantee that the stamp *always* moves first — it is evidence, and the
+probe exists to keep testing it. And an allow-list gated this way needs
+updating on close to every Xcode release, including the many where nothing
+about the schema changed.
 
 ## Risk, for lead 4 only
 
