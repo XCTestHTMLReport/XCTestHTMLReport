@@ -21,9 +21,6 @@ struct ModernResultReader: ResultReader {
     /// The collector `Summary.init` owns, so a fault recorded here reaches
     /// `summary.faults` and drives the CLI's exit-3 degradation path.
     let faultCollector: FaultCollector
-    /// Excluded from the memberwise initialiser (an initialised `let` always
-    /// is), so every existing construction site is unchanged.
-    let activitiesCache = ActivitiesDocumentCache()
 
     /// Modern vocabulary into the neutral enum — the mirror of
     /// `LegacyResultReader.status`. Neither reader emits the other's
@@ -161,6 +158,14 @@ struct ModernResultReader: ResultReader {
         let identifier = node.nodeIdentifier ?? ""
         let argumentSets = Self.arguments(of: node)
 
+        // Queried once for the whole test, however many times it ran: the
+        // document already carries every repetition in `testRuns`, and
+        // `iteration` only selects which one to read. Held as a local rather
+        // than cached across tests — every read of it happens below, so
+        // retaining it for the length of the whole run would grow with test
+        // count and buy nothing.
+        let document = identifier.isEmpty ? nil : activitiesDocument(for: identifier)
+
         let iterations: [ParsedIteration]
         if repetitions.isEmpty {
             let status = Self.status(node.result)
@@ -170,7 +175,7 @@ struct ModernResultReader: ResultReader {
                 duration: node.durationInSeconds ?? 0,
                 activities: hoistingFailureRows(joiningFailureMessages(
                     failureMessages(of: node),
-                    into: activities(for: identifier, iteration: nil),
+                    into: activities(in: document, for: identifier, iteration: nil),
                     status: status
                 ))
             )]
@@ -187,7 +192,7 @@ struct ModernResultReader: ResultReader {
                     duration: repetition.durationInSeconds ?? 0,
                     activities: hoistingFailureRows(joiningFailureMessages(
                         failureMessages(of: repetition),
-                        into: activities(for: identifier, iteration: index),
+                        into: activities(in: document, for: identifier, iteration: index),
                         status: status
                     ))
                 )
@@ -225,18 +230,16 @@ struct ModernResultReader: ResultReader {
             .compactMap(\.name)
     }
 
-    /// One `activities` subprocess per exact test-case id — suite and bundle
-    /// ids are rejected by the tool, so there is nothing to batch across tests.
-    /// `testRuns` holds one entry per repetition, in order, so within a test
-    /// there is exactly one document however many times it ran: see
-    /// `ActivitiesDocumentCache`.
-    private func activities(for identifier: String, iteration: Int?) -> [ParsedActivity] {
-        guard !identifier.isEmpty else {
-            return []
-        }
-        // One query per test, not per repetition: the document already holds
-        // every repetition, and `iteration` only selects which one to read.
-        guard let document = activitiesDocument(for: identifier) else {
+    /// One repetition's activities, read out of the test's single document.
+    ///
+    /// `identifier` is carried only so a malformed document can name itself in
+    /// the warning and the fault.
+    private func activities(
+        in document: TestActivities?,
+        for identifier: String,
+        iteration: Int?
+    ) -> [ParsedActivity] {
+        guard let document else {
             return []
         }
         let runs = document.testRuns ?? []
@@ -263,31 +266,29 @@ struct ModernResultReader: ResultReader {
         return (run?.activities ?? []).map { parseActivity(pruning: $0) }
     }
 
-    /// The cached `activities` document for one test, querying only on a miss.
+    /// The `activities` document for one test — the reader's one subprocess per
+    /// test case, and the axis that dominates a run at roughly 115 ms a time
+    /// (`docs/reader-performance.md`).
     ///
-    /// A failure is cached as `nil`, so the warning and the fault are raised
-    /// once per test rather than once per repetition. That is a deliberate
-    /// change of degree, not of kind: the fault still reaches `summary.faults`
-    /// and still drives exit 3 — a broken query is simply no longer counted
-    /// once for every time the test happened to be retried.
+    /// Called once per test rather than once per repetition, so a failed query
+    /// now warns and records its fault once instead of once per retry. That is
+    /// a change of degree, not of kind: the fault still reaches
+    /// `summary.faults` and still drives exit 3.
     private func activitiesDocument(for identifier: String) -> TestActivities? {
-        activitiesCache.document(for: identifier) {
-            do {
-                return try client.json(
-                    ["get", "test-results", "activities", "--test-id", identifier],
-                    as: TestActivities.self
-                )
-            } catch {
-                // A failed activities query is a genuine read failure, not a
-                // format limitation: the test renders with no activities at
-                // all. Without a fault the CLI would exit 0 on a visibly
-                // gutted report.
-                Logger.warning(
-                    "Can't read activities for \(identifier): \(error.localizedDescription)"
-                )
-                faultCollector.record(.missingActivities, identifier)
-                return nil
-            }
+        do {
+            return try client.json(
+                ["get", "test-results", "activities", "--test-id", identifier],
+                as: TestActivities.self
+            )
+        } catch {
+            // A failed activities query is a genuine read failure, not a
+            // format limitation: the test renders with no activities at all.
+            // Without a fault the CLI would exit 0 on a visibly gutted report.
+            Logger.warning(
+                "Can't read activities for \(identifier): \(error.localizedDescription)"
+            )
+            faultCollector.record(.missingActivities, identifier)
+            return nil
         }
     }
 

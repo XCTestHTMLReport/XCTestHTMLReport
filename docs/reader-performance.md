@@ -178,10 +178,23 @@ See "The same document is fetched more than once" above. Caching the decoded
 document per test identifier and indexing into it makes N repetitions cost one
 subprocess instead of N, with no change to what is rendered.
 
-Done, in `ActivitiesDocumentCache`. One decision it forced: a failed fetch used
-to record one fault per repetition and now records one per test. The fault still
-reaches `summary.faults` and still drives exit 3 — it is simply no longer
-counted once for every time the test happened to be retried.
+Done. Every query for a given test happens inside one `parseTestCase` call, so
+the document is fetched once there and passed down to each repetition — a local,
+not a cache. That matters for memory: a dictionary keyed by identifier would
+have retained every test's document for the length of the whole read, which is
+O(tests) where O(1) does the same job. At 1,000 tests that is ~1.5 MB of raw
+JSON plus decoding overhead, against a 203 MB baseline — not alarming, but
+unbounded growth bought nothing, and this is a tool with an out-of-memory bug in
+its history (#337).
+
+Measured at fixture scale the difference is **within noise** — peak RSS 24.8 MB
+before, 24.9 MB with a cache, 25.2 MB with the local across 21 tests — so this
+is a structural argument, not a demonstrated regression. Timing is unaffected:
+the local keeps the whole saving (963 ms → 962 ms on `RetryResults`).
+
+One decision it forced: a failed fetch used to record one fault per repetition
+and now records one per test. The fault still reaches `summary.faults` and still
+drives exit 3 — it is simply no longer counted once for every retry.
 
 ### Who leads 1 and 2 actually help, today
 
