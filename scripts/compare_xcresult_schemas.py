@@ -98,21 +98,35 @@ def verdict(summaries):
             "detectable. This is **not** evidence that a gate is safe — try a "
             "wider Xcode spread.",
         )
-    if len(versions) > 1:
+
+    # Per version, not across the whole set. With three or more toolchains, two
+    # can share a version and disagree about the schema while a third carries a
+    # different version: comparing only the global sets sees "more than one
+    # version" and calls the gate available, when the shared version has already
+    # been observed mapping to two schemas. One counter-example disqualifies the
+    # stamp, however many other toolchains agree.
+    by_version = {}
+    for summary in usable:
+        by_version.setdefault(one(summary["versions"]), set()).add(
+            one(summary["fingerprints"])
+        )
+    ambiguous = sorted(v for v, f in by_version.items() if len(f) > 1)
+    if ambiguous:
         return (
-            "GATE AVAILABLE",
-            "The schema changed and the `Info.plist` version changed with it, "
-            "so that stamp is a candidate gate. Confirm it moves on *every* "
-            "schema change, not just this one, before relying on it — and note "
-            "its documented meaning is still the legacy-commands format "
-            "version.",
+            "NO GATE",
+            "The schema changed while the `Info.plist` version stayed the same "
+            f"({', '.join(ambiguous)} covers more than one schema). Nothing in "
+            "the bundle reports the change, so a database-backed reader would "
+            "have no way to know it is reading an unfamiliar schema. Lead 4 in "
+            "docs/reader-performance.md needs a different safety story.",
         )
     return (
-        "NO GATE",
-        "The schema changed while the `Info.plist` version stayed the same. "
-        "Nothing in the bundle reports the change, so a database-backed reader "
-        "would have no way to know it is reading an unfamiliar schema. Lead 4 "
-        "in docs/reader-performance.md needs a different safety story.",
+        "GATE AVAILABLE",
+        "The schema changed and the `Info.plist` version changed with it, and "
+        "no version was seen covering more than one schema. That stamp is a "
+        "candidate gate. Confirm it moves on *every* schema change, not just "
+        "this one, before relying on it — and note its documented meaning is "
+        "still the legacy-commands format version.",
     )
 
 

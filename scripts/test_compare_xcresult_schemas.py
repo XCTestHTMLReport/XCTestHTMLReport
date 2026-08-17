@@ -79,6 +79,21 @@ class CompareTests(unittest.TestCase):
 
             self.assertIn("NO GATE", compare(root))
 
+    def test_one_version_mapping_to_two_schemas_defeats_the_gate(self):
+        """Two toolchains share a version and disagree about the schema, while a
+        third has its own version. Comparing only the global sets sees "more
+        than one version" and calls the gate available — but the shared version
+        has already been shown mapping to two schemas, which is precisely the
+        thing that disqualifies it. The wrong answer here is the expensive one:
+        it greenlights building a reader on a gate that is known not to hold.
+        """
+        with tempfile.TemporaryDirectory() as root:
+            write_capture(root, "a.json", "Xcode 16", "3.56", "aaa")
+            write_capture(root, "b.json", "Xcode 17", "3.56", "bbb")
+            write_capture(root, "c.json", "Xcode 26.2", "3.60", "ccc")
+
+            self.assertIn("NO GATE", compare(root))
+
     def test_a_toolchain_without_a_database_is_called_out(self):
         with tempfile.TemporaryDirectory() as root:
             write_capture(root, "a.json", "Xcode 16", "3.50", "aaa", present=False)
