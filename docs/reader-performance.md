@@ -269,7 +269,8 @@ real bundle.
 
 ### 4. Read `database.sqlite3` directly
 
-Every `.xcresult` inspected carries one, holding a straightforward relational
+Every `.xcresult` that has been *read at least once* carries one (see "The
+database is not shipped" below), holding a straightforward relational
 schema — 40 tables including `TestCases`, `TestSuites`, `TestCaseRuns`,
 `Activities`, `Attachments`, `TestIssues`, `ExpectedFailures`,
 `RepetitionPolicies`, `RunDestinations`, `Devices` — with foreign keys and
@@ -342,9 +343,11 @@ Three things follow:
   third-party Swift package of the same name), it is not shipped as a library,
   and a Mach-O executable cannot be linked or `dlopen`ed. In-process use is not
   available at any risk level, only reimplementation.
-- `libsqlite3` being its *only* non-system dependency is direct evidence that
-  the database is the actual storage engine, not a cache or secondary index —
-  reading it means reading the same source of truth Apple reads.
+- `libsqlite3` being its *only* non-system dependency shows `xcresulttool` uses
+  sqlite. An earlier draft of this document read that as evidence the database
+  *is* the storage engine rather than a cache. **That was wrong** — the linkage
+  cannot distinguish the two, and the probe since established it is derived.
+  See "The database is not shipped" below.
 - `XCResultTypesV3` matches the bundle's `version.major = 3`, which suggests the
   stamped version tracks that types module.
 
@@ -389,6 +392,46 @@ correctly it is over-sensitive (an added index or an unread table trips it) and
 under-sensitive (a change in what an existing column *means* leaves it
 identical). Over-sensitivity is safe — it degrades to correct-but-slow — so it
 composes as defence in depth, not as a gate on its own.
+
+### The database is not shipped — it is built on first read
+
+The first probe run ([32057054934](https://github.com/XCTestHTMLReport/XCTestHTMLReport/actions/runs/32057054934))
+reported **no database on either leg**, against local bundles that plainly had
+one. `Info.plist` read fine on both, so the paths were right.
+
+The explanation is that `xcodebuild test` does not write `database.sqlite3` at
+all. A bundle fresh off a test run contains only `Info.plist` and the
+content-addressed `Data/` store. `xcresulttool` builds the database on its
+**first read** of the bundle and leaves it behind. Demonstrated directly:
+
+```text
+after deleting database.sqlite3:            ABSENT
+after `xcresulttool get test-results tests`: PRESENT
+```
+
+The rebuilt database carries an identical schema fingerprint
+(`c4a11812ff3f…`), so it is deterministically derived from the CAS store. The
+probe saw nothing because it inspected bundles nothing had read yet; local
+bundles had been read dozens of times.
+
+This changes lead 4 in three ways, none of them fatal but none of them small:
+
+- **It is a cache, not the source of truth.** The `Data/` store is. A reader
+  built on the database is reading Apple's derived index, which they are freer
+  to change, relocate, or rebuild than a storage format — and there is no
+  documented contract for either.
+- **A reader cannot start from a fresh bundle.** It would have to invoke
+  `xcresulttool` once to materialise the database, then query it. That is still
+  a good trade — one subprocess for the whole run instead of one per test — but
+  it means depending on an undocumented *side effect* of an unrelated command,
+  which is a worse dependency than reading a file that is simply there.
+- **The performance case survives.** One materialising call plus ~0.5 ms of SQL
+  for every test still beats one ~35 ms subprocess per test at any realistic
+  test count.
+
+`--materialise` now reads each bundle once before inspecting it, and
+`shippedWithBundle` records whether one was there beforehand, so the two facts
+stay distinguishable.
 
 ### The probe
 
