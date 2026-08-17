@@ -158,6 +158,14 @@ struct ModernResultReader: ResultReader {
         let identifier = node.nodeIdentifier ?? ""
         let argumentSets = Self.arguments(of: node)
 
+        // Queried once for the whole test, however many times it ran: the
+        // document already carries every repetition in `testRuns`, and
+        // `iteration` only selects which one to read. Held as a local rather
+        // than cached across tests — every read of it happens below, so
+        // retaining it for the length of the whole run would grow with test
+        // count and buy nothing.
+        let document = identifier.isEmpty ? nil : activitiesDocument(for: identifier)
+
         let iterations: [ParsedIteration]
         if repetitions.isEmpty {
             let status = Self.status(node.result)
@@ -167,7 +175,7 @@ struct ModernResultReader: ResultReader {
                 duration: node.durationInSeconds ?? 0,
                 activities: hoistingFailureRows(joiningFailureMessages(
                     failureMessages(of: node),
-                    into: activities(for: identifier, iteration: nil),
+                    into: activities(in: document, for: identifier, iteration: nil),
                     status: status
                 ))
             )]
@@ -184,7 +192,7 @@ struct ModernResultReader: ResultReader {
                     duration: repetition.durationInSeconds ?? 0,
                     activities: hoistingFailureRows(joiningFailureMessages(
                         failureMessages(of: repetition),
-                        into: activities(for: identifier, iteration: index),
+                        into: activities(in: document, for: identifier, iteration: index),
                         status: status
                     ))
                 )
@@ -222,47 +230,65 @@ struct ModernResultReader: ResultReader {
             .compactMap(\.name)
     }
 
-    /// One `activities` subprocess per exact test-case id — suite and bundle
-    /// ids are rejected by the tool, so there is nothing to batch. `testRuns`
-    /// holds one entry per repetition, in order.
-    private func activities(for identifier: String, iteration: Int?) -> [ParsedActivity] {
-        guard !identifier.isEmpty else {
+    /// One repetition's activities, read out of the test's single document.
+    ///
+    /// `identifier` is carried only so a malformed document can name itself in
+    /// the warning and the fault.
+    private func activities(
+        in document: TestActivities?,
+        for identifier: String,
+        iteration: Int?
+    ) -> [ParsedActivity] {
+        guard let document else {
             return []
         }
+        let runs = document.testRuns ?? []
+        let run: TestActivities.TestRun?
+        if let index = iteration {
+            // The document carries one testRun per repetition, in order.
+            // An index the document cannot satisfy is a document anomaly,
+            // not a format limitation: falling back to `runs.first` here
+            // would silently render repetition 1's activities under
+            // repetition N, which is worse than rendering none and
+            // saying so.
+            guard runs.indices.contains(index) else {
+                Logger.warning(
+                    "Activities document for \(identifier) has \(runs.count) "
+                        + "testRun(s); repetition index \(index) is out of range"
+                )
+                faultCollector.record(.missingActivities, identifier)
+                return []
+            }
+            run = runs[index]
+        } else {
+            run = runs.first
+        }
+        return (run?.activities ?? []).map { parseActivity(pruning: $0) }
+    }
+
+    /// The `activities` document for one test — the reader's one subprocess per
+    /// test case, and the axis that dominates a run at roughly 115 ms a time
+    /// (`docs/reader-performance.md`).
+    ///
+    /// Called once per test rather than once per repetition, so a failed query
+    /// now warns and records its fault once instead of once per retry. That is
+    /// a change of degree, not of kind: the fault still reaches
+    /// `summary.faults` and still drives exit 3.
+    private func activitiesDocument(for identifier: String) -> TestActivities? {
         do {
-            let document = try client.json(
+            return try client.json(
                 ["get", "test-results", "activities", "--test-id", identifier],
                 as: TestActivities.self
             )
-            let runs = document.testRuns ?? []
-            let run: TestActivities.TestRun?
-            if let index = iteration {
-                // The document carries one testRun per repetition, in order.
-                // An index the document cannot satisfy is a document anomaly,
-                // not a format limitation: falling back to `runs.first` here
-                // would silently render repetition 1's activities under
-                // repetition N, which is worse than rendering none and
-                // saying so.
-                guard runs.indices.contains(index) else {
-                    Logger.warning(
-                        "Activities document for \(identifier) has \(runs.count) "
-                            + "testRun(s); repetition index \(index) is out of range"
-                    )
-                    faultCollector.record(.missingActivities, identifier)
-                    return []
-                }
-                run = runs[index]
-            } else {
-                run = runs.first
-            }
-            return (run?.activities ?? []).map { parseActivity(pruning: $0) }
         } catch {
             // A failed activities query is a genuine read failure, not a
             // format limitation: the test renders with no activities at all.
             // Without a fault the CLI would exit 0 on a visibly gutted report.
-            Logger.warning("Can't read activities for \(identifier): \(error.localizedDescription)")
+            Logger.warning(
+                "Can't read activities for \(identifier): \(error.localizedDescription)"
+            )
             faultCollector.record(.missingActivities, identifier)
-            return []
+            return nil
         }
     }
 

@@ -1,0 +1,136 @@
+name: xcresult Schema Probe
+
+# Answers one question, with data instead of assumption:
+#
+#     When Apple changes the private `database.sqlite3` schema inside an
+#     .xcresult, does anything in the bundle say so?
+#
+# Reading that database directly is the only lead that removes the per-test
+# `xcresulttool` subprocess rather than merely overlapping it — ~115 ms per test
+# case, see docs/reader-performance.md. It is also the only lead that can fail
+# silently, because the database is private and undocumented: a schema change
+# produces a report that looks fine and is wrong.
+#
+# The candidate gates are thin. `PRAGMA user_version` and `application_id` are 0
+# on every bundle inspected; the `DeveloperTools` table models the producing
+# Xcode and is empty. That leaves `Info.plist`'s `version` (3.56 on Xcode 26.2),
+# the only producer-written stamp in the bundle — and `xcresulttool version`
+# calls that same number the *legacy commands* format version, which is the
+# surface Apple is removing.
+#
+# So: generate fixtures under two Xcode majors and compare. If the schema
+# fingerprint moves while the version stamp does not, there is nothing in the
+# bundle to gate on, and the lead needs a different safety story before anyone
+# writes a reader against it.
+#
+# Manual only. Each leg boots a simulator and generates every fixture, which
+# dominates macOS runner minutes, and the answer changes about as often as Xcode
+# does — so this is run when someone asks the question, not on a schedule.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: probe (Xcode ${{ matrix.xcode_version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # The same two legs CI builds against: newest, and one major back.
+        # macos-latest is macos-26 and ships only Xcode 26.x, so the older leg
+        # needs its own image.
+        include:
+          - os: macos-latest
+            xcode_version: latest-stable
+          - os: macos-15
+            xcode_version: "16"
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Setup Xcode version
+      uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+      with:
+        xcode-version: ${{ matrix.xcode_version }}
+
+    # Never cache-restored: a probe that reported a cached bundle's schema
+    # would be reporting the toolchain that filled the cache, which is the one
+    # thing this workflow must not do.
+    - name: Generate fresh fixtures
+      run: ./prepareTestResults.sh
+
+    - name: Capture schema
+      run: |
+        python3 scripts/capture_xcresult_schema.py \
+          Tests/XCTestHTMLReportTests/Resources/*.xcresult \
+          -o "schema-xcode-${{ matrix.xcode_version }}.json"
+
+    # Written to the summary as well as uploaded, so the comparison can be read
+    # in the Actions UI without downloading and diffing two artifacts.
+    - name: Report
+      run: |
+        python3 - "schema-xcode-${{ matrix.xcode_version }}.json" <<'PY' >> "$GITHUB_STEP_SUMMARY"
+        import json, sys
+
+        report = json.load(open(sys.argv[1]))
+        tool = report["toolchain"]
+        print(f"## Xcode `{tool['xcode']}` (`{tool['xcodeBuild']}`)\n")
+        print(f"`{tool['xcresulttool']}`\n")
+        print("| bundle | Info.plist version | backend | tables | schema | read tables | DeveloperTools |")
+        print("| --- | --- | --- | ---: | --- | --- | --- |")
+        for bundle in report["bundles"]:
+            info, db = bundle["infoPlist"], bundle["database"]
+            if not db.get("present"):
+                print(f"| {bundle['name']} | {info.get('version')} | {info.get('storageBackend')} | — | **no database** | — | — |")
+                continue
+            developer_tools = db.get("developerTools")
+            populated = "absent" if developer_tools is None else (
+                f"{len(developer_tools)} row(s)" if developer_tools else "empty"
+            )
+            print(
+                f"| {bundle['name']} | {info.get('version')} | {info.get('storageBackend')} "
+                f"| {db['tableCount']} | `{db['schemaFingerprint'][7:19]}` "
+                f"| `{db['readTablesFingerprint'][7:19]}` | {populated} |"
+            )
+        missing = sorted({m for b in report["bundles"] for m in b["database"].get("readTablesMissing", [])})
+        if missing:
+            print(f"\n**Tables a reader would need that are absent here:** {', '.join(missing)}")
+        PY
+
+    - name: Upload capture
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: xcresult-schema-xcode-${{ matrix.xcode_version }}
+        path: schema-xcode-${{ matrix.xcode_version }}.json
+        if-no-files-found: error
+
+  # The probe legs cannot see each other, and the question is comparative:
+  # a per-leg summary leaves the actual answer to be reconstructed by hand from
+  # two artifacts. This states it.
+  compare:
+    needs: probe
+    # Runs even if a leg failed, so a partial answer ("the older image no longer
+    # produces a database at all") still reaches the summary instead of being
+    # swallowed by a skipped job.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Download captures
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        path: captures
+        pattern: xcresult-schema-xcode-*
+        merge-multiple: true
+
+    - name: Compare
+      run: python3 scripts/compare_xcresult_schemas.py captures >> "$GITHUB_STEP_SUMMARY"

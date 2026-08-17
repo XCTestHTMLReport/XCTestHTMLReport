@@ -147,10 +147,62 @@ struct XCResultToolClient: XCResultToolInvoking {
         return text.contains("legacy commands format version") ? .available : .unavailable
     }()
 
+    /// Where `xcresulttool` lives, resolved once per process.
+    ///
+    /// `xcrun` is a resolver: it locates the tool for the selected developer
+    /// directory, then execs it. Doing that per query spawns an entire extra
+    /// process — ~7 ms against ~28 ms for the query itself — and the answer
+    /// cannot change within a run, so it is paid for once here instead of once
+    /// per test case. Resolution still goes through `xcrun --find`, so
+    /// `xcode-select` and `DEVELOPER_DIR` continue to choose the toolchain.
+    ///
+    /// `nil` when resolution fails, which is not an error: see `invocation`.
+    static let resolvedTool: URL? = {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+        process.arguments = ["--find", "xcresulttool"]
+        let out = Pipe()
+        process.standardOutput = out
+        // Null rather than a pipe: nothing reads it, and an undrained pipe
+        // that fills would block the child forever.
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        let data = out.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            return nil
+        }
+        let path = (String(data: data, encoding: .utf8) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !path.isEmpty, FileManager.default.isExecutableFile(atPath: path) else {
+            return nil
+        }
+        return URL(fileURLWithPath: path)
+    }()
+
     let bundleURL: URL
 
     var bundleDescription: String {
         bundleURL.lastPathComponent
+    }
+
+    /// How to spawn the tool, given what resolution found.
+    ///
+    /// Unresolvable is a degradation, not a failure: a machine with no Xcode
+    /// selected, or a Command Line Tools-only install, still works through the
+    /// original `xcrun` route — just a process slower per query. Pure, so both
+    /// branches are provable without spawning anything.
+    static func invocation(
+        resolvedTool: URL?
+    ) -> (executable: URL, leadingArguments: [String]) {
+        guard let resolvedTool else {
+            return (URL(fileURLWithPath: "/usr/bin/xcrun"), ["xcresulttool"])
+        }
+        return (resolvedTool, [])
     }
 
     func run(_ arguments: [String]) throws -> Data {
@@ -174,9 +226,10 @@ struct XCResultToolClient: XCResultToolInvoking {
     /// subcommand the caller asked for rather than the path and version flags
     /// appended above.
     private func execute(_ arguments: [String], reporting reported: [String]) throws -> Data {
+        let invocation = Self.invocation(resolvedTool: Self.resolvedTool)
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        process.arguments = ["xcresulttool"] + arguments
+        process.executableURL = invocation.executable
+        process.arguments = invocation.leadingArguments + arguments
 
         let out = Pipe()
         let err = Pipe()
