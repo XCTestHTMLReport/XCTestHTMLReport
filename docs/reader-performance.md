@@ -104,9 +104,15 @@ roughly as (n=20, warm):
 | **total via `xcrun`** | **~35 ms** |
 
 An earlier draft of this document quoted 64 ms from a single cold sample; the
-figures here are twenty warm iterations and supersede it. Note this is a small
-bundle — the sweeps imply per-call cost grows with bundle size, which the 16-test
-fixture cannot show. Do not extrapolate the ~35 ms to the 115 ms seen at scale.
+figures here are twenty warm iterations and supersede it.
+
+**Treat this as a lower bound, not the cost of a call in a real run.** Removing
+two such calls from `RetryResults` saved 198 ms end to end — about 3× what this
+table predicts (see lead 2, where the discrepancy is documented and two
+explanations were tested and refuted). This is also a small bundle, and the
+sweeps imply per-call cost grows with bundle size, which a 21-test fixture
+cannot show. Do not extrapolate the ~35 ms to the 115 ms seen at scale in either
+direction.
 
 ### The same document is fetched more than once
 
@@ -160,23 +166,49 @@ the path once with `xcrun --find xcresulttool` and invoke it directly, keeping
 through `xcrun --find`, so `xcode-select` and `DEVELOPER_DIR` continue to
 choose the toolchain.
 
-Done, along with lead 2. Measured end to end on the fixtures, `--result-reader
-modern`, n=10:
+Done. Measured against a build carrying lead 2 but *not* this change, so the
+two are attributed separately (`--result-reader modern`, n=30, alternating
+order, separate output directories, both builds verified to produce byte-
+identical reports):
 
-| fixture | before | after | |
+| fixture | via `xcrun` | direct | |
 | --- | ---: | ---: | ---: |
-| `RetryResults` (4 tests, 2 repeated) | 1,165 ms | 984 ms | −15.5% |
-| `TestResults` (21 tests, none repeated) | 2,761 ms | 2,671 ms | −3.3% |
+| `TestResults` (21 tests) | 2,791 ms | 2,653 ms | **−138 ms (−4.9%)** |
+| `RetryResults` (4 tests) | 1,167 ms | 1,166 ms | −1 ms, inside noise |
 
-`TestResults` isolates lead 1, since nothing repeats there. `RetryResults` gets
-both. Small fixtures, so these are checks of direction and rough magnitude — the
-saving is per subprocess, so it grows with test count.
+This one scales with the **total number of calls**, so it shows on the 21-test
+fixture (138 ms ≈ 21 × 7 ms) and vanishes into noise on the 4-test one. Nothing
+about it depends on repetitions.
 
 ### 2. Memoise the repeated activity fetches
 
-See "The same document is fetched more than once" above. Caching the decoded
-document per test identifier and indexing into it makes N repetitions cost one
-subprocess instead of N, with no change to what is rendered.
+See "The same document is fetched more than once" above. Fetching the document
+once and indexing into it makes N repetitions cost one subprocess instead of N,
+with no change to what is rendered.
+
+Measured against a build carrying lead 1 but *not* this change, so the two are
+attributed separately (n=30, alternating order, byte-identical reports):
+
+| fixture | fetch per repetition | fetch once per test | |
+| --- | ---: | ---: | ---: |
+| `RetryResults` (2 of 4 tests repeated) | 1,163 ms | 964 ms | **−198 ms (−17.1%)** |
+| `TestResults` (21 tests, none repeated) | 2,656 ms | 2,648 ms | −8 ms, inside noise |
+
+The mirror of lead 1: this scales with the number of **repetitions**, not with
+test count. `TestResults` gains nothing because nothing repeats there, and a run
+without `-retry-tests-on-failure` gains nothing at all. The two leads cover
+different axes, which is why both were worth taking.
+
+**Unresolved, and worth knowing before projecting anything.** That 198 ms comes
+from removing exactly two subprocess calls, which measure ~34 ms each when timed
+standalone against the same bundle — so the in-process cost is roughly 3× what
+an isolated measurement predicts. Two candidate explanations were tested and
+both failed: the bundle is not read twice (one `read()` call site, one `Summary`
+construction, and the query count was confirmed at 6→4 through a wrapping
+client), and spawn cost does not scale with the parent's footprint (29.3 ms from
+a ~30 MB parent against 30.3 ms from a ~330 MB one). No verified explanation.
+Treat the per-call table under "Root cause" as a **lower bound** on what a call
+costs inside a real run.
 
 Done. Every query for a given test happens inside one `parseTestCase` call, so
 the document is fetched once there and passed down to each repetition — a local,
@@ -225,7 +257,15 @@ walk again reading from the dictionary.
 **How much this wins is unmeasured.** That 74 of 115 seconds is spent waiting
 says there is headroom, not how much is recoverable: process spawn serialises in
 the kernel, and how much of `xcresulttool`'s own time is CPU-bound is unknown.
-Measure before quoting a number.
+Measure before quoting a number — and note that leads 1 and 2 have already taken
+some of this headroom, since every call they removed is a call there is no
+longer anything to overlap.
+
+Do not estimate this from the per-call table under "Root cause" either. Lead 2
+showed a removed call costing about 3× what that table predicts, for reasons not
+yet established, so an estimate built on it would be wrong in a direction nobody
+has bounded. This one needs a real concurrent implementation measured against a
+real bundle.
 
 ### 4. Read `database.sqlite3` directly
 
