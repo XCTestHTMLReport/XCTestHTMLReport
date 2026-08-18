@@ -132,7 +132,8 @@ One normalized shape per cell:
   "totals": {"passed": 0, "failed": 0, "skipped": 0, "expectedFailure": 0, "mixed": 0, "unknown": 0},
   "tests": [
     {"id": "SuiteName/testName()", "status": "passed", "duration": 1.23,
-     "attachmentCount": 2, "failureMessages": []}
+     "attachmentCount": 2, "failureMessages": [],
+     "rawNames": ["SuiteName/testName()"]}
   ]
 }
 ```

@@ -54,6 +54,15 @@ sys.stderr.write("schema capture failed\\n")
 sys.exit(1)
 """
 
+HTML_ONLY = """#!/usr/bin/env python3
+import os, sys
+args = sys.argv[1:]
+out = args[args.index("-o") + 1]
+bundle = args[-1]
+os.makedirs(out, exist_ok=True)
+open(os.path.join(out, "index.html"), "w").write("rendered")
+"""
+
 
 class RenderTests(unittest.TestCase):
     def setUp(self):
@@ -183,6 +192,54 @@ class RenderTests(unittest.TestCase):
         # The cell should still be ok (provenance is separate).
         (cell,) = data["cells"]
         self.assertEqual(cell["status"], "ok")
+
+    def test_rerender_into_same_out_dir_clears_stale_artifacts(self):
+        """A reused out dir must not let a prior run's report.json/
+        report.junit/index.html be read as current for the new run."""
+        result1, out = self.run_render([self.make_tool("2.5.1", WELL_BEHAVED)])
+        self.assertEqual(result1.returncode, 0, result1.stderr)
+        (cell1,) = self.cells(out)
+        self.assertEqual(cell1["artifacts"],
+                         {"html": True, "junit": True, "json": True})
+        cell_dir = os.path.join(out, cell1["dir"])
+        self.assertTrue(os.path.isfile(os.path.join(cell_dir, "report.junit")))
+        self.assertTrue(os.path.isfile(os.path.join(cell_dir, "report.json")))
+
+        # Same label, same out dir, but this run's tool only writes index.html.
+        result2, out2 = self.run_render([self.make_tool("2.5.1", HTML_ONLY)])
+        self.assertEqual(out2, out)
+        self.assertEqual(result2.returncode, 0, result2.stderr)
+        (cell2,) = self.cells(out)
+        self.assertEqual(cell2["artifacts"],
+                         {"html": True, "junit": False, "json": False})
+        # The stale artifacts from the first run must be gone, not just
+        # unreported.
+        self.assertFalse(os.path.exists(os.path.join(cell_dir, "report.junit")))
+        self.assertFalse(os.path.exists(os.path.join(cell_dir, "report.json")))
+
+    def test_duplicate_fixture_stems_are_rejected(self):
+        """Two fixtures normalizing to the same stem would overwrite each
+        other's cells/provenance/bundleHashes entries."""
+        other_parent = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(other_parent, ignore_errors=True))
+        other_fixture = os.path.join(other_parent, "TestResults.xcresult")
+        os.makedirs(os.path.join(other_fixture, "Data"))
+        with open(os.path.join(other_fixture, "Info.plist"), "w") as handle:
+            handle.write("plist")
+
+        tools_path = os.path.join(self.dir, "acquire.json")
+        with open(tools_path, "w") as handle:
+            json.dump({"tools": [self.make_tool("2.5.1", WELL_BEHAVED)]}, handle)
+        out = os.path.join(self.dir, "render")
+        cmd = [sys.executable, SCRIPT, "--tools", tools_path,
+               "--fixtures", f"{self.fixture},{other_fixture}",
+               "--out", out, "--provenance", "skip"]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("TestResults", result.stderr)
+        self.assertIn(self.fixture, result.stderr)
+        self.assertIn(other_fixture, result.stderr)
 
     def test_bundle_hash_is_deterministic_and_sensitive_to_content(self):
         """bundleHashes: stable across reruns of an unchanged fixture,

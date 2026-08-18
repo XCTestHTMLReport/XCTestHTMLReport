@@ -168,10 +168,23 @@
       if (ancestor) { ancestor.click(); }
     }
     match.scrollIntoView({ block: "center" });
+    ensureFlashStyle(doc);
     doc.querySelectorAll(".vc-flash").forEach(function (old) {
       old.classList.remove("vc-flash");
     });
     match.classList.add("vc-flash");
+  }
+
+  function ensureFlashStyle(doc) {
+    // The iframe's document never loads the shell's style.css, so
+    // .vc-flash has no rule there without this -- best-effort, so a
+    // missing <head> just means no highlight.
+    if (doc.getElementById("vc-flash-style")) { return; }
+    if (!doc.head) { return; }
+    var style = doc.createElement("style");
+    style.id = "vc-flash-style";
+    style.textContent = ".vc-flash { outline: 3px solid #e6a700 !important; }";
+    doc.head.appendChild(style);
   }
 
   renderTable();

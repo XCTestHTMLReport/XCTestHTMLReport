@@ -33,6 +33,11 @@ def render_cell(tool, fixture, out_root, timeout):
     stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
     rel_dir = os.path.join(tool["label"], stem)
     cell_dir = os.path.join(out_root, rel_dir)
+    # A reused out dir must not let a prior run's artifacts (report.json,
+    # report.junit, index.html) be read as current -- start every render
+    # from a clean cell directory.
+    if os.path.exists(cell_dir):
+        shutil.rmtree(cell_dir)
     os.makedirs(cell_dir, exist_ok=True)
 
     started = time.monotonic()
@@ -49,7 +54,11 @@ def render_cell(tool, fixture, out_root, timeout):
             exit_code = -1
             stdout = (expired.stdout or b"").decode("utf-8", "replace") \
                 if isinstance(expired.stdout, bytes) else (expired.stdout or "")
-            stderr = f"timed out after {timeout}s"
+            stderr = (expired.stderr or b"").decode("utf-8", "replace") \
+                if isinstance(expired.stderr, bytes) else (expired.stderr or "")
+            if stderr and not stderr.endswith("\n"):
+                stderr += "\n"
+            stderr += f"timed out after {timeout}s"
     wall = time.monotonic() - started
 
     with open(os.path.join(cell_dir, "stdout.txt"), "w", encoding="utf-8") as h:
@@ -164,6 +173,20 @@ def main(argv=None):
     for fixture in fixtures:
         if not os.path.isdir(fixture):
             raise SystemExit(f"error: fixture not found: {fixture}")
+
+    # Two fixtures normalizing to the same stem would overwrite each
+    # other's cells/provenance/bundleHashes entries.
+    seen_stems = {}
+    for fixture in fixtures:
+        stem = os.path.basename(fixture)
+        stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
+        if stem in seen_stems:
+            raise SystemExit(
+                f"error: duplicate fixture stem {stem!r}: "
+                f"{seen_stems[stem]} and {fixture} would overwrite each "
+                "other's cells/provenance/bundleHashes"
+            )
+        seen_stems[stem] = fixture
 
     os.makedirs(args.out, exist_ok=True)
     cells = []
