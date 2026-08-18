@@ -194,6 +194,23 @@ class ExtractTests(unittest.TestCase):
         self.assertEqual(entries["2.5.1"]["reason"], "render failed")
         self.assertFalse(entries["3.0.0"]["extracted"])
 
+    def test_truncated_schema_json_degrades_gracefully_with_index_written(self):
+        # Schema-tagged but truncated report.json (missing required keys like "runs")
+        # should degrade to extracted: false with a reason, not crash the batch
+        truncated_json = {"schemaVersion": "1.0.0"}
+        self.add_cell("4.0.0rc1", "Truncated", report=truncated_json)
+        # Add a healthy sibling to verify the batch continues
+        self.add_cell("4.0.0rc1", "Healthy", report=REPORT_JSON)
+        result = self.run_extract()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        entries = {c["fixture"]: c for c in self.index()}
+        # Truncated cell must degrade
+        self.assertFalse(entries["Truncated"]["extracted"])
+        self.assertIn("json", entries["Truncated"]["reason"])
+        # Healthy sibling must still extract
+        self.assertTrue(entries["Healthy"]["extracted"])
+        self.assertEqual(entries["Healthy"]["source"], "json")
+
 
 if __name__ == "__main__":
     unittest.main()

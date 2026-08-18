@@ -140,14 +140,18 @@ def extract_cell(cell, render_root):
     rows, source = None, None
     json_path = os.path.join(cell_dir, "report.json")
     if os.path.isfile(json_path):
-        rows = read_schema_json(json_path)
-        source = "json" if rows is not None else None
+        try:
+            rows = read_schema_json(json_path)
+            source = "json" if rows is not None else None
+        except Exception as error:
+            entry["reason"] = f"json unparseable: {error.__class__.__name__}: {error}"
+            return entry, None
     if rows is None:
         junit_path = os.path.join(cell_dir, "report.junit")
         if os.path.isfile(junit_path):
             try:
                 rows, source = read_junit(junit_path), "junit"
-            except ET.ParseError as error:
+            except Exception as error:
                 entry["reason"] = f"junit unparseable: {error}"
                 return entry, None
     if rows is None:
