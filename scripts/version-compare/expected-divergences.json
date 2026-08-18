@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "pattern": "^RetryResults/RetryTests/testInUnknownState\\(\\)$",
+    "reason": "XCTExpectFailure now gets its own 'Expected Failure' status bucket instead of folding into passed (docs/release-notes/4.0.0.md, 'The Xcode-native report redesign': 'All six outcomes get a bucket' / 'Expected failures have a filter pill (#460)'). This harness reads 2.5.1/3.0.0 rows from their -j JUnit export (README), which has no expected-failure state and has reported it as `unknown`/passed since long before the distinction existed (Sources/XCTestHTMLReportCore/Classes/Models/JUnitReport.swift, TestCase init comment) -- a JUnit-source limitation, not new information withheld by the report."
+  },
+  {
+    "pattern": "^RetryResults/RetryTests/testRetryOnFailure\\(\\)$",
+    "reason": "A test that fails then passes on retry now reports the dedicated 'Mixed' status (docs/release-notes/4.0.0.md: the filter pills include 'a permanent Mixed (0)' bucket). Verified 3.0.0's own rendered HTML report (render/3.0.0/RetryResults/index.html) also shows 'Mixed' for this test -- the divergence here is that this harness reads old-lineage rows from JUnit XML (README), which cannot express a mixed/retried outcome and always reports the run's last iteration; not a regression in what either report actually shows."
+  },
+  {
+    "pattern": "^TestResults/SampleAppUnitTests/testExpectedFailure\\(\\)$",
+    "reason": "Same Expected-Failure bucket change as RetryTests/testInUnknownState() -- see docs/release-notes/4.0.0.md 'All six outcomes get a bucket' / 'Expected failures have a filter pill (#460)'; JUnit (the old-lineage source here) has no expected-failure state (JUnitReport.swift TestCase init comment)."
+  },
+  {
+    "pattern": "^TestResults/SwiftTestingSuite/knownIssue\\(\\)$",
+    "reason": "Swift Testing's withKnownIssue is the Swift Testing counterpart to XCTExpectFailure and gets the same new 'Expected Failure' status bucket -- see docs/release-notes/4.0.0.md 'All six outcomes get a bucket' / 'Expected failures have a filter pill (#460)'; JUnit (the old-lineage source here) has no expected-failure state (JUnitReport.swift TestCase init comment)."
+  },
+  {
+    "pattern": "^CrashResults/System Failures/System Failures$",
+    "reason": "The old lineage's JUnit fabricated a synthetic 'System Failures' TEST row and rendered it green/passed, counted in the totals as an ordinary success -- actively misleading about a run whose host app trapped at launch. 4.0's report.json models the same bucket as an empty GROUP (no test-case children) per #478's 'a run that stopped early is now a fault, not a clean exit' (docs/release-notes/4.0.0.md), so it legitimately has no row for a row-based comparison to find; this mask covers that deliberate removal, not a loss. Plainly NOT yet true, tracked as an open product gap (see the regression draft in task-8-report.md): neither rc1's nor HEAD's *rendered HTML* shows any fault indication for this bundle -- 'System Failures' renders with class `test-summary-group succeeded` and HEAD's own summary legend reads 'Passed (1)'; word-boundary grep for 'fault' in either report.html is zero. HEAD's CLI at least exits 3 with a stderr warning; shipped 4.0.0rc1's CLI exits 0 with 'Report successfully created', same as the pre-#478 behavior the release notes describe as the bug."
+  }
+]
