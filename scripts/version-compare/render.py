@@ -8,6 +8,7 @@ matrix always completes. DEVELOPER_DIR passes through untouched.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -20,8 +21,8 @@ import traceback
 HERE = os.path.dirname(os.path.abspath(__file__))
 CAPTURE_SCHEMA = os.path.join(HERE, "..", "capture_xcresult_schema.py")
 
-# One shape serves 2.5.1 through HEAD (verified per tag); a future version
-# that diverges gets its own entry keyed by label.
+# One shape serves 2.5.1 through HEAD (verified per tag); a diverging future
+# version would grow a per-label branch here.
 def invocation(binary, out_dir, bundle):
     return [binary, "-i", "-j", "--exclude-run-destination-info",
             "--json", "-o", out_dir, bundle]
@@ -100,6 +101,33 @@ def exception_to_cell(tool, fixture, out_root, exc, wall_seconds):
     }
 
 
+def bundle_content_hash(bundle):
+    """A deterministic sha256 for a fixture bundle's contents.
+
+    Independent of mtimes, permissions, and filesystem traversal order:
+    every file's (relative path, content sha256) pair is folded into the
+    digest in sorted relative-path order. Pure stdlib, so it runs
+    identically on Linux and macOS -- no toolchain required, unlike
+    provenance capture.
+    """
+    relpaths = []
+    for root, _dirs, files in os.walk(bundle):
+        for name in files:
+            full = os.path.join(root, name)
+            rel = os.path.relpath(full, bundle).replace(os.sep, "/")
+            relpaths.append(rel)
+
+    digest = hashlib.sha256()
+    for rel in sorted(relpaths):
+        file_hash = hashlib.sha256()
+        with open(os.path.join(bundle, rel), "rb") as handle:
+            for chunk in iter(lambda: handle.read(65536), b""):
+                file_hash.update(chunk)
+        digest.update(rel.encode("utf-8"))
+        digest.update(file_hash.hexdigest().encode("utf-8"))
+    return digest.hexdigest()
+
+
 def capture_provenance(fixture, out_root):
     stem = os.path.basename(fixture)
     stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
@@ -162,9 +190,18 @@ def main(argv=None):
                     if stem.endswith(".xcresult") else stem
                 provenance[stem] = rel
 
+    # Computed unconditionally -- unlike provenance, this needs no
+    # toolchain, so it isn't gated behind --provenance.
+    bundle_hashes = {}
+    for fixture in fixtures:
+        stem = os.path.basename(fixture)
+        stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
+        bundle_hashes[stem] = bundle_content_hash(fixture)
+
     with open(os.path.join(args.out, "cells.json"), "w",
               encoding="utf-8") as handle:
-        json.dump({"cells": cells, "provenance": provenance}, handle,
+        json.dump({"cells": cells, "provenance": provenance,
+                  "bundleHashes": bundle_hashes}, handle,
                   indent=2, sort_keys=True)
         handle.write("\n")
     failed = sum(1 for c in cells if c["status"] != "ok")

@@ -123,7 +123,7 @@ fi
 
 if [[ $SERVE -eq 1 ]]; then
     echo "site: http://localhost:${PORT}/site/index.html"
-    ( cd "$RUN_DIR" && exec python3 -m http.server "$PORT" )
+    ( cd "$RUN_DIR" && exec python3 -m http.server --bind 127.0.0.1 "$PORT" )
 else
     echo "site: ${RUN_DIR}/site/index.html (table works from file://; panes need --serve)"
 fi

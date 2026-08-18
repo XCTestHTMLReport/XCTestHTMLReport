@@ -13,6 +13,10 @@ Spec: `docs/superpowers/specs/2026-08-18-version-compare-harness-design.md`.
   regression or a missing entry in `expected-divergences.json` — both need a
   decision.
 - While developing, with `--head`: HEAD gets a column next to the releases.
+- `--strict --head` currently always exits non-zero: HEAD's systemFailure
+  fault gate fails the CrashResults cell, and failed cells are deliberately
+  not suppressible via the allow-list — so use `--strict` for releases only,
+  or expect exit 1 with `--head` until that call is made.
 
 ## Usage
 

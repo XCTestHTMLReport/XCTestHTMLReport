@@ -184,6 +184,36 @@ class RenderTests(unittest.TestCase):
         (cell,) = data["cells"]
         self.assertEqual(cell["status"], "ok")
 
+    def test_bundle_hash_is_deterministic_and_sensitive_to_content(self):
+        """bundleHashes: stable across reruns of an unchanged fixture,
+        changes when a file inside the fixture changes, and present even
+        when --provenance is skip (it needs no toolchain)."""
+        tool = self.make_tool("2.5.1", WELL_BEHAVED)
+
+        result1, out1 = self.run_render([tool], provenance="skip")
+        self.assertEqual(result1.returncode, 0, result1.stderr)
+        with open(os.path.join(out1, "cells.json"), encoding="utf-8") as handle:
+            data1 = json.load(handle)
+        self.assertIn("bundleHashes", data1)
+        hash1 = data1["bundleHashes"]["TestResults"]
+
+        result2, out2 = self.run_render([tool], provenance="skip")
+        self.assertEqual(result2.returncode, 0, result2.stderr)
+        with open(os.path.join(out2, "cells.json"), encoding="utf-8") as handle:
+            data2 = json.load(handle)
+        # Same fixture content, rerun: identical hash.
+        self.assertEqual(data2["bundleHashes"]["TestResults"], hash1)
+
+        with open(os.path.join(self.fixture, "Info.plist"), "w") as handle:
+            handle.write("plist-changed")
+
+        result3, out3 = self.run_render([tool], provenance="skip")
+        self.assertEqual(result3.returncode, 0, result3.stderr)
+        with open(os.path.join(out3, "cells.json"), encoding="utf-8") as handle:
+            data3 = json.load(handle)
+        # Touching a file inside the fixture changes the hash.
+        self.assertNotEqual(data3["bundleHashes"]["TestResults"], hash1)
+
 
 if __name__ == "__main__":
     unittest.main()

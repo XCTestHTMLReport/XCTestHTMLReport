@@ -75,7 +75,7 @@ each is re-runnable alone.
 ```
 version_compare.sh [--versions 2.5.1,3.0.0,4.0.0rc1] [--head]
                    [--fixtures TestResults,RetryResults,SanityResults,CrashResults]
-                   [--run DIR] [--serve] [--strict]
+                   [--run DIR] [--baseline TAG] [--serve] [--strict]
 ```
 
 - `--versions` defaults to the three pinned releases.
@@ -129,7 +129,7 @@ One normalized shape per cell:
 {
   "tool": "3.0.0",
   "fixture": "RetryResults",
-  "totals": {"passed": 0, "failed": 0, "skipped": 0, "expectedFailure": 0, "mixed": 0},
+  "totals": {"passed": 0, "failed": 0, "skipped": 0, "expectedFailure": 0, "mixed": 0, "unknown": 0},
   "tests": [
     {"id": "SuiteName/testName()", "status": "passed", "duration": 1.23,
      "attachmentCount": 2, "failureMessages": []}
@@ -201,13 +201,16 @@ Static files, vanilla JS, no build step, no external dependencies.
   expected-divergence rows muted. The **baseline column is selectable**,
   defaulting to 3.0.0, so "what did 4.0 change" reads directly.
 - **Panes below:** two or three side-by-side same-origin iframes, versions
-  selectable. Clicking a diff-table row (or a test inside one pane) posts the
-  canonical test id to every pane; a small injected per-version driver
-  translates that into the report's own navigation — expand the suite, scroll
-  to the row, flash it. This is semantic sync: BrowserSync's payoff without
-  its event-mirroring fragility, which cannot work across three different
-  DOMs. Selection sync ships in the MVP; scroll sync only if selection sync
-  proves insufficient in use.
+  selectable. Sync is a generic text-search locate driven from the shell
+  page, not a per-version driver: clicking a diff-table row posts the row's
+  test names to each same-origin pane, and the shell page walks each
+  iframe's DOM for a leaf node whose text matches one of them, expands it if
+  hidden, scrolls it into view, and flashes it. This is semantic sync:
+  BrowserSync's payoff without its event-mirroring fragility, which cannot
+  work across three different DOMs. It is best-effort and one-directional
+  (table → panes only) — a failed locate (cross-origin, template surprise)
+  never breaks the table. Selection sync ships in the MVP; scroll sync only
+  if selection sync proves insufficient in use.
 
 ## Error handling
 

@@ -59,7 +59,7 @@
       if (Object.keys(flags).length) {
         tr.className = row.expected ? "expected" : "flagged";
       }
-      if (row.expected && row.reason) { tr.title = esc(row.reason); }
+      if (row.expected && row.reason) { tr.title = row.reason; }
       var cells = "<td>" + esc(row.id) + "</td>";
       data.tools.forEach(function (tool) {
         var classes = [];
