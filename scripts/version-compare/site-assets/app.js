@@ -9,6 +9,11 @@
   var tableHost = document.getElementById("table");
   var panesHost = document.getElementById("panes");
 
+  function esc(text) {
+    var map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" };
+    return String(text).replace(/[&<>"']/g, function (c) { return map[c]; });
+  }
+
   data.tools.forEach(function (tool) {
     var option = document.createElement("option");
     option.value = tool;
@@ -44,7 +49,7 @@
     var table = document.createElement("table");
     var head = document.createElement("tr");
     head.innerHTML = "<th>test</th>" + data.tools.map(function (tool) {
-      return "<th>" + tool + (tool === baseline ? " (baseline)" : "") +
+      return "<th>" + esc(tool) + (tool === baseline ? " (baseline)" : "") +
         "</th>";
     }).join("");
     table.appendChild(head);
@@ -54,15 +59,15 @@
       if (Object.keys(flags).length) {
         tr.className = row.expected ? "expected" : "flagged";
       }
-      if (row.expected && row.reason) { tr.title = row.reason; }
-      var cells = "<td>" + row.id + "</td>";
+      if (row.expected && row.reason) { tr.title = esc(row.reason); }
+      var cells = "<td>" + esc(row.id) + "</td>";
       data.tools.forEach(function (tool) {
         var classes = [];
         if (flags[tool]) { classes.push("diff"); }
         if (row.cells[tool] === null) { classes.push("na"); }
         cells += "<td class='" + classes.join(" ") + "'" +
-          (flags[tool] ? " title='" + flags[tool].join(", ") + "'" : "") +
-          ">" + cellText(row.cells[tool]) + "</td>";
+          (flags[tool] ? " title='" + esc(flags[tool].join(", ")) + "'" : "") +
+          ">" + esc(cellText(row.cells[tool])) + "</td>";
       });
       tr.innerHTML = cells;
       tr.addEventListener("click", function () { syncPanes(row); });
@@ -72,11 +77,31 @@
   }
 
   function paneTools() {
-    var okTools = data.cells.filter(function (cell) {
-      return cell.status === "ok";
-    }).map(function (cell) { return cell.tool; });
+    var okToolsSet = {};
+    data.cells.forEach(function (cell) {
+      if (cell.status === "ok") { okToolsSet[cell.tool] = true; }
+    });
+    var okTools = Object.keys(okToolsSet);
     if (okTools.length <= 3) { return okTools; }
-    return [okTools[0], okTools[okTools.length - 1]];
+
+    var selected = [];
+    var baselineIsOk = okToolsSet[data.defaultBaseline];
+    if (baselineIsOk) {
+      selected.push(data.defaultBaseline);
+    } else {
+      selected.push(okTools[0]);
+    }
+
+    var lastInOrder = null;
+    for (var i = data.tools.length - 1; i >= 0; i--) {
+      var tool = data.tools[i];
+      if (okToolsSet[tool] && tool !== selected[0]) {
+        lastInOrder = tool;
+        break;
+      }
+    }
+    if (lastInOrder) { selected.push(lastInOrder); }
+    return selected;
   }
 
   function renderPanes() {
