@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import traceback
 
 SCRIPT = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "version-compare", "render.py"
@@ -40,6 +41,19 @@ sys.stderr.write("cannot parse this bundle\\n")
 sys.exit(3)
 """
 
+CAPTURE_SCHEMA_SUCCESS = """#!/usr/bin/env python3
+import json, sys
+out = sys.argv[sys.argv.index("-o") + 1]
+with open(out, "w") as f:
+    json.dump({"schema": "test"}, f)
+"""
+
+CAPTURE_SCHEMA_FAILURE = """#!/usr/bin/env python3
+import sys
+sys.stderr.write("schema capture failed\\n")
+sys.exit(1)
+"""
+
 
 class RenderTests(unittest.TestCase):
     def setUp(self):
@@ -58,15 +72,16 @@ class RenderTests(unittest.TestCase):
         return {"label": label, "binary": path, "source": "release",
                 "zipSha256": None, "binarySha256": "irrelevant"}
 
-    def run_render(self, tools):
+    def run_render(self, tools, provenance="skip", env=None):
         tools_path = os.path.join(self.dir, "acquire.json")
         with open(tools_path, "w") as handle:
             json.dump({"tools": tools}, handle)
         out = os.path.join(self.dir, "render")
+        cmd = [sys.executable, SCRIPT, "--tools", tools_path,
+               "--fixtures", self.fixture, "--out", out, "--provenance", provenance]
+        run_env = os.environ.copy() if env is None else env
         result = subprocess.run(
-            [sys.executable, SCRIPT, "--tools", tools_path,
-             "--fixtures", self.fixture, "--out", out, "--provenance", "skip"],
-            capture_output=True, text=True, check=False,
+            cmd, capture_output=True, text=True, check=False, env=run_env,
         )
         return result, out
 
@@ -99,6 +114,75 @@ class RenderTests(unittest.TestCase):
         stderr_path = os.path.join(out, by_tool["3.0.0"]["dir"], "stderr.txt")
         with open(stderr_path, encoding="utf-8") as handle:
             self.assertIn("cannot parse this bundle", handle.read())
+
+    def test_nonexistent_binary_becomes_failed_cell_not_dead_run(self):
+        """When a binary doesn't exist, the run must complete with that cell failed."""
+        bad_tool = {"label": "nonexistent", "binary": "/nonexistent/binary/path",
+                    "source": "release", "zipSha256": None, "binarySha256": "n/a"}
+        result, out = self.run_render([
+            self.make_tool("2.5.1", WELL_BEHAVED),
+            bad_tool,
+        ])
+        # The run itself must succeed (exit 0) and cells.json must exist.
+        self.assertEqual(result.returncode, 0, result.stderr)
+        by_tool = {c["tool"]: c for c in self.cells(out)}
+        # The good tool should still work.
+        self.assertEqual(by_tool["2.5.1"]["status"], "ok")
+        # The bad binary should produce a failed cell with exitCode -1.
+        self.assertEqual(by_tool["nonexistent"]["status"], "failed")
+        self.assertEqual(by_tool["nonexistent"]["exitCode"], -1)
+        # The error (traceback with Error mention) should be in stderr.txt.
+        stderr_path = os.path.join(out, by_tool["nonexistent"]["dir"], "stderr.txt")
+        with open(stderr_path, encoding="utf-8") as handle:
+            stderr_content = handle.read()
+            # Should contain exception traceback
+            self.assertIn("Error", stderr_content)
+
+    def test_provenance_capture_succeeds(self):
+        """When provenance capture succeeds, the result appears in cells.json."""
+        capture_script = os.path.join(self.dir, "capture-schema-success")
+        with open(capture_script, "w") as handle:
+            handle.write(CAPTURE_SCHEMA_SUCCESS)
+        os.chmod(capture_script, os.stat(capture_script).st_mode | stat.S_IXUSR)
+
+        env = os.environ.copy()
+        env["VC_CAPTURE_SCHEMA"] = capture_script
+        result, out = self.run_render([self.make_tool("2.5.1", WELL_BEHAVED)],
+                                      provenance="auto", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        with open(os.path.join(out, "cells.json"), encoding="utf-8") as handle:
+            data = json.load(handle)
+        # The provenance map should have an entry for TestResults.
+        self.assertIn("TestResults", data["provenance"])
+        prov_rel = data["provenance"]["TestResults"]
+        # The file should exist at that path.
+        prov_path = os.path.join(out, prov_rel)
+        self.assertTrue(os.path.isfile(prov_path))
+
+    def test_provenance_capture_failure_is_recoverable(self):
+        """When provenance capture fails, the run completes without that entry."""
+        capture_script = os.path.join(self.dir, "capture-schema-failure")
+        with open(capture_script, "w") as handle:
+            handle.write(CAPTURE_SCHEMA_FAILURE)
+        os.chmod(capture_script, os.stat(capture_script).st_mode | stat.S_IXUSR)
+
+        env = os.environ.copy()
+        env["VC_CAPTURE_SCHEMA"] = capture_script
+        result, out = self.run_render([self.make_tool("2.5.1", WELL_BEHAVED)],
+                                      provenance="auto", env=env)
+        # The run should still exit 0 even though provenance capture failed.
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # A warning should have been printed to stderr.
+        self.assertIn("warning: provenance capture failed", result.stderr)
+
+        with open(os.path.join(out, "cells.json"), encoding="utf-8") as handle:
+            data = json.load(handle)
+        # The provenance map should NOT have an entry for TestResults.
+        self.assertNotIn("TestResults", data["provenance"])
+        # The cell should still be ok (provenance is separate).
+        (cell,) = data["cells"]
+        self.assertEqual(cell["status"], "ok")
 
 
 if __name__ == "__main__":

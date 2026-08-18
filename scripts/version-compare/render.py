@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CAPTURE_SCHEMA = os.path.join(HERE, "..", "capture_xcresult_schema.py")
@@ -72,14 +73,42 @@ def render_cell(tool, fixture, out_root, timeout):
     }
 
 
+def exception_to_cell(tool, fixture, out_root, exc, wall_seconds):
+    """Convert an unexpected exception into a failed cell record."""
+    stem = os.path.basename(fixture)
+    stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
+    rel_dir = os.path.join(tool["label"], stem)
+    cell_dir = os.path.join(out_root, rel_dir)
+    os.makedirs(cell_dir, exist_ok=True)
+
+    # Write traceback to stderr.txt
+    with open(os.path.join(cell_dir, "stderr.txt"), "w", encoding="utf-8") as h:
+        h.write(traceback.format_exc())
+
+    # Write empty stdout.txt
+    with open(os.path.join(cell_dir, "stdout.txt"), "w", encoding="utf-8") as h:
+        h.write("")
+
+    return {
+        "tool": tool["label"],
+        "fixture": stem,
+        "status": "failed",
+        "exitCode": -1,
+        "wallSeconds": round(wall_seconds, 2),
+        "dir": rel_dir,
+        "artifacts": {"html": False, "junit": False, "json": False},
+    }
+
+
 def capture_provenance(fixture, out_root):
     stem = os.path.basename(fixture)
     stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
     rel = os.path.join("provenance", f"{stem}.json")
     dest = os.path.join(out_root, rel)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
+    capture_script = os.environ.get("VC_CAPTURE_SCHEMA", CAPTURE_SCHEMA)
     proc = subprocess.run(
-        [sys.executable, CAPTURE_SCHEMA, fixture, "-o", dest],
+        [sys.executable, capture_script, fixture, "-o", dest],
         capture_output=True, text=True, check=False,
     )
     if proc.returncode != 0:
@@ -112,7 +141,12 @@ def main(argv=None):
     cells = []
     for fixture in fixtures:
         for tool in tools:
-            cell = render_cell(tool, fixture, args.out, args.timeout)
+            started = time.monotonic()
+            try:
+                cell = render_cell(tool, fixture, args.out, args.timeout)
+            except Exception as exc:
+                wall = time.monotonic() - started
+                cell = exception_to_cell(tool, fixture, args.out, exc, wall)
             marker = "ok" if cell["status"] == "ok" else "FAILED"
             print(f"  [{marker}] {cell['tool']} x {cell['fixture']} "
                   f"({cell['wallSeconds']}s)")
