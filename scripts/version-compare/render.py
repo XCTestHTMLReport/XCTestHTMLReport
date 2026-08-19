@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+"""Renders every (tool, fixture) cell of the comparison matrix.
+
+Each cell runs one acquired binary over a TEMP COPY of one fixture bundle —
+never the fixture itself, because at least one shipped version mutates its
+input. A tool that fails produces a failed cell with its stderr on disk; the
+matrix always completes. DEVELOPER_DIR passes through untouched.
+"""
+
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
+import unicodedata
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+CAPTURE_SCHEMA = os.path.join(HERE, "..", "capture_xcresult_schema.py")
+
+# One shape serves 2.5.1 through HEAD (verified per tag); a diverging future
+# version would grow a per-label branch here.
+def invocation(binary, out_dir, bundle):
+    return [binary, "-i", "-j", "--exclude-run-destination-info",
+            "--json", "-o", out_dir, bundle]
+
+
+def render_cell(tool, fixture, out_root, timeout):
+    stem = os.path.basename(fixture)
+    stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
+    rel_dir = os.path.join(tool["label"], stem)
+    cell_dir = os.path.join(out_root, rel_dir)
+    # A reused out dir must not let a prior run's artifacts (report.json,
+    # report.junit, index.html) be read as current -- start every render
+    # from a clean cell directory.
+    if os.path.exists(cell_dir):
+        shutil.rmtree(cell_dir)
+    os.makedirs(cell_dir, exist_ok=True)
+
+    started = time.monotonic()
+    with tempfile.TemporaryDirectory(prefix="vc-render-") as tmp:
+        bundle_copy = os.path.join(tmp, os.path.basename(fixture))
+        shutil.copytree(fixture, bundle_copy)
+        try:
+            proc = subprocess.run(
+                invocation(tool["binary"], cell_dir, bundle_copy),
+                capture_output=True, text=True, timeout=timeout, check=False,
+            )
+            exit_code, stdout, stderr = proc.returncode, proc.stdout, proc.stderr
+        except subprocess.TimeoutExpired as expired:
+            exit_code = -1
+            stdout = (expired.stdout or b"").decode("utf-8", "replace") \
+                if isinstance(expired.stdout, bytes) else (expired.stdout or "")
+            stderr = (expired.stderr or b"").decode("utf-8", "replace") \
+                if isinstance(expired.stderr, bytes) else (expired.stderr or "")
+            if stderr and not stderr.endswith("\n"):
+                stderr += "\n"
+            stderr += f"timed out after {timeout}s"
+    wall = time.monotonic() - started
+
+    with open(os.path.join(cell_dir, "stdout.txt"), "w", encoding="utf-8") as h:
+        h.write(stdout)
+    with open(os.path.join(cell_dir, "stderr.txt"), "w", encoding="utf-8") as h:
+        h.write(stderr)
+
+    artifacts = {
+        "html": os.path.isfile(os.path.join(cell_dir, "index.html")),
+        "junit": os.path.isfile(os.path.join(cell_dir, "report.junit")),
+        "json": os.path.isfile(os.path.join(cell_dir, "report.json")),
+    }
+    status = "ok" if exit_code == 0 and artifacts["html"] else "failed"
+    return {
+        "tool": tool["label"],
+        "fixture": stem,
+        "status": status,
+        "exitCode": exit_code,
+        "wallSeconds": round(wall, 2),
+        "dir": rel_dir,
+        "artifacts": artifacts,
+    }
+
+
+def exception_to_cell(tool, fixture, out_root, exc, wall_seconds):
+    """Convert an unexpected exception into a failed cell record."""
+    stem = os.path.basename(fixture)
+    stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
+    rel_dir = os.path.join(tool["label"], stem)
+    cell_dir = os.path.join(out_root, rel_dir)
+    os.makedirs(cell_dir, exist_ok=True)
+
+    # Write traceback to stderr.txt
+    with open(os.path.join(cell_dir, "stderr.txt"), "w", encoding="utf-8") as h:
+        h.write(traceback.format_exc())
+
+    # Write empty stdout.txt
+    with open(os.path.join(cell_dir, "stdout.txt"), "w", encoding="utf-8") as h:
+        h.write("")
+
+    return {
+        "tool": tool["label"],
+        "fixture": stem,
+        "status": "failed",
+        "exitCode": -1,
+        "wallSeconds": round(wall_seconds, 2),
+        "dir": rel_dir,
+        "artifacts": {"html": False, "junit": False, "json": False},
+    }
+
+
+def bundle_content_hash(bundle):
+    """A deterministic sha256 for a fixture bundle's contents.
+
+    Independent of mtimes, permissions, and filesystem traversal order:
+    every file's (relative path, content sha256) pair is folded into the
+    digest in sorted relative-path order. Pure stdlib, so it runs
+    identically on Linux and macOS -- no toolchain required, unlike
+    provenance capture.
+    """
+    relpaths = []
+    for root, _dirs, files in os.walk(bundle):
+        for name in files:
+            full = os.path.join(root, name)
+            rel = os.path.relpath(full, bundle).replace(os.sep, "/")
+            relpaths.append(rel)
+
+    digest = hashlib.sha256()
+    for rel in sorted(relpaths):
+        file_hash = hashlib.sha256()
+        with open(os.path.join(bundle, rel), "rb") as handle:
+            for chunk in iter(lambda: handle.read(65536), b""):
+                file_hash.update(chunk)
+        digest.update(rel.encode("utf-8"))
+        digest.update(file_hash.hexdigest().encode("utf-8"))
+    return digest.hexdigest()
+
+
+def capture_provenance(fixture, out_root):
+    stem = os.path.basename(fixture)
+    stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
+    rel = os.path.join("provenance", f"{stem}.json")
+    dest = os.path.join(out_root, rel)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    capture_script = os.environ.get("VC_CAPTURE_SCHEMA", CAPTURE_SCHEMA)
+    proc = subprocess.run(
+        [sys.executable, capture_script, fixture, "-o", dest],
+        capture_output=True, text=True, check=False,
+    )
+    if proc.returncode != 0:
+        print(f"warning: provenance capture failed for {stem}: "
+              f"{proc.stderr.strip()}", file=sys.stderr)
+        return None
+    return rel
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--tools", required=True, help="acquire.json")
+    parser.add_argument("--fixtures", required=True,
+                        help="comma-separated .xcresult paths")
+    parser.add_argument("--out", required=True, help="render directory")
+    parser.add_argument("--provenance", choices=("auto", "skip"),
+                        default="auto")
+    parser.add_argument("--timeout", type=int, default=600,
+                        help="per-cell seconds")
+    args = parser.parse_args(argv)
+
+    with open(args.tools, encoding="utf-8") as handle:
+        tools = json.load(handle)["tools"]
+    fixtures = [f for f in args.fixtures.split(",") if f]
+    for fixture in fixtures:
+        if not os.path.isdir(fixture):
+            raise SystemExit(f"error: fixture not found: {fixture}")
+
+    # Two fixtures normalizing to the same stem would overwrite each
+    # other's cells/provenance/bundleHashes entries. Compare case- and
+    # normalization-insensitively: render runs on macOS, whose default
+    # volumes are case-insensitive, so Foo.xcresult and foo.xcresult
+    # collide on disk even though they compare unequal as plain strings.
+    seen_stems = {}
+    for fixture in fixtures:
+        stem = os.path.basename(fixture)
+        stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
+        key = unicodedata.normalize("NFC", stem).casefold()
+        if key in seen_stems:
+            other_stem, other_fixture = seen_stems[key]
+            raise SystemExit(
+                f"error: duplicate fixture stem (case-insensitive): "
+                f"{other_stem!r} ({other_fixture}) and {stem!r} ({fixture}) "
+                "would overwrite each other's cells/provenance/bundleHashes"
+            )
+        seen_stems[key] = (stem, fixture)
+
+    os.makedirs(args.out, exist_ok=True)
+    cells = []
+    for fixture in fixtures:
+        for tool in tools:
+            started = time.monotonic()
+            try:
+                cell = render_cell(tool, fixture, args.out, args.timeout)
+            except Exception as exc:
+                wall = time.monotonic() - started
+                cell = exception_to_cell(tool, fixture, args.out, exc, wall)
+            marker = "ok" if cell["status"] == "ok" else "FAILED"
+            print(f"  [{marker}] {cell['tool']} x {cell['fixture']} "
+                  f"({cell['wallSeconds']}s)")
+            cells.append(cell)
+
+    provenance = {}
+    if args.provenance == "auto":
+        for fixture in fixtures:
+            rel = capture_provenance(fixture, args.out)
+            if rel:
+                stem = os.path.basename(fixture)
+                stem = stem[: -len(".xcresult")] \
+                    if stem.endswith(".xcresult") else stem
+                provenance[stem] = rel
+
+    # Computed unconditionally -- unlike provenance, this needs no
+    # toolchain, so it isn't gated behind --provenance.
+    bundle_hashes = {}
+    for fixture in fixtures:
+        stem = os.path.basename(fixture)
+        stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
+        bundle_hashes[stem] = bundle_content_hash(fixture)
+
+    with open(os.path.join(args.out, "cells.json"), "w",
+              encoding="utf-8") as handle:
+        json.dump({"cells": cells, "provenance": provenance,
+                  "bundleHashes": bundle_hashes}, handle,
+                  indent=2, sort_keys=True)
+        handle.write("\n")
+    failed = sum(1 for c in cells if c["status"] != "ok")
+    print(f"rendered {len(cells)} cell(s), {failed} failed -> {args.out}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

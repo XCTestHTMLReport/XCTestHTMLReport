@@ -40,3 +40,7 @@ __pycache__/
 # of it the copy of the fixture bundle; they are local evidence, not repository
 # content (see scripts/viewer-compare/README.md).
 /.viewer-compare
+
+# Run directories from scripts/version-compare — renders of every version per
+# fixture; local evidence, not repository content (see its README.md).
+/.version-compare
