@@ -241,6 +241,36 @@ class RenderTests(unittest.TestCase):
         self.assertIn(self.fixture, result.stderr)
         self.assertIn(other_fixture, result.stderr)
 
+    def test_duplicate_fixture_stems_are_rejected_case_insensitively(self):
+        """render runs on macOS, whose default volumes are case-insensitive:
+        a/Foo.xcresult and b/foo.xcresult resolve to the same cell dir on
+        disk even though they compare unequal as plain strings. Case
+        variants of the SAME basename can't coexist in one parent dir on a
+        case-insensitive filesystem, so this uses different parent dirs --
+        that also means the assertion must hold on case-sensitive
+        filesystems (Linux CI), where the guard is what makes it fail."""
+        other_parent = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(other_parent, ignore_errors=True))
+        # self.fixture is <self.dir>/TestResults.xcresult; this one is a
+        # different parent dir with a lowercased basename.
+        other_fixture = os.path.join(other_parent, "testresults.xcresult")
+        os.makedirs(os.path.join(other_fixture, "Data"))
+        with open(os.path.join(other_fixture, "Info.plist"), "w") as handle:
+            handle.write("plist")
+
+        tools_path = os.path.join(self.dir, "acquire.json")
+        with open(tools_path, "w") as handle:
+            json.dump({"tools": [self.make_tool("2.5.1", WELL_BEHAVED)]}, handle)
+        out = os.path.join(self.dir, "render")
+        cmd = [sys.executable, SCRIPT, "--tools", tools_path,
+               "--fixtures", f"{self.fixture},{other_fixture}",
+               "--out", out, "--provenance", "skip"]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(self.fixture, result.stderr)
+        self.assertIn(other_fixture, result.stderr)
+
     def test_bundle_hash_is_deterministic_and_sensitive_to_content(self):
         """bundleHashes: stable across reruns of an unchanged fixture,
         changes when a file inside the fixture changes, and present even

@@ -17,6 +17,7 @@ import sys
 import tempfile
 import time
 import traceback
+import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CAPTURE_SCHEMA = os.path.join(HERE, "..", "capture_xcresult_schema.py")
@@ -175,18 +176,23 @@ def main(argv=None):
             raise SystemExit(f"error: fixture not found: {fixture}")
 
     # Two fixtures normalizing to the same stem would overwrite each
-    # other's cells/provenance/bundleHashes entries.
+    # other's cells/provenance/bundleHashes entries. Compare case- and
+    # normalization-insensitively: render runs on macOS, whose default
+    # volumes are case-insensitive, so Foo.xcresult and foo.xcresult
+    # collide on disk even though they compare unequal as plain strings.
     seen_stems = {}
     for fixture in fixtures:
         stem = os.path.basename(fixture)
         stem = stem[: -len(".xcresult")] if stem.endswith(".xcresult") else stem
-        if stem in seen_stems:
+        key = unicodedata.normalize("NFC", stem).casefold()
+        if key in seen_stems:
+            other_stem, other_fixture = seen_stems[key]
             raise SystemExit(
-                f"error: duplicate fixture stem {stem!r}: "
-                f"{seen_stems[stem]} and {fixture} would overwrite each "
-                "other's cells/provenance/bundleHashes"
+                f"error: duplicate fixture stem (case-insensitive): "
+                f"{other_stem!r} ({other_fixture}) and {stem!r} ({fixture}) "
+                "would overwrite each other's cells/provenance/bundleHashes"
             )
-        seen_stems[stem] = fixture
+        seen_stems[key] = (stem, fixture)
 
     os.makedirs(args.out, exist_ok=True)
     cells = []
