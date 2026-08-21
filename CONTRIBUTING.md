@@ -130,6 +130,10 @@ mise trust && mise install
 That is opt-in on purpose: nothing installs it for you, and `mise trust` is where
 you agree to let the repository run its own setup.
 
+The same file indexes the repository's runnable scripts: `mise tasks` lists
+them (fixture generation and both comparison harnesses), and
+`mise run <task> -- <flags>` runs one with its flags passed through.
+
 The hook is defined in [`hk.pkl`](hk.pkl). It only checks files you are actually
 committing, and reports problems rather than rewriting your files, so a commit
 never contains changes you have not read. To skip it for one commit:

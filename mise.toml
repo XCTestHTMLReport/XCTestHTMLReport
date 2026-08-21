@@ -1,4 +1,5 @@
-# Pinned versions of every tool the lint gate runs, locally and in CI alike.
+# Pinned versions of every tool the lint gate runs, locally and in CI alike —
+# plus, at the bottom, a [tasks] index of the repository's runnable scripts.
 #
 # Before this file, lint.yml installed SwiftFormat and SwiftLint with a bare
 # `brew install` -- whatever version Homebrew had that morning -- while
@@ -42,3 +43,21 @@ HK_MISE = "1"
 # one, and CONTRIBUTING.md carries the one-time fix. Silently rewriting git
 # config someone set by hand is the overreach the old hook argued against.
 postinstall = "hk install --mise"
+
+# The repository's runnable scripts, indexed so `mise tasks` is the menu and
+# nobody has to remember paths. Each entry is a thin pointer: the scripts stay
+# independently runnable by path, own their flags, and document themselves in
+# their READMEs. Flags pass through: `mise run version-compare -- --head`.
+# Tasks run from the repository root, which is what all three scripts expect.
+
+[tasks.fixtures]
+description = "Generate the .xcresult fixture bundles from the sample app"
+run = "./prepareTestResults.sh"
+
+[tasks.viewer-compare]
+description = "Xcode's own report viewer vs ours, side by side over one bundle"
+run = "./scripts/viewer-compare/viewer_compare.sh"
+
+[tasks.version-compare]
+description = "Render fixtures through released versions and diff what each reports"
+run = "./scripts/version-compare/version_compare.sh"
