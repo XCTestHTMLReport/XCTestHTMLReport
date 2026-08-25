@@ -279,7 +279,7 @@ jobs:
       # Bumps the patch component only. Major and minor bumps are deliberate
       # decisions and are made by hand before tagging.
       - name: Get next version
-        uses: reecetech/version-increment@a29aa752dc3b8118a2dc2ed93faf0e95a73a9c7e # 2024.10.1
+        uses: reecetech/version-increment@28d33de033e97a304f77238d6a5db26039ca15d6 # 2026.8.4
         id: version
         with:
           scheme: semver
