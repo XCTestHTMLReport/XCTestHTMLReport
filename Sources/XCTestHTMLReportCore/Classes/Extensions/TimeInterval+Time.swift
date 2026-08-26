@@ -10,6 +10,6 @@ import Foundation
 
 extension TimeInterval {
     var formattedSeconds: String {
-        String(format: "%.2fs", self)
+        String(format: "%.4fs", self)
     }
 }
