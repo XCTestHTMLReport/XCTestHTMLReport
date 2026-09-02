@@ -65,7 +65,7 @@ final class CliTests: XCTestCase {
 
         let defaultArgs = ["-r", testResultsUrl.path, "-o", outputDirectory.path]
         let document = try parseReportDocument(xchtmlreportArgs: defaultArgs + extraArgs)
-        let reportDir = testResultsUrl.deletingLastPathComponent()
+        let reportDir = outputDirectory
 
         // Restored by #393. This was commented out when Xcode 15 began attaching
         // videos by default, which left every image path in the tool -- the
