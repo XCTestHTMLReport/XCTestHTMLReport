@@ -1,4 +1,7 @@
 import class Foundation.Bundle
+import class Foundation.FileManager
+import struct Foundation.URL
+import struct Foundation.UUID
 import SwiftSoup
 import XCTest
 
@@ -23,9 +26,12 @@ final class CliTests: XCTestCase {
         guard let retryResultsUrl else {
             throw XCTSkip("RetryResults.xcresult not found, this likely means Xcode < 13.0")
         }
+        let outputDirectory = try makeScratchDirectory()
 
         for attempt in 1 ... 5 {
-            let (status, _, maybeStdErr) = try xchtmlreportCmd(args: [retryResultsUrl.path])
+            let (status, _, maybeStdErr) = try xchtmlreportCmd(
+                args: [retryResultsUrl.path, "-o", outputDirectory.path]
+            )
             XCTAssertEqual(
                 status, 0,
                 "attempt \(attempt) exited \(status). stderr:\n\(maybeStdErr ?? "")"
@@ -55,9 +61,11 @@ final class CliTests: XCTestCase {
 
     func assertAttachmentsExist(extraArgs: [String] = []) throws {
         let testResultsUrl = try XCTUnwrap(testResultsUrl)
-        let defaultArgs = ["-r", testResultsUrl.path]
+        let outputDirectory = try makeScratchDirectory()
+
+        let defaultArgs = ["-r", testResultsUrl.path, "-o", outputDirectory.path]
         let document = try parseReportDocument(xchtmlreportArgs: defaultArgs + extraArgs)
-        let reportDir = testResultsUrl.deletingLastPathComponent()
+        let reportDir = outputDirectory
 
         // Restored by #393. This was commented out when Xcode 15 began attaching
         // videos by default, which left every image path in the tool -- the
@@ -109,8 +117,9 @@ final class CliTests: XCTestCase {
 
     func testLenientFlagIsAccepted() throws {
         let testResultsUrl = try XCTUnwrap(testResultsUrl)
+        let outputDirectory = try makeScratchDirectory()
         let (status, maybeStdOut, _) = try xchtmlreportCmd(
-            args: ["--lenient", testResultsUrl.path]
+            args: ["--lenient", testResultsUrl.path, "-o", outputDirectory.path]
         )
 
         // --lenient never fails on faults, so a readable bundle always exits 0.
