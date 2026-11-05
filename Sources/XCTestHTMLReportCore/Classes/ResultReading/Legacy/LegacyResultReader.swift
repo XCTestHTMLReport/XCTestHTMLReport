@@ -47,11 +47,14 @@ struct LegacyResultReader: ResultReader {
                 operatingSystemVersion: device.operatingSystemVersion
             ),
             logReference: action.actionResult.logRef?.id,
-            testables: plan.summaries.flatMap(\.testableSummaries).map { summary in
-                ParsedTestable(
-                    targetName: summary.targetName ?? "",
-                    groups: summary.tests.map(parseGroup)
-                )
+            testables: plan.summaries.flatMap { configuration in
+                configuration.testableSummaries.map { summary in
+                    ParsedTestable(
+                        targetName: summary.targetName ?? "",
+                        configuration: configuration.name,
+                        groups: summary.tests.map(parseGroup)
+                    )
+                }
             }
         )
     }

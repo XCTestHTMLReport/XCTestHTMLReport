@@ -11,6 +11,7 @@ import Foundation
 struct TestSummary: HTML {
     let uuid: String
     let testName: String
+    let configuration: String?
     let tests: [TestGroup]
     var status: Status {
         let currentTests = tests
@@ -52,6 +53,7 @@ struct TestSummary: HTML {
         let path = identifierPath.appending(targetName)
         uuid = path.identifier
         testName = targetName
+        configuration = testable.configuration
         // TODO: Reduce this with iterations & accum with hashmap
         tests = testable.groups.enumerated().map { index, group in
             TestGroup(
