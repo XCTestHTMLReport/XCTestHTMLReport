@@ -4,17 +4,11 @@
 //
 //  `--merge-destinations` (#354): runs on equivalent destinations render as one.
 //
-//  Parallel testing clones a simulator, and CI pools boot several identical
-//  ones, so a single logical run arrives as one run per clone — each with its
-//  own name and identifier. Merging bundles with `xcresulttool merge` keeps
-//  them apart for the same reason. Xcode shows such a run as one tree; without
-//  this option the report shows one picker entry per clone, each holding an
-//  arbitrary slice of the suite.
+//  Parallel testing clones and `xcresulttool merge` split one logical run
+//  across identical devices; Xcode shows it as one tree.
 //
-//  Merging happens after every run has been built, so attachments and logs
-//  have already been resolved against the bundle each run came from. Only the
-//  rendering is combined: validation, JUnit, JSON and unattached-file cleanup
-//  keep reading the original runs.
+//  Runs are merged after they are built, so attachments are already resolved
+//  against their own bundles. Only the HTML is merged.
 //
 
 import Foundation
