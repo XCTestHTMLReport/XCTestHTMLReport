@@ -41,7 +41,20 @@ public struct ParsedDestination {
 /// `UI test bundle` / `Unit test bundle` node on modern.
 public struct ParsedTestable {
     public let targetName: String
+    /// The test plan configuration this testable ran under, so
+    /// `--merge-destinations` pairs a target's configurations by identity.
+    ///
+    /// Legacy reads it from `ActionTestPlanRunSummary.name`, one testable per
+    /// configuration. Modern leaves it `nil`: its tree has one bundle node per
+    /// target and nests configurations below it, so there is nothing to pair.
+    public let configuration: String?
     public let groups: [ParsedGroup]
+
+    public init(targetName: String, configuration: String? = nil, groups: [ParsedGroup]) {
+        self.targetName = targetName
+        self.configuration = configuration
+        self.groups = groups
+    }
 }
 
 public indirect enum ParsedNode {

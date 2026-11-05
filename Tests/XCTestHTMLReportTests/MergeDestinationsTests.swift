@@ -99,30 +99,76 @@ final class MergeDestinationsTests: XCTestCase {
         )
     }
 
+    private static func withConfigurations(
+        _ configurations: [String?],
+        of run: ParsedRun
+    ) -> ParsedRun {
+        ParsedRun(
+            destination: run.destination,
+            logReference: run.logReference,
+            testables: configurations.map {
+                ParsedTestable(
+                    targetName: run.testables[0].targetName,
+                    configuration: $0,
+                    groups: run.testables[0].groups
+                )
+            }
+        )
+    }
+
+    private static let targetClone = clone(
+        named: "Clone 1 of Synthetic Device",
+        identifier: "00000000-0000-0000-0000-0000000000C1",
+        targetName: SyntheticResult.parsedRun.testables[0].targetName
+    )
+
     func testEachConfigurationOfATargetStaysItsOwnTree() throws {
-        let base = SyntheticResult.parsedRun
-        let target = base.testables[0].targetName
-        func twoConfigurations(of run: ParsedRun) -> ParsedRun {
-            ParsedRun(
-                destination: run.destination,
-                logReference: run.logReference,
-                testables: [run.testables[0], run.testables[0]]
-            )
-        }
+        let target = SyntheticResult.parsedRun.testables[0].targetName
         let summary = summary(
             [
-                twoConfigurations(of: base),
-                twoConfigurations(of: Self.clone(
-                    named: "Clone 1 of Synthetic Device",
-                    identifier: "00000000-0000-0000-0000-0000000000C1",
-                    targetName: target
-                )),
+                Self.withConfigurations(["A", "B"], of: SyntheticResult.parsedRun),
+                Self.withConfigurations(["A", "B"], of: Self.targetClone),
             ],
             merge: true
         )
 
         let merged = try XCTUnwrap(summary.renderedRuns.first)
         XCTAssertEqual(merged.testSummaries.map(\.testName), [target, target])
+        XCTAssertEqual(merged.testSummaries.map(\.configuration), ["A", "B"])
+    }
+
+    func testConfigurationsPairByNameNotPosition() throws {
+        let summary = summary(
+            [
+                Self.withConfigurations(["A", "B"], of: SyntheticResult.parsedRun),
+                Self.withConfigurations(["B"], of: Self.targetClone),
+            ],
+            merge: true
+        )
+
+        let merged = try XCTUnwrap(summary.renderedRuns.first)
+        let groupsPerRun = SyntheticResult.parsedRun.testables[0].groups.count
+        XCTAssertEqual(merged.testSummaries.map(\.configuration), ["A", "B"])
+        XCTAssertEqual(
+            merged.testSummaries.map(\.tests.count), [groupsPerRun, groupsPerRun * 2],
+            "the clone's B must join B, not A"
+        )
+    }
+
+    func testIndistinguishableConfigurationsAreNotPaired() throws {
+        let summary = summary(
+            [
+                Self.withConfigurations([nil, nil], of: SyntheticResult.parsedRun),
+                Self.withConfigurations([nil], of: Self.targetClone),
+            ],
+            merge: true
+        )
+
+        let merged = try XCTUnwrap(summary.renderedRuns.first)
+        let groupsPerRun = SyntheticResult.parsedRun.testables[0].groups.count
+        XCTAssertEqual(
+            merged.testSummaries.map(\.tests.count), [groupsPerRun, groupsPerRun, groupsPerRun]
+        )
     }
 
     func testDevicesSharingANameAreCountedByIdentifier() {

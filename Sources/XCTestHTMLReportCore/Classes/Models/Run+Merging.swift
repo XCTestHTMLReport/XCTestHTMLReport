@@ -73,40 +73,54 @@ extension RunDestination {
 }
 
 extension TestSummary {
-    /// One summary per target across `summariesPerRun`, so clones of one target
-    /// render as one tree.
+    /// One summary per target and test plan configuration across
+    /// `summariesPerRun`, so clones of one target render as one tree.
     ///
-    /// A run already holds one summary per test plan configuration of a target,
-    /// in `Run.init`'s order. The k-th summary of a target in one run pairs with
-    /// the k-th of that target in the others, which keeps configurations apart.
+    /// Summaries pair by `(testName, configuration)`. A pair that occurs more
+    /// than once within one run cannot be told apart, so those summaries are
+    /// never paired; configurations from different runs that don't match stay
+    /// separate too.
     static func coalescing(_ summariesPerRun: [[TestSummary]]) -> [TestSummary] {
-        struct Key: Hashable {
+        struct Identity: Hashable {
             let testName: String
-            let occurrence: Int
+            let configuration: String?
+        }
+        enum Key: Hashable {
+            case matched(Identity)
+            case ambiguous(run: Int, index: Int)
         }
         var keys: [Key] = []
         var groups: [Key: [TestSummary]] = [:]
-        for summaries in summariesPerRun {
-            var occurrences: [String: Int] = [:]
-            for summary in summaries {
-                let occurrence = occurrences[summary.testName, default: 0]
-                occurrences[summary.testName] = occurrence + 1
-                let key = Key(testName: summary.testName, occurrence: occurrence)
+        for (run, summaries) in summariesPerRun.enumerated() {
+            let identities = summaries.map {
+                Identity(testName: $0.testName, configuration: $0.configuration)
+            }
+            var counts: [Identity: Int] = [:]
+            identities.forEach { counts[$0, default: 0] += 1 }
+            for (index, summary) in summaries.enumerated() {
+                let identity = identities[index]
+                let key: Key = counts[identity] == 1
+                    ? .matched(identity)
+                    : .ambiguous(run: run, index: index)
                 if groups[key] == nil {
                     keys.append(key)
                 }
                 groups[key, default: []].append(summary)
             }
         }
+        // Same total order as `Run.init`: target name, then first appearance.
         return keys
-            .sorted { ($0.testName, $0.occurrence) < ($1.testName, $1.occurrence) }
             .compactMap { groups[$0].map(TestSummary.init(merging:)) }
+            .enumerated()
+            .sorted { ($0.element.testName, $0.offset) < ($1.element.testName, $1.offset) }
+            .map(\.element)
     }
 
     init(merging summaries: [TestSummary]) {
         precondition(!summaries.isEmpty, "merging needs at least one summary")
         uuid = summaries[0].uuid
         testName = summaries[0].testName
+        configuration = summaries[0].configuration
         tests = summaries.flatMap(\.tests)
     }
 }
