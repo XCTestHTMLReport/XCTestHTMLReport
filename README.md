@@ -29,6 +29,7 @@ Xcode-like HTML report for Unit and UI Tests
 -   Navigate through the report with the keyboard's arrow keys
 -   Filter out successful, failed, skipped, or mixed-result tests
 -   Displays information about the target device
+-   Optionally shows equivalent devices as one (`--merge-destinations` flag)
 -   Displays activity logs
 -   Junit report(`-j` flag)
 -   Json report(`--json` flag)
@@ -124,6 +125,23 @@ reading the report path off stdout (`xchtmlreport … | xargs open`) is
 unaffected. It is off when standard error is not a terminal, so scripts and CI
 logs are unchanged. `--progress` forces it on anyway, and `--quiet` turns it
 off.
+
+### Merge Equivalent Destinations
+
+Parallel testing clones the simulator it runs on, and merging bundles with
+`xcrun xcresulttool merge` keeps each bundle's device, so one logical run can
+arrive as several destinations — each holding an arbitrary slice of the suite.
+`--merge-destinations` shows destinations with the same device model and OS
+version as one, the way Xcode does:
+
+``` bash
+$ xcrun xcresulttool merge Shard1.xcresult Shard2.xcresult --output-path Merged.xcresult
+$ xchtmlreport --merge-destinations Merged.xcresult
+```
+
+The Tests view holds every test from every merged destination, and the Logs
+view holds each destination's log under its device name. Only the HTML report
+is affected: JUnit and JSON output still have one entry per destination.
 
 ### Generate Junit Reports
 

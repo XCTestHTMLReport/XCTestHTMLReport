@@ -118,6 +118,16 @@ final class CliTests: XCTestCase {
         try XCTAssertContains(try XCTUnwrap(maybeStdOut), "successfully created")
     }
 
+    func testMergeDestinationsFlagIsAccepted() throws {
+        let testResultsUrl = try XCTUnwrap(testResultsUrl)
+        let (status, maybeStdOut, _) = try xchtmlreportCmd(
+            args: ["--merge-destinations", testResultsUrl.path]
+        )
+
+        XCTAssertEqual(status, 0)
+        try XCTAssertContains(try XCTUnwrap(maybeStdOut), "successfully created")
+    }
+
     func testUnreadableBundleExitsNonZeroWithFaultSummary() throws {
         let bogus = NSTemporaryDirectory() + "/DoesNotExist.xcresult"
         try? FileManager.default.createDirectory(

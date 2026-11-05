@@ -10,6 +10,10 @@ import Foundation
 
 public struct Summary {
     let runs: [Run]
+    /// What the HTML report renders: `runs`, or with `--merge-destinations`,
+    /// `runs` with equivalent destinations combined. Everything else —
+    /// validation, JUnit, unattached-file cleanup — reads `runs`.
+    let renderedRuns: [Run]
     /// The backend-neutral model the runs were built from, retained so
     /// `generatedJsonReport()` can emit it without a second parse.
     private let parsedRuns: [ParsedRun]
@@ -34,7 +38,8 @@ public struct Summary {
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat,
         faultCollector: FaultCollector = FaultCollector(),
-        backend: ResultBackend = .fromEnvironment()
+        backend: ResultBackend = .fromEnvironment(),
+        mergeDestinations: Bool = false
     ) {
         var runs: [Run] = []
         var parsedRuns: [ParsedRun] = []
@@ -91,6 +96,7 @@ public struct Summary {
             runs.append(contentsOf: resultRuns)
         }
         self.runs = runs
+        renderedRuns = mergeDestinations ? Run.mergingEquivalentDestinations(runs) : runs
         self.parsedRuns = parsedRuns
     }
 
@@ -113,7 +119,8 @@ public struct Summary {
         downsizeImagesEnabled: Bool,
         downsizeScaleFactor: CGFloat,
         faultCollector: FaultCollector = FaultCollector(),
-        bundleNames: [String]
+        bundleNames: [String],
+        mergeDestinations: Bool = false
     ) {
         self.faultCollector = faultCollector
         self.bundleNames = bundleNames
@@ -123,7 +130,7 @@ public struct Summary {
         // unrelated `run-\(index)`, so the goldens pin an identifier set a
         // real report could actually produce. There is one synthetic action
         // per run here, hence the literal `action0`.
-        runs = parsedRuns.enumerated().compactMap { index, run in
+        let runs = parsedRuns.enumerated().compactMap { index, run in
             Run(
                 run: run,
                 identifierPath: IdentifierPath.root
@@ -135,6 +142,8 @@ public struct Summary {
                 downsizeScaleFactor: downsizeScaleFactor
             )
         }
+        self.runs = runs
+        renderedRuns = mergeDestinations ? Run.mergingEquivalentDestinations(runs) : runs
     }
 
     /// Bundle file names for the title, in argument order.
@@ -356,7 +365,7 @@ extension Summary: HTML {
         // built from the same `RunSummary` — the same tallies, the same
         // destinations, in the same order — so the ring, the bars and the
         // options cannot describe different runs (#439, A3a).
-        let summary = RunSummary(runs: runs)
+        let summary = RunSummary(runs: renderedRuns)
         return [
             "RESULT_CLASS": resultClass,
             // Fully rendered before it gets here, so the header's own
@@ -369,8 +378,8 @@ extension Summary: HTML {
             // The per-view split (#439, A3a): a run contributes one slice to
             // each view rather than one pane holding both, so the views are
             // contiguous regions of the document and each can be a tabpanel.
-            "TESTS_VIEWS": runs.map(\.testsViewHTML).joined(),
-            "LOGS_VIEWS": runs.map(\.logsViewHTML).joined(),
+            "TESTS_VIEWS": renderedRuns.map(\.testsViewHTML).joined(),
+            "LOGS_VIEWS": renderedRuns.map(\.logsViewHTML).joined(),
             "TITLE": title.stringByEscapingXMLChars,
         ]
     }
