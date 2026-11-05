@@ -13,7 +13,12 @@ final class MergeDestinationsTests: XCTestCase {
     /// The synthetic run on a destination of its own: same model and OS as
     /// `SyntheticResult.parsedRun`, different name and identifier, which is
     /// what a parallel testing clone looks like.
-    private static func clone(named name: String, identifier: String) -> ParsedRun {
+    private static func clone(
+        named name: String,
+        identifier: String,
+        targetName: String = "CloneTests",
+        logReference: String? = SyntheticResult.parsedRun.logReference
+    ) -> ParsedRun {
         let base = SyntheticResult.parsedRun
         return ParsedRun(
             destination: ParsedDestination(
@@ -22,8 +27,8 @@ final class MergeDestinationsTests: XCTestCase {
                 modelName: base.destination.modelName,
                 operatingSystemVersion: base.destination.operatingSystemVersion
             ),
-            logReference: base.logReference,
-            testables: [ParsedTestable(targetName: "CloneTests", groups: base.testables[0].groups)]
+            logReference: logReference,
+            testables: [ParsedTestable(targetName: targetName, groups: base.testables[0].groups)]
         )
     }
 
@@ -71,6 +76,69 @@ final class MergeDestinationsTests: XCTestCase {
         XCTAssertEqual(html.components(separatedBy: "id=\"logs_").count - 1, 1)
     }
 
+    func testClonesOfOneTargetRenderAsOneTree() throws {
+        let target = SyntheticResult.parsedRun.testables[0].targetName
+        let summary = summary(
+            [
+                SyntheticResult.parsedRun,
+                Self.clone(
+                    named: "Clone 1 of Synthetic Device",
+                    identifier: "00000000-0000-0000-0000-0000000000C1",
+                    targetName: target
+                ),
+            ],
+            merge: true
+        )
+
+        let merged = try XCTUnwrap(summary.renderedRuns.first)
+        XCTAssertEqual(merged.testSummaries.map(\.testName), [target])
+        XCTAssertEqual(
+            merged.testSummaries[0].tests.count,
+            summary.runs.map { $0.testSummaries[0].tests.count }.reduce(0, +),
+            "the one tree must hold every clone's suites"
+        )
+    }
+
+    func testEachConfigurationOfATargetStaysItsOwnTree() throws {
+        let base = SyntheticResult.parsedRun
+        let target = base.testables[0].targetName
+        func twoConfigurations(of run: ParsedRun) -> ParsedRun {
+            ParsedRun(
+                destination: run.destination,
+                logReference: run.logReference,
+                testables: [run.testables[0], run.testables[0]]
+            )
+        }
+        let summary = summary(
+            [
+                twoConfigurations(of: base),
+                twoConfigurations(of: Self.clone(
+                    named: "Clone 1 of Synthetic Device",
+                    identifier: "00000000-0000-0000-0000-0000000000C1",
+                    targetName: target
+                )),
+            ],
+            merge: true
+        )
+
+        let merged = try XCTUnwrap(summary.renderedRuns.first)
+        XCTAssertEqual(merged.testSummaries.map(\.testName), [target, target])
+    }
+
+    func testDevicesSharingANameAreCountedByIdentifier() {
+        let destinations = [
+            SyntheticResult.parsedRun,
+            Self.clone(named: "Clone", identifier: "00000000-0000-0000-0000-0000000000C1"),
+            Self.clone(named: "Clone", identifier: "00000000-0000-0000-0000-0000000000C2"),
+        ]
+
+        let summary = summary(destinations, merge: true)
+
+        XCTAssertEqual(
+            summary.renderedRuns.first?.runDestination.name, "Synthetic Model (3 devices)"
+        )
+    }
+
     func testMergedLogKeepsEachDestinationsLogUnderItsName() {
         let html = summary(Self.clones, merge: true).generatedHtmlReport()
 
@@ -103,5 +171,23 @@ final class MergeDestinationsTests: XCTestCase {
         summary.validate()
 
         XCTAssertEqual(summary.faults, [])
+    }
+
+    func testMergingStillReportsAnOriginalRunsUnresolvedLog() {
+        let summary = summary(
+            [
+                SyntheticResult.parsedRun,
+                Self.clone(
+                    named: "Clone 1 of Synthetic Device",
+                    identifier: "00000000-0000-0000-0000-0000000000C1",
+                    logReference: "no-such-log"
+                ),
+            ],
+            merge: true
+        )
+
+        summary.validate()
+
+        XCTAssertEqual(summary.faults.map(\.kind), [.unresolvedLog])
     }
 }

@@ -49,13 +49,7 @@ extension Run {
         precondition(!runs.isEmpty, "merging needs at least one run")
         file = runs[0].file
         runDestination = RunDestination(merging: runs.map(\.runDestination))
-        // The same total order `Run.init` uses within one run, extended across
-        // runs: target name first, then source position.
-        testSummaries = runs
-            .flatMap(\.testSummaries)
-            .enumerated()
-            .sorted { ($0.element.testName, $0.offset) < ($1.element.testName, $1.offset) }
-            .map(\.element)
+        testSummaries = TestSummary.coalescing(runs.map(\.testSummaries))
         logText = runs
             .filter { !$0.logText.isEmpty }
             .map { "==== \($0.runDestination.name) ====\n\($0.logText)" }
@@ -70,9 +64,49 @@ extension RunDestination {
         precondition(!destinations.isEmpty, "merging needs at least one destination")
         let first = destinations[0]
         let names = Set(destinations.map(\.name))
+        let identifiers = Set(destinations.map(\.targetDevice.identifier))
         name = names.count == 1
             ? first.name
-            : "\(first.targetDevice.model) (\(names.count) devices)"
+            : "\(first.targetDevice.model) (\(identifiers.count) devices)"
         targetDevice = first.targetDevice
+    }
+}
+
+extension TestSummary {
+    /// One summary per target across `summariesPerRun`, so clones of one target
+    /// render as one tree.
+    ///
+    /// A run already holds one summary per test plan configuration of a target,
+    /// in `Run.init`'s order. The k-th summary of a target in one run pairs with
+    /// the k-th of that target in the others, which keeps configurations apart.
+    static func coalescing(_ summariesPerRun: [[TestSummary]]) -> [TestSummary] {
+        struct Key: Hashable {
+            let testName: String
+            let occurrence: Int
+        }
+        var keys: [Key] = []
+        var groups: [Key: [TestSummary]] = [:]
+        for summaries in summariesPerRun {
+            var occurrences: [String: Int] = [:]
+            for summary in summaries {
+                let occurrence = occurrences[summary.testName, default: 0]
+                occurrences[summary.testName] = occurrence + 1
+                let key = Key(testName: summary.testName, occurrence: occurrence)
+                if groups[key] == nil {
+                    keys.append(key)
+                }
+                groups[key, default: []].append(summary)
+            }
+        }
+        return keys
+            .sorted { ($0.testName, $0.occurrence) < ($1.testName, $1.occurrence) }
+            .compactMap { groups[$0].map(TestSummary.init(merging:)) }
+    }
+
+    init(merging summaries: [TestSummary]) {
+        precondition(!summaries.isEmpty, "merging needs at least one summary")
+        uuid = summaries[0].uuid
+        testName = summaries[0].testName
+        tests = summaries.flatMap(\.tests)
     }
 }

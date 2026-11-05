@@ -118,14 +118,14 @@ final class CliTests: XCTestCase {
         try XCTAssertContains(try XCTUnwrap(maybeStdOut), "successfully created")
     }
 
-    func testMergeDestinationsFlagIsAccepted() throws {
+    func testMergeDestinationsFlagMergesEquivalentRuns() throws {
         let testResultsUrl = try XCTUnwrap(testResultsUrl)
-        let (status, maybeStdOut, _) = try xchtmlreportCmd(
-            args: ["--merge-destinations", testResultsUrl.path]
+        // One bundle passed twice yields two runs on the same destination.
+        let document = try parseReportDocument(
+            xchtmlreportArgs: ["--merge-destinations", testResultsUrl.path, testResultsUrl.path]
         )
 
-        XCTAssertEqual(status, 0)
-        try XCTAssertContains(try XCTUnwrap(maybeStdOut), "successfully created")
+        XCTAssertEqual(try document.select("[id^=tests_]").count, 1)
     }
 
     func testUnreadableBundleExitsNonZeroWithFaultSummary() throws {
