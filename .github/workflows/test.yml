@@ -105,7 +105,7 @@ jobs:
     # .xcresult bundle, which is not uploaded alongside it — every screenshot,
     # video and log in the downloaded report would 404.
     - name: Upload rendered report
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: report-${{ matrix.result_reader }}
         path: ${{ runner.temp }}/report/index.html
@@ -118,7 +118,7 @@ jobs:
     # regenerating the bundles by hand. Keep it at the end of the job.
     - name: Upload fixtures on failure
       if: failure()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         # Suffixed per matrix leg: upload-artifact v4+ refuses duplicate
         # artifact names, so a run where both legs fail would otherwise lose
