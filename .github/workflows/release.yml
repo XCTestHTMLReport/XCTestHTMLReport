@@ -35,7 +35,7 @@ jobs:
         persist-credentials: false
 
     - name: Configure Signing
-      uses: Apple-Actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7
+      uses: Apple-Actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
       with:
         p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
         p12-password: ${{ secrets.P12_PASSWORD }}
@@ -289,7 +289,7 @@ jobs:
         run: echo 'let version = "${{ steps.version.outputs.version }}"' > Sources/XCTestHTMLReport/Version.swift
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           title: "${{ steps.version.outputs.version }} Version Bump"
           body: "Bumping version from ${{ steps.version.outputs.current-version }} to ${{ steps.version.outputs.version }}"
