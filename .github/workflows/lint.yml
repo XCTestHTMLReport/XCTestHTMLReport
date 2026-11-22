@@ -62,6 +62,11 @@ jobs:
     - name: Site assembler tests
       run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
+    # CLAUDE.md's line cap and the learnings index (scripts/check_agent_rules.py
+    # says why). Its tests ride in the step above; this runs it on the tree.
+    - name: Agent rules
+      run: python3 scripts/check_agent_rules.py
+
   actions:
     runs-on: ubuntu-latest
     steps:
