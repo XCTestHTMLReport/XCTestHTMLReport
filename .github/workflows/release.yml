@@ -7,16 +7,21 @@ on:
    - '[0-9]+.[0-9]+.[0-9]+rc[0-9]+'
   # Lets the whole build/sign/package path be exercised without publishing
   # anything. Before this existed the only way to test a release was to cut one.
+  #
+  # A manual run is always a dry run: there is no input that makes it publish.
+  # The `release` and `bump_version` jobs run on a tag push and on nothing
+  # else. (There used to be a `dry_run` checkbox here. Nothing read it, and
+  # unticking it changed nothing, which is not what a checkbox promises.)
+  #
+  # It has to be run from `main`. The build job below belongs to the
+  # `release` environment, which admits `main` and release tags only; from
+  # any other ref the job is refused before its first step.
   workflow_dispatch:
     inputs:
-      dry_run:
-        type: boolean
-        default: true
-        description: "Build, sign and package, but do not publish"
       notarize:
         type: boolean
         default: false
-        description: "Also submit the dry-run build to Apple's notary service, and check the ticket"
+        description: "Also submit the dry-run build to Apple's notary service, and check the ticket. Nothing is published either way."
 
 # Declared per job rather than at workflow level, so no job silently inherits
 # a grant it does not need: the build only reads, publishing writes releases,
@@ -24,6 +29,19 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    # The signing certificate and the notarization key are secrets of this
+    # environment, not of the repository. A repository secret is readable by
+    # any workflow run from any branch, so anyone with write access could push
+    # a branch that edits this file and walk away with a Developer ID key --
+    # or simply dispatch this workflow from it and download a signed, notarized
+    # build of whatever the branch contains. The environment's deployment rule
+    # admits the `main` branch and tags matching `*.*.*`, and GitHub refuses
+    # the job for any other ref before a single step runs.
+    #
+    # `*.*.*` covers every tag the trigger above can fire on (4.1.0, 4.1.0rc1),
+    # and would cover v4.1.0 and v4.1.0-rc.1 as well. This is the only job that
+    # reads those secrets, so it is the only one in the environment.
+    environment: release
     permissions:
       contents: read
     outputs:
@@ -51,6 +69,12 @@ jobs:
     # -- and that action reported an expired certificate as a success, leaving
     # codesign to say "no identity found" several minutes later.
     #
+    # It checks and then deletes: the keychain and the decoded key are gone
+    # again before this step ends. The builds below compile third-party
+    # packages as this user, and none of that code should find a signing
+    # keychain or an App Store Connect key waiting in $RUNNER_TEMP. Both come
+    # back, one at a time, only after the last step that runs built code.
+    #
     # continue-on-error, so a failure here does not also hide whether the
     # release build itself still works: the build and its version check run
     # either way, and the job stops at "Require usable credentials" below,
@@ -64,7 +88,7 @@ jobs:
         ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
-      run: ./scripts/release/check_credentials.sh
+      run: ./scripts/release/check_credentials.sh check
 
     - name: Generate Metadata
       id: metadata
@@ -128,7 +152,16 @@ jobs:
         echo "::error title=Release credentials::The release build above is fine, but nothing can be signed: \"Check release credentials\" failed, and its annotations on this run name each secret at fault. docs/releasing.md says how to replace them."
         exit 1
 
-    # By the SHA-1 the credentials step read out of its own keychain, rather
+    # Nothing built here runs after this point, so the certificate can come
+    # onto the runner now.
+    - name: Import the signing certificate
+      id: signing
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+      run: ./scripts/release/check_credentials.sh signing
+
+    # By the SHA-1 the import step read out of its own keychain, rather
     # than by "Developer ID Application: <name> (<team id>)". The name matched
     # whatever identity any keychain on the runner happened to offer, and
     # needed the team id kept as a secret to spell it.
@@ -139,8 +172,8 @@ jobs:
     # certificate that signed it expires.
     - name: Sign
       env:
-        IDENTITY: ${{ steps.credentials.outputs.identity }}
-        KEYCHAIN: ${{ steps.credentials.outputs.keychain }}
+        IDENTITY: ${{ steps.signing.outputs.identity }}
+        KEYCHAIN: ${{ steps.signing.outputs.keychain }}
         BIN_PATH: ${{ steps.metadata.outputs.bin_path }}
       run: |
         codesign --force --options runtime --timestamp \
@@ -184,17 +217,31 @@ jobs:
     # The status is read out of the answer rather than trusted to the exit
     # code: `--wait` promises to wait for a verdict, not to exit non-zero on
     # the verdict "Invalid", and a release must not depend on which it does.
-    # On anything but "Accepted" the notary log, which
-    # names the offending file and rule, is printed before failing.
+    # On anything but "Accepted" the notary log, which names the offending
+    # file and rule, is printed before failing.
+    #
+    # --timeout 30m is twice the time Apple says 98 percent of submissions
+    # take (15 minutes; most take under 5). Without it `--wait` has no limit
+    # and a stuck submission holds a macOS runner until the job's six-hour
+    # ceiling. Timing out abandons nothing at Apple's end -- the submission
+    # carries on -- but this run fails, and re-running it submits the archive
+    # again as a new submission. That is harmless: a ticket is keyed to the
+    # binary's hash, not to the submission.
+    #
+    # The key is decoded here, used, and removed when the step exits, so it is
+    # on disk for this step alone.
     - name: Notarize
       id: notarize
       if: github.event_name == 'push' || inputs.notarize
       env:
-        NOTARY_KEY: ${{ steps.credentials.outputs.notary_key }}
         ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
         ARCHIVE: ${{ steps.metadata.outputs.archive_name }}
       run: |
+        NOTARY_KEY="$RUNNER_TEMP/release-notary-key.p8"
+        trap 'rm -f "$NOTARY_KEY"' EXIT
+        ./scripts/release/check_credentials.sh notary
         auth=(--key "$NOTARY_KEY" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID")
         RESULT="$RUNNER_TEMP/notary-result.json"
         xcrun notarytool submit "$ARCHIVE" "${auth[@]}" \
@@ -206,7 +253,7 @@ jobs:
           if [[ -n "$ID" ]]; then
             xcrun notarytool log "$ID" "${auth[@]}" || true
           fi
-          echo "::error::notarization of ${ARCHIVE} ended as '${STATUS:-no answer}', not 'Accepted' (submission ${ID:-none})"
+          echo "::error::notarization of ${ARCHIVE} ended as '${STATUS:-no answer}', not 'Accepted' (submission ${ID:-none}). Re-running this job submits the archive again."
           exit 1
         fi
         echo "Notarized: submission ${ID}"
@@ -235,14 +282,17 @@ jobs:
         echo "::error::Apple accepted the submission, but no notarization ticket is being served for the signed binary"
         exit 1
 
-    # always(), so the certificate and the API key do not outlive a failed or
-    # cancelled run on the runner's disk. Deleting the keychain also takes it
-    # back out of the search list.
+    # always(), so nothing outlives a failed or cancelled run on the runner's
+    # disk. The steps above already remove what they write as they go; this
+    # is for the run that never got that far. Deleting the keychain also takes
+    # it back out of the search list.
     - name: Remove signing material
       if: always()
       run: |
         security delete-keychain "$RUNNER_TEMP/release-signing.keychain-db" 2>/dev/null || true
-        rm -f "$RUNNER_TEMP/release-signing.p12" "$RUNNER_TEMP/release-notary-key.p8"
+        rm -f "$RUNNER_TEMP/release-signing.p12" "$RUNNER_TEMP/release-notary-key.p8" \
+          "$RUNNER_TEMP/notary-result.json"
+        rm -rf "$RUNNER_TEMP/release-signing-certs"
 
     - name: Archive
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

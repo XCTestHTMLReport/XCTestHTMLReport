@@ -14,32 +14,58 @@
 # wrong before a release is cut, and being told about one expired secret per
 # run is a slow way to learn about three.
 #
-# Reads from the environment (each one a repository or environment secret):
+# Usage: check_credentials.sh [check|signing|notary]
+#
+#   check    (default) Checks all five secrets, then removes everything it
+#            wrote: keychain, certificate and key. Runs BEFORE the build, so
+#            the answer comes in seconds -- and leaves nothing behind for the
+#            build to read. `swift build` compiles this package and its
+#            third-party dependencies, plugins and macros included, as the
+#            runner's user; a decoded API key or an unlocked keychain sitting
+#            in $RUNNER_TEMP at that point is theirs to take.
+#   signing  Checks the certificate again and KEEPS the keychain, for the
+#            signing step. Runs after the last step that executes built code.
+#   notary   Decodes the API key and KEEPS it, for the notarization step,
+#            without asking Apple about it a second time.
+#
+# Reads from the environment (each one a secret of the `release` environment):
 #   BUILD_CERTIFICATE_BASE64  base64 of a .p12 holding the Developer ID
 #                             Application certificate AND its private key
 #   P12_PASSWORD              the password that .p12 was exported with
 #   ASC_KEY_ID                App Store Connect API key id (Team key)
 #   ASC_ISSUER_ID             App Store Connect API issuer id
 #   ASC_PRIVATE_KEY           that key's .p8, base64-encoded or pasted as PEM
+# `signing` reads only the first two, `notary` only the last three.
 #
 # Optional:
 #   RUNNER_TEMP               where the keychain and key are written
 #                             (default: a fresh temporary directory)
 #   EXPIRY_WARNING_DAYS       warn when the certificate has fewer days left
 #                             than this (default 45)
-#   SKIP_NOTARY_ONLINE_CHECK  set to 1 to skip the one network call, the
-#                             authenticated read that proves Apple accepts
-#                             the API key (for running this off a runner)
+#   SKIP_NOTARY_ONLINE_CHECK  set to 1 to skip the one network call `check`
+#                             makes, the authenticated read that proves Apple
+#                             accepts the API key (for running this off a
+#                             runner)
 #
-# On success, writes to $GITHUB_OUTPUT (when set):
-#   keychain    path of the temporary keychain holding the identity
-#   identity    SHA-1 of the Developer ID Application identity to sign with
-#   notary_key  path of the decoded .p8
+# Writes to $GITHUB_OUTPUT (when set), on success:
+#   signing:  keychain  path of the temporary keychain holding the identity
+#             identity  SHA-1 of the Developer ID Application identity
+#   notary:   notary_key  path of the decoded .p8
 #
 # No `set -x` anywhere, and nothing here echoes a secret's value: a decoded
 # .p8 is multi-line PEM, and GitHub's log masking works line by line on the
 # exact stored value, so a re-encoded or partial copy would not be masked.
 set -euo pipefail
+# Everything this writes is a credential or next to one.
+umask 077
+
+MODE="${1:-check}"
+case "$MODE" in
+    check) needed=(BUILD_CERTIFICATE_BASE64 P12_PASSWORD ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY) ;;
+    signing) needed=(BUILD_CERTIFICATE_BASE64 P12_PASSWORD) ;;
+    notary) needed=(ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY) ;;
+    *) echo "usage: $0 [check|signing|notary]" >&2; exit 2 ;;
+esac
 
 WORK="${RUNNER_TEMP:-$(mktemp -d)}"
 KEYCHAIN="$WORK/release-signing.keychain-db"
@@ -50,6 +76,24 @@ WARN_DAYS="${EXPIRY_WARNING_DAYS:-45}"
 # some of what is asked of it here without extra flags, and which one a
 # runner image puts first is not something to depend on.
 OPENSSL=/usr/bin/openssl
+
+# What survives this script is decided at the very end, on success only. Until
+# then, and on every failure, it all goes: the .p12 and the certificates read
+# out of it always, the keychain unless `signing` succeeded, the key unless
+# `notary` did. Deleting the keychain also takes it out of the search list.
+keep_keychain=""
+keep_notary_key=""
+cleanup() {
+    rm -f "$P12"
+    rm -rf "$WORK/release-signing-certs"
+    if [ -z "$keep_keychain" ]; then
+        security delete-keychain "$KEYCHAIN" >/dev/null 2>&1 || true
+    fi
+    if [ -z "$keep_notary_key" ]; then
+        rm -f "$NOTARY_KEY"
+    fi
+}
+trap cleanup EXIT
 
 problems=0
 problem() {
@@ -65,11 +109,11 @@ is_set() { [ -n "${!1:-}" ]; }
 # An unset secret reaches a workflow as an empty string, not as an error, so
 # this has to be asked outright.
 missing=()
-for name in BUILD_CERTIFICATE_BASE64 P12_PASSWORD ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY; do
+for name in "${needed[@]}"; do
     is_set "$name" || missing+=("$name")
 done
 if [ "${#missing[@]}" -gt 0 ]; then
-    problem "not set: ${missing[*]}. Each is a secret this workflow reads; a run from a fork, or from a ref the release environment does not admit, sees them all as empty."
+    problem "not set: ${missing[*]}. Each has to be a secret of the 'release' environment, which is where this job reads them: gh secret set NAME --env release. (A fork has no such secrets, so a run there always ends here.)"
 fi
 
 # --- 2. The signing certificate ----------------------------------------------
@@ -85,7 +129,9 @@ check_certificate() {
     keychain_password="$($OPENSSL rand -hex 24)"
     security delete-keychain "$KEYCHAIN" >/dev/null 2>&1 || true
     security create-keychain -p "$keychain_password" "$KEYCHAIN"
-    # No auto-lock on sleep or timeout shorter than the job could run.
+    # -u -t 21600: lock only after six hours, which is as long as a job can
+    # run, so the keychain cannot lock itself under the signing step. -l also
+    # locks it on sleep, which a runner does not do.
     security set-keychain-settings -lut 21600 "$KEYCHAIN"
     security unlock-keychain -p "$keychain_password" "$KEYCHAIN"
 
@@ -175,9 +221,12 @@ check_certificate() {
         # Without -v the listing includes identities macOS will not sign
         # with, and says why in a trailing parenthesis. No line at all means
         # there is a certificate but no private key to go with it.
+        # Matched by this certificate's SHA-1, so that an expired neighbour
+        # in the same export does not answer for it.
         local unusable reason
+        fingerprint="$($OPENSSL x509 -in "$chosen" -noout -fingerprint -sha1 | sed 's/^.*=//; s/://g')"
         unusable="$(security find-identity -p codesigning "$KEYCHAIN" \
-            | awk '/"Developer ID Application:/ { print; exit }')"
+            | awk -v fp="$fingerprint" '$2 == fp { print; exit }')"
         if [ -z "$unusable" ]; then
             problem "BUILD_CERTIFICATE_BASE64 holds an unexpired Developer ID Application certificate (serial ${serial}) but not its private key, so it cannot sign. Export it again from the Mac that created it: Keychain Access > My Certificates, where the certificate has its key underneath it. docs/releasing.md has the steps."
         else
@@ -188,17 +237,13 @@ check_certificate() {
     fi
     note "signing certificate: ${subject}, serial ${serial}, valid until ${not_after}"
 }
-if is_set BUILD_CERTIFICATE_BASE64 && is_set P12_PASSWORD; then
+if [ "$MODE" != notary ] && is_set BUILD_CERTIFICATE_BASE64 && is_set P12_PASSWORD; then
     check_certificate
-    # The keychain has what it needs; the .p12 has no reason to outlive this.
-    rm -f "$P12"
-    rm -rf "$WORK/release-signing-certs"
 fi
 
 # --- 3. The App Store Connect API key, which notarization authenticates with -
 notary_ok=""
 check_notary_key() {
-    ( umask 077; : > "$NOTARY_KEY" )
     case "$ASC_PRIVATE_KEY" in
         *"-----BEGIN"*) printf '%s\n' "$ASC_PRIVATE_KEY" > "$NOTARY_KEY" ;;
         *)
@@ -210,6 +255,12 @@ check_notary_key() {
     esac
     if ! $OPENSSL pkey -in "$NOTARY_KEY" -noout >/dev/null 2>&1; then
         problem "ASC_PRIVATE_KEY does not decode to a private key. It should be the .p8 file App Store Connect let you download once, base64-encoded."
+        return
+    fi
+    if [ "$MODE" = notary ]; then
+        # `check` asked Apple at the start of this job; the submission that
+        # follows is the next thing to ask.
+        notary_ok=1
         return
     fi
     if [ "${SKIP_NOTARY_ONLINE_CHECK:-}" = 1 ]; then
@@ -229,7 +280,7 @@ check_notary_key() {
     note "App Store Connect API key: accepted by Apple's notary service"
     notary_ok=1
 }
-if is_set ASC_KEY_ID && is_set ASC_ISSUER_ID && is_set ASC_PRIVATE_KEY; then
+if [ "$MODE" != signing ] && is_set ASC_KEY_ID && is_set ASC_ISSUER_ID && is_set ASC_PRIVATE_KEY; then
     check_notary_key
 fi
 
@@ -240,13 +291,34 @@ if [ "$problems" -gt 0 ]; then
 fi
 # Unreachable with a problem count of zero unless the logic above is wrong;
 # refuse to hand an empty identity to codesign, which would then sign ad hoc.
-[ -n "$identity" ] && [ -n "$notary_ok" ] || { echo "error: internal: no problems recorded, but no identity or key either" >&2; exit 1; }
-
-if [ -n "${GITHUB_OUTPUT:-}" ]; then
-    {
-        echo "keychain=$KEYCHAIN"
-        echo "identity=$identity"
-        echo "notary_key=$NOTARY_KEY"
-    } >> "$GITHUB_OUTPUT"
+if [ "$MODE" != notary ] && [ -z "$identity" ]; then
+    echo "error: internal: no problems recorded, but no signing identity either" >&2
+    exit 1
 fi
-echo "ok - release credentials are usable"
+if [ "$MODE" != signing ] && [ -z "$notary_ok" ]; then
+    echo "error: internal: no problems recorded, but no usable API key either" >&2
+    exit 1
+fi
+
+case "$MODE" in
+    check)
+        echo "ok - release credentials are usable; nothing was left on disk"
+        ;;
+    signing)
+        keep_keychain=1
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+            {
+                echo "keychain=$KEYCHAIN"
+                echo "identity=$identity"
+            } >> "$GITHUB_OUTPUT"
+        fi
+        echo "ok - signing identity ready in $KEYCHAIN"
+        ;;
+    notary)
+        keep_notary_key=1
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+            echo "notary_key=$NOTARY_KEY" >> "$GITHUB_OUTPUT"
+        fi
+        echo "ok - App Store Connect API key decoded"
+        ;;
+esac

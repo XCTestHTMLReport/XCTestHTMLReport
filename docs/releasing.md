@@ -43,13 +43,20 @@ gh workflow run release.yml --ref main
 gh workflow run release.yml --ref main -f notarize=true
 ```
 
-A dry run builds, signs and packages version `0.0.0-dryrun` and publishes
-nothing. It starts by checking every credential and reports each problem as an
+A manual run is always a dry run: it builds, signs and packages version
+`0.0.0-dryrun` and publishes nothing, whatever its inputs. Only a tag push
+publishes.
+
+It has to be run from `main`. The job that signs belongs to the `release`
+environment ([below](#secrets)), which admits `main` and release tags only, so
+a run from any other branch is refused before its first step.
+
+It starts by checking every credential and reports each problem as an
 annotation on the run that names the secret at fault:
 
 | The annotation says | What to do |
 | --- | --- |
-| `not set: …` | Add the named secrets ([below](#secrets)). A run from a fork never sees them. |
+| `not set: …` | Add the named secrets to the `release` environment ([below](#secrets)). |
 | `the certificate in BUILD_CERTIFICATE_BASE64 EXPIRED on …` | [Renew the certificate](#renewing-the-signing-certificate). |
 | `… expires on …, in under 45 days` (a warning) | The same, before that date. |
 | `could not be imported with P12_PASSWORD` | The two secrets are not a matching pair; set both again. |
@@ -58,8 +65,10 @@ annotation on the run that names the secret at fault:
 | `Apple's notary service rejected the App Store Connect API key` | [Replace the key](#replacing-the-notarization-key). |
 
 With `notarize=true` it also submits the dry-run build to Apple and checks the
-resulting ticket, which exercises everything a real release does except
-attesting and publishing. Notarizing a build nobody ships is harmless.
+resulting ticket. That is as far as a dry run goes: attesting and publishing
+happen in a job that only a tag push runs, so the first real exercise of those
+two is a release (a release candidate is a cheap one). Notarizing a build
+nobody ships is harmless.
 
 The build and its version check run even when a credential is bad, so one dry
 run says whether the release build works *and* whether it can be signed.
@@ -88,6 +97,8 @@ Releases before attestation was added (4.0.0rc1 and earlier) have none.
 
 ## Secrets
 
+All five are secrets of the **`release` environment**, not of the repository:
+
 | Secret | What it is |
 | --- | --- |
 | `BUILD_CERTIFICATE_BASE64` | A `.p12` holding the Developer ID Application certificate **and its private key**, base64-encoded. |
@@ -96,10 +107,38 @@ Releases before attestation was added (4.0.0rc1 and earlier) have none.
 | `ASC_ISSUER_ID` | The issuer id shown above the key list in App Store Connect. |
 | `ASC_PRIVATE_KEY` | That key's `.p8` file, base64-encoded. |
 
-`AC_USERNAME`, `AC_PASSWORD` and `AC_TEAM_ID` are no longer read. They were the
-Apple ID, app-specific password and team id notarization used before it moved
-to an API key, and can be deleted (and the app-specific password revoked at
-[account.apple.com](https://account.apple.com)).
+Set one with `--env release`:
+
+```bash
+gh secret set NAME --env release -R XCTestHTMLReport/XCTestHTMLReport
+```
+
+The environment is what keeps them from a branch. A repository secret can be
+read by a workflow run from any ref, so anyone with write access could push a
+branch that edits the workflow and take the Developer ID key, or dispatch the
+workflow from that branch and download a signed, notarized build of it. The
+`release` environment's deployment rule admits the `main` branch and tags
+matching `*.*.*`, and GitHub refuses the signing job for anything else.
+`*.*.*` covers `4.1.0` and `4.1.0rc1`, and would cover a `v4.1.0` or
+`v4.1.0-rc.1` scheme too; a scheme with fewer than two dots would need its own
+rule added under *Settings → Environments → release*.
+
+A repository-level secret of the same name is still read when the environment
+has none, which defeats the point. Once the five are set in the environment,
+delete the repository-level ones, along with the three that notarization used
+before it moved to an API key (and revoke that app-specific password at
+[account.apple.com](https://account.apple.com)):
+
+```bash
+gh secret delete BUILD_CERTIFICATE_BASE64 -R XCTestHTMLReport/XCTestHTMLReport
+gh secret delete P12_PASSWORD -R XCTestHTMLReport/XCTestHTMLReport
+gh secret delete AC_USERNAME -R XCTestHTMLReport/XCTestHTMLReport
+gh secret delete AC_PASSWORD -R XCTestHTMLReport/XCTestHTMLReport
+gh secret delete AC_TEAM_ID -R XCTestHTMLReport/XCTestHTMLReport
+```
+
+Without `--env`, `gh secret delete` removes the repository-level secret and
+leaves the environment's alone.
 
 ### Renewing the signing certificate
 
@@ -121,12 +160,12 @@ The quickest route keeps the private key on the Mac that makes the request:
 3. Store both, then delete the file:
 
    ```bash
-   base64 -i DeveloperID.p12 | gh secret set BUILD_CERTIFICATE_BASE64 --repo XCTestHTMLReport/XCTestHTMLReport
-   gh secret set P12_PASSWORD --repo XCTestHTMLReport/XCTestHTMLReport   # prompts
+   base64 -i DeveloperID.p12 | gh secret set BUILD_CERTIFICATE_BASE64 --env release -R XCTestHTMLReport/XCTestHTMLReport
+   gh secret set P12_PASSWORD --env release -R XCTestHTMLReport/XCTestHTMLReport   # prompts
    rm DeveloperID.p12
    ```
 
-4. Run a dry run.
+4. Run a dry run from `main`.
 
 Apple allows five Developer ID Application certificates at once, so a new one
 does not disturb the old. Do not revoke an old Developer ID certificate to tidy
@@ -139,15 +178,18 @@ up: revoking, unlike expiring, invalidates everything it ever signed.
    that can notarize. It must be a Team key: an Individual key cannot use
    `notarytool`.
 2. Download the `.p8`. Apple offers it once.
-3. Store the three values, then delete the file:
+3. Store the three values, then delete the file. The secret is the only copy
+   worth keeping; if it is ever lost, make a new key.
 
    ```bash
-   base64 -i AuthKey_XXXXXXXXXX.p8 | gh secret set ASC_PRIVATE_KEY --repo XCTestHTMLReport/XCTestHTMLReport
-   gh secret set ASC_KEY_ID --repo XCTestHTMLReport/XCTestHTMLReport      # the XXXXXXXXXX in the filename
-   gh secret set ASC_ISSUER_ID --repo XCTestHTMLReport/XCTestHTMLReport   # the UUID above the key list
+   base64 -i AuthKey_XXXXXXXXXX.p8 | gh secret set ASC_PRIVATE_KEY --env release -R XCTestHTMLReport/XCTestHTMLReport
+   gh secret set ASC_KEY_ID --env release -R XCTestHTMLReport/XCTestHTMLReport      # the XXXXXXXXXX in the filename
+   gh secret set ASC_ISSUER_ID --env release -R XCTestHTMLReport/XCTestHTMLReport   # the UUID above the key list
+   rm AuthKey_XXXXXXXXXX.p8
    ```
 
-4. Run a dry run, then revoke the key it replaces.
+4. Run a dry run from `main` with `notarize=true`, then revoke the key it
+   replaces.
 
 A key made for this repository alone can be revoked without touching anything
 else that talks to App Store Connect, which is the reason not to reuse one.
