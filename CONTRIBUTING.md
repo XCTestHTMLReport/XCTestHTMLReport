@@ -17,20 +17,18 @@ I always appreciate a well-written, thorough bug report.
 
 Check that the project issues database
 doesn't already include that problem or suggestion before submitting an issue.
-If you find a match, add a quick "+1" or "I have this problem too."
-Doing this helps prioritize the most common problems and requests.
 
 When reporting issues, please include the following:
 
 * The version of Xcode you're using
-* The version of iOS or OS X you're targeting
+* The output of `xchtmlreport --version`
 * The full output of the command
 * An archive of the resultBundlePath (Whenever possible)
 * Any other details that would be useful in understanding the problem
 
 This information will help  review and fix your issue faster.
 
-[Create an issue](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/new)
+[Create an issue](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/new/choose)
 
 ## Submitting Pull Requests
 
@@ -191,5 +189,3 @@ This is not a judgment about machine-written code. Reviewing a patch costs more
 than generating one, and a maintainer's review time is the scarce resource here.
 A patch nobody asked for spends that resource without consent, and it does so
 whether or not the code is any good.
-
-*Some of the ideas and wording for the statements above were based on [AFNetworking](https://github.com/AFNetworking/AFNetworking).
