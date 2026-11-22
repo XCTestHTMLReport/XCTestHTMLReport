@@ -52,8 +52,8 @@
     "The three-day minimumReleaseAge is a supply-chain hedge: a release",
     "pulled or re-tagged within days of publication never gets proposed.",
     "",
-    "Nothing automerges. main requires an approving review, which Renovate",
-    "cannot give itself."
+    "Nothing automerges, by choice. main's ruleset needs 0 approvals and",
+    "the required checks, so automerge could work; it is not switched on."
   ],
   "extends": [
     "config:best-practices",

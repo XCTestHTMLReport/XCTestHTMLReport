@@ -46,6 +46,14 @@ hooks {
                 check = "swiftlint lint --quiet --force-exclude {{files}}"
                 exclude = List("**/HTMLTemplates.swift")
             }
+
+            // CLAUDE.md's line cap and the learnings index, the same check the
+            // `shell` job runs. It reads the whole tree rather than {{files}}:
+            // an index entry is only wrong relative to the files beside it.
+            ["agent-rules"] {
+                glob = List("CLAUDE.md", "AGENTS.md", "docs/learnings/**", "scripts/check_agent_rules.py")
+                check = "python3 scripts/check_agent_rules.py"
+            }
         }
     }
 }
