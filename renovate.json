@@ -1,0 +1,154 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "What watches what. Four built-in managers and two regex ones:",
+    "  github-actions -- every `uses:` ref under .github/, SHA-pinned with a",
+    "                    trailing # vX.Y.Z comment as they already are, plus",
+    "                    the node-version handed to actions/setup-node",
+    "  swift          -- the version ranges in Package.swift (majors only,",
+    "                    see below)",
+    "  regex          -- the pins in Package.resolved",
+    "  mise           -- every tool in mise.toml",
+    "  regex          -- the two hk package URLs in hk.pkl",
+    "  npm            -- Playwright and axe-core in visual/package.json and",
+    "                    its lockfile",
+    "",
+    "Package.resolved needs a regex manager because this package declares",
+    "swift-tools-version 5.5, so SwiftPM writes the lockfile in its version 1",
+    "format, and Renovate's swift manager only rewrites version 2 and later.",
+    "Left to itself it would also raise the `from:` floor in Package.swift on",
+    "every upstream release -- its default range strategy is `bump` -- which",
+    "is wrong for a package that ships a library product: consumers would",
+    "inherit a minimum nobody chose. So the two halves are split. The swift",
+    "manager runs with rangeStrategy `replace` and speaks up only when a",
+    "release falls outside the declared range, which is a major. The regex",
+    "manager moves the version and revision in Package.resolved for",
+    "everything. Both name a dependency the same way (owner/repo), so a major",
+    "lands as one pull request touching both files. If the tools version is",
+    "ever raised to 5.6 or later, the lockfile format changes, the regex",
+    "stops matching, and the swift manager's own lockfile support takes over:",
+    "delete the regex manager then.",
+    "",
+    "Not covered, on purpose:",
+    "  The Xcode versions in the workflow matrices (`latest-stable`, \"16\",",
+    "  15) and the macos-15 image paired with them. They are the support",
+    "  policy -- newest plus one major back -- not a pin gone stale, and",
+    "  toolchain-drift.yml is what watches Xcode.",
+    "  The release tags in scripts/version-compare. Those are this project's",
+    "  own releases, chosen as comparison columns.",
+    "  Homebrew. No formula is pinned anywhere; mise.toml exists because",
+    "  Homebrew cannot pin the linters.",
+    "  The sample app. It has no package dependencies.",
+    "",
+    "Grouping and schedule carry over from the Dependabot config this",
+    "replaces: one run a week on Monday, minor and patch bumps of an",
+    "ecosystem as one pull request so a quiet week is one review, majors",
+    "separate because they are the ones that break things.",
+    "",
+    "The three-day minimumReleaseAge is a supply-chain hedge: a release",
+    "pulled or re-tagged within days of publication never gets proposed.",
+    "",
+    "Nothing automerges. main requires an approving review, which Renovate",
+    "cannot give itself."
+  ],
+  "extends": [
+    "config:best-practices",
+    ":semanticCommitsDisabled"
+  ],
+  "labels": ["dependencies"],
+  "schedule": ["before 9am on monday"],
+  "minimumReleaseAge": "3 days",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": [
+        "Package.resolved, version 1 format. Captures the version and the",
+        "revision together so both move in one edit. extractVersion strips",
+        "a leading v because the lockfile records 1.2.2 even where upstream",
+        "tags v1.2.2 (XCResultKit does)."
+      ],
+      "managerFilePatterns": ["/^Package\\.resolved$/"],
+      "matchStrings": [
+        "\"repositoryURL\": \"https://github\\.com/(?<depName>[^/\"]+/[^/\"]+?)(?:\\.git)?\",\\s+\"state\": \\{\\s+\"branch\": null,\\s+\"revision\": \"(?<currentDigest>[a-f0-9]{40})\",\\s+\"version\": \"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v?(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": [
+        "The hk version in hk.pkl, which appears twice in each of two package",
+        "URLs and has to match the hk entry in mise.toml. Named `hk` so it",
+        "shares a pull request with that entry."
+      ],
+      "managerFilePatterns": ["/^hk\\.pkl$/"],
+      "matchStrings": [
+        "jdx/hk/releases/download/v(?<currentValue>[0-9.]+)/hk@",
+        "/hk@(?<currentValue>[0-9.]+)#/"
+      ],
+      "depNameTemplate": "hk",
+      "packageNameTemplate": "jdx/hk",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": [
+        "Package.swift changes only when a release falls outside the",
+        "declared range. See the note at the top."
+      ],
+      "matchManagers": ["swift"],
+      "rangeStrategy": "replace"
+    },
+    {
+      "description": "Swift packages: minor and patch releases as one pull request.",
+      "matchFileNames": ["Package.swift", "Package.resolved"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "Swift packages minor and patch"
+    },
+    {
+      "description": "The label Dependabot put on workflow updates.",
+      "matchManagers": ["github-actions"],
+      "addLabels": ["github_actions"]
+    },
+    {
+      "description": [
+        "Actions: minor and patch releases as one pull request, along with",
+        "digest moves -- a new commit behind a tag pinned only by its major,",
+        "as `# v8` is."
+      ],
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "GitHub Actions minor and patch"
+    },
+    {
+      "description": [
+        "Everything mise.toml pins, and hk.pkl with it, as one pull request.",
+        "The lint jobs install these together, and hk's version has to move",
+        "in mise.toml and hk.pkl at once or the hook stops evaluating."
+      ],
+      "matchFileNames": ["mise.toml", "hk.pkl"],
+      "groupName": "lint toolchain"
+    },
+    {
+      "description": "Browser test packages: minor and patch releases as one pull request.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "browser test packages minor and patch"
+    },
+    {
+      "description": [
+        "Leave the macOS and Xcode `runs-on:` labels alone. Renovate reads",
+        "macos-15 as a runner version and would offer macos-26, but that",
+        "image is there on purpose: it is the one that ships Xcode 16, the",
+        "older leg of the build matrix. Moving it is a support-policy",
+        "decision. Ubuntu labels are not matched, so a pinned ubuntu-24.04",
+        "gets its next image as a pull request rather than as a red check."
+      ],
+      "matchDepTypes": ["github-runner"],
+      "matchDepNames": ["/^(macos|xcode)/"],
+      "enabled": false
+    }
+  ]
+}

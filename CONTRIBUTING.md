@@ -150,6 +150,19 @@ once:
 git config --local --unset-all core.hooksPath
 ```
 
+### Dependency updates
+
+[Renovate](https://docs.renovatebot.com) proposes version bumps, so there is no
+need to send one by hand. It runs weekly and covers the Swift packages, the
+GitHub Actions pins, the tools in `mise.toml` and `hk.pkl`, and the npm packages
+under `visual/`. Its Dependency Dashboard issue lists what is pending.
+[`renovate.json`](renovate.json) says what it watches and what it deliberately
+leaves alone. After editing that file, check it:
+
+```bash
+npx --yes --package renovate -- renovate-config-validator --strict
+```
+
 
 
 *Some of the ideas and wording for the statements above were based on [AFNetworking](https://github.com/AFNetworking/AFNetworking).
