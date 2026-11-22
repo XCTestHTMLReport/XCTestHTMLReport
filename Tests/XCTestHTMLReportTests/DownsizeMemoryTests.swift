@@ -25,9 +25,9 @@ import XCTest
 @testable import XCTestHTMLReportCore
 
 final class DownsizeMemoryTests: XCTestCase {
-    /// Attachments to render. Large enough that an unpooled run allocates
-    /// gigabytes and cannot be mistaken for noise, small enough to keep the
-    /// test near twenty seconds.
+    /// Attachments to render, twice: once to warm up and once measured.
+    /// Large enough that an unpooled run allocates gigabytes and cannot be
+    /// mistaken for noise, small enough to keep the test near twenty seconds.
     private static let attachmentCount = 80
 
     /// iPhone-class retina dimensions: the size that made #337 fatal.
@@ -141,14 +141,36 @@ final class DownsizeMemoryTests: XCTestCase {
         }
         let parsed = SyntheticResult.activity(title: "Screens", attachments: attachments)
 
-        // Render one attachment first so one-time allocations — the JPEG
-        // decoder, colour management, the graphics context — land before the
-        // measurement rather than inside it.
+        // Render the whole batch once before measuring, so everything that
+        // is paid for once lands outside the measurement rather than inside
+        // it. That is two different things.
+        //
+        // The first is one-time setup: the JPEG decoder, colour management,
+        // the graphics context. One attachment would cover that, and one
+        // attachment is what this warm-up used to be.
+        //
+        // The second is the allocator, and it needs the full batch. From
+        // macOS 27 a freed large block is not handed straight back to the
+        // kernel: `malloc` keeps it resident for reuse, up to a cap, and
+        // `vmmap` lists it as `Malloc Large (empty)`. Each downsize frees
+        // several ~14 MB buffers, so a correctly pooled run still grows
+        // resident size until that cache is full — 263 MB after 20
+        // screenshots, 660 MB after 80, 669 MB after 160, measured on macOS
+        // 27.2 with either Xcode 26.2 or 27.1 — and then stops. Measured from
+        // a cold start, that fill divided by 80 came to 8 MB per attachment
+        // and failed the budget below with the pool intact, on memory that
+        // had already been freed.
+        //
+        // Resident size is still the right thing to read: it is what the OOM
+        // killer reads. So the cache is filled first, by the same workload,
+        // and the measurement is of the steady state after it: what the next
+        // 80 attachments add. That is the question this test asks — does
+        // memory scale with attachment count — put to a process that has
+        // already paid everything that does not. Without the pool the warm-up
+        // batch is retained as well, and the measured batch adds its ~25 MB
+        // per screenshot on top exactly as before.
         _ = Activity(
-            activity: SyntheticResult.activity(
-                title: "Warmup",
-                attachments: [attachments[0]]
-            ),
+            activity: SyntheticResult.activity(title: "Warmup", attachments: attachments),
             identifierPath: IdentifierPath.root.appending("warmup"),
             file: provider,
             renderingMode: .inline,
