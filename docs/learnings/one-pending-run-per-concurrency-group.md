@@ -10,7 +10,8 @@ runs on `main` when merges land close together, and the commit whose run was
 dropped never gets a verdict. This came out of the review of #514.
 
 **Key a cancelling group on the pull request, and give every other run a
-group of its own**, for example:
+group of its own.** Since #514, `ci.yml`, `lint.yml`, `test.yml` and
+`visual.yml` all do:
 
 ```yaml
 concurrency:

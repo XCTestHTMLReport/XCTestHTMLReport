@@ -1,4 +1,8 @@
-# Signing and pushing from the maintainer's Mac
+# Signing git commits and pushing from the maintainer's Mac
+
+This is about git commit signatures. Code-signing and notarizing the released
+binary is a different matter, handled by `release.yml` and described in
+`docs/releasing.md`.
 
 The global git config there signs commits through 1Password
 (`gpg.ssh.program` is `op-ssh-sign`), and fetches and pushes over SSH through

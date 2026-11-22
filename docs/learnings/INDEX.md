@@ -10,7 +10,7 @@ file: `scripts/check_agent_rules.py` fails CI otherwise.
 - [`ubuntu-latest` moves too](ubuntu-latest-moves-too.md) — a red Linux job with no diff is usually the image
 - [A "beta" runner image can hold the shipping Xcode](preview-image-ships-a-release.md) — ask the Xcode, not the label
 - [One pending run per concurrency group](one-pending-run-per-concurrency-group.md) — a ref-keyed group drops runs on `main`
-- [The release job is unreachable by the dry run](release-job-is-unreachable-by-dry-run.md) — ask what the dry run does not cover
+- [The release job is unreachable by the dry run](release-job-is-unreachable-by-dry-run.md) — it builds and signs; attesting, publishing and the second artifact hand-off wait for a tag
 
 ## Reading bundles and testing
 
@@ -22,4 +22,4 @@ file: `scripts/check_agent_rules.py` fails CI otherwise.
 
 - [SwiftLint run unscoped lints `.build`](swiftlint-unscoped-reads-build.md) — thousands of findings means the wrong tree
 - [`read` under `set -e` skips its guard](read-under-set-e-skips-its-guard.md) — empty input kills the script before the error message
-- [Signing and pushing from the maintainer's Mac](signing-commits-from-the-maintainers-mac.md) — agent key inline, HTTPS push, never unsigned
+- [Signing git commits from the maintainer's Mac](signing-commits-from-the-maintainers-mac.md) — agent key inline, HTTPS push, never unsigned

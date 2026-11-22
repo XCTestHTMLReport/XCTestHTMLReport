@@ -23,8 +23,8 @@ handled; `docs/learnings/INDEX.md` lists traps this project has already paid for
   SwiftLint: reformatting it changes the bytes of every report.
 - On generated fixtures, assert totals and relationships, never the exact
   pass/fail split.
-- The release dry run skips notarizing and the `release` job; a change to
-  either is unverified until a tag.
+- A release dry run from `main` builds, signs and (if asked) notarizes, but never
+  runs the `release` or `bump_version` job: a change there waits for a tag.
 
 ## How work flows
 
