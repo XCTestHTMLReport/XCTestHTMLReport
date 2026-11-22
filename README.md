@@ -11,7 +11,7 @@
 
 Xcode-like HTML report for Unit and UI Tests
 
-**[▶ Open a live report](https://xctesthtmlreport.github.io/XCTestHTMLReport/)** — rendered from this repository's own sample test run, republished on every merge to `main`. Past releases are at **[/v/](https://xctesthtmlreport.github.io/XCTestHTMLReport/v/)**.
+**[▶ Open a live report](https://xctesthtmlreport.github.io/XCTestHTMLReport/)** — rendered from this repository's own sample test run, republished on every merge to `main`, so it shows the upcoming 4.0 report rather than the 3.0.0 one.
 
 ![screenshot](https://i.imgur.com/NHRzoXG.jpg)
 
@@ -30,12 +30,28 @@ Xcode-like HTML report for Unit and UI Tests
 -   Filter out successful, failed, skipped, or mixed-result tests
 -   Displays information about the target device
 -   Displays activity logs
--   Junit report(`-j` flag)
--   Json report(`--json` flag)
--   Shrink bundle size by removing unattached files
--   Automatically convert heic images to browser-friendly format
--   Render as a single html file with inline attachments or as a bundle
--   Downsize image attachments
+-   Junit report (`-j` flag)
+-   Json report (`--json` flag)
+-   Shrink bundle size by removing unattached files (`-d` flag)
+-   Render as a single html file with inline attachments (`-i` flag) or as a bundle
+-   Downsize image attachments (`-z` flag, scaled by `--downsize-scale-factor`)
+-   Convert .heic images to JPEG, but only when downsizing with `-z`. Without it
+    they are left as .heic, which not every browser can display
+    ([#322](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/322))
+
+## Requirements
+
+-   macOS 10.15 is the declared deployment target; nothing that old is tested.
+-   Xcode, because result bundles are read through `xcrun xcresulttool`. The
+    Homebrew formula needs Xcode 14 or later to build.
+-   Every change is built with Xcode 16 and with the latest stable Xcode, and
+    tested against result bundles produced by the latest stable Xcode, plus a
+    newer released Xcode when GitHub's runners offer one ahead of the stable
+    image. Bundles from older Xcode versions are not tested.
+
+The latest release is **3.0.0**, and that is what Homebrew and Mint install.
+Anything below marked **since 4.0** is on `main` only until 4.0 is released;
+install from `main` to use it.
 
 
 ## Installation
@@ -72,35 +88,63 @@ Install latest from `main` branch
 mint install XCTestHTMLReport/XCTestHTMLReport@main
 ```
 
-## Usage
+### Release binary
 
-Run your UI tests using `xcodebuild` without forgetting to specify the `resultBundlePath`
+Each [release](https://github.com/XCTestHTMLReport/XCTestHTMLReport/releases)
+has `xchtmlreport-<version>.zip` attached: a universal (arm64 and x86_64)
+binary, signed with a Developer ID and notarized by Apple.
 
-``` bash
-$ xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme SampleApp -destination 'platform=iOS Simulator,name=iPhone 14,OS=16.0' -resultBundlePath TestResults
+```bash
+VERSION=3.0.0
+curl -fLO "https://github.com/XCTestHTMLReport/XCTestHTMLReport/releases/download/${VERSION}/xchtmlreport-${VERSION}.zip" &&
+  unzip "xchtmlreport-${VERSION}.zip" &&
+  codesign --verify --strict --verbose \
+    -R='anchor apple generic and certificate leaf[subject.OU] = "352UZEKYPP"' \
+    release/xchtmlreport &&
+  sudo mv release/xchtmlreport /usr/local/bin/ &&
+  xchtmlreport --version
 ```
 
-Then use the previously downloaded xchtmlreport tool to create the HTML report. Additionally, `-i` flag is also available to inline all resources, this is convenient for exporting the html file standalone. HTML file will be much heavier but much more portable.
+The zip extracts to `release/xchtmlreport`; move it anywhere on your `PATH`.
+The `-R` requirement checks that the binary was signed by this project's
+Developer ID (team `352UZEKYPP`), not just by some valid identity, and each
+step runs only if the one before it succeeded.
+
+## Usage
+
+Run your own project's tests using `xcodebuild` without forgetting to specify the `resultBundlePath`.
+Replace the project, scheme and destination with yours (`-workspace` instead of `-project` if you use one):
+
+``` bash
+$ xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination 'platform=iOS Simulator,name=<a simulator you have>' -resultBundlePath TestResults
+```
+
+That writes `TestResults.xcresult`. Then use the previously downloaded xchtmlreport tool to create the HTML report. Additionally, `-i` flag is also available to inline all resources, this is convenient for exporting the html file standalone. HTML file will be much heavier but much more portable.
 
 ``` bash
 $ xchtmlreport TestResults.xcresult
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 ```
+
+The report is written next to the result bundle. Pass `-o <directory>` to put it somewhere else.
+
+`xchtmlreport --help` lists every option.
 
 ### Multiple Result Bundle Path
 
 ``` bash
-$ xchtmlreport TestResults1 TestResults2
+$ xchtmlreport TestResults1.xcresult TestResults2.xcresult
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 ```
 
-This will create only one HTML Report in the path you passed with the -r option
+This creates one HTML report covering both bundles, next to the first bundle or in the directory given with `-o`.
+Pass the bundles as arguments: the older `-r` option still works but is deprecated.
 
 ### Progress
 
-A large result bundle takes a while, and a silent run is hard to tell from a
+**Since 4.0.** A large result bundle takes a while, and a silent run is hard to tell from a
 hung one. When standard error is a terminal, each phase is reported as it
 finishes, with the time it took:
 
@@ -110,9 +154,9 @@ $ xchtmlreport TestResults.xcresult
   Reading TestResults.xcresult         18.2s
   Rendering 1284 tests                 12.4s
   Writing report                        0.9s
-Wrote ./index.html (412 MB)            36.3s
+Wrote /path/to/index.html (412 MB)     36.3s
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 ```
 
 Those timings also answer "which part is slow?" on your own bundle rather than
@@ -130,11 +174,11 @@ off.
 You can generate junit reports with the `-j` flag
 
 ``` bash
-$ xchtmlreport -j TestResults1
+$ xchtmlreport -j TestResults.xcresult
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 
-JUnit report successfully created at report.junit
+JUnit report successfully created at /path/to/report.junit
 ```
 
 ### Generate JSON Reports
@@ -142,29 +186,34 @@ JUnit report successfully created at report.junit
 You can generate json reports with the `--json` flag
 
 ``` bash
-$ xchtmlreport --json TestResults1
+$ xchtmlreport --json TestResults.xcresult
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 
-JSON report successfully created at ./report.json
+JSON report successfully created at /path/to/report.json
 ```
 
-Starting in 4.0, `report.json` is our own documented, versioned schema —
+**Since 4.0**, `report.json` is our own documented, versioned schema —
 [docs/json-schema.md](docs/json-schema.md) is the contract. The *schema* is
 identical whichever result reader produced it: same keys, same nesting, same
 `schemaVersion`. A few *values* legitimately differ between readers — the
 four differences listed under "Choosing the result reader" below, plus
 `testCase.arguments`, which only the modern reader can populate — and the
-contract documents each one. Earlier versions dumped
-`xcresulttool`'s legacy object graph verbatim; that graph is Apple's
-internal shape and disappears together with the legacy commands, so 4.0
-replaces it once, deliberately. The change is visible at a glance — before:
+contract documents each one. Earlier versions, 3.0.0 included, write
+`xcresulttool`'s legacy invocation record as XCResultKit decodes it: an array
+with one entry per bundle, `null` for a bundle it could not read, otherwise an
+object with the keys `actions` (an array), `issues`, `metrics` and
+`metadataRef`, in no fixed order. Only `metadataRef.referencedObject.json`
+still holds `xcresulttool`'s own `_type`/`_value` JSON, base64-encoded. That
+record is Apple's internal shape and disappears together with the legacy
+commands, so 4.0 replaces it once, deliberately. The change is visible at a
+glance — 3.0.0:
 
 ``` json
-[{"_type":{"_name":"ActionsInvocationRecord"},"actions":{"_type":{"_name":"Array"},"_values":[...
+[{"metadataRef":{"referencedObject":{"json":"eyJzY2hlbWVJZGVudGlmaWVy..."},"targetType":{"name":"ActionsInvocationMetadata"},"id":"0~..."},"metrics":{...},"issues":{...},"actions":[...]}]
 ```
 
-after:
+since 4.0:
 
 ``` json
 {
@@ -178,7 +227,7 @@ the contract document.
 
 ### Choosing the result reader
 
-`xcresulttool`'s legacy API — the way every version before 4.0 read result
+**Since 4.0.** `xcresulttool`'s legacy API — the way every version before 4.0 read result
 bundles — is deprecated and will be removed from Xcode. `xchtmlreport` now
 has two readers and picks one per run:
 
@@ -204,7 +253,7 @@ avoid:
   user-supplied `XCTAttachment` name, so the modern reader labels
   attachments by their type (`Screenshot`, `Video`, `File`).
 - **Failure title prefixes.** Legacy renders
-  `Assertion Failure at File.swift:12: message`; modern renders
+  `Assertion Failure at File.swift:12:message`; modern renders
   `File.swift:12: message` — the new format pre-joins the string and drops
   the issue type.
 - **Wrapper groups.** Legacy nests two extra levels
@@ -229,10 +278,16 @@ reports across readers.
 | 3 | Report was generated but is **degraded** — some of the result bundle could not be fully processed |
 | 64 | Invalid arguments |
 
-Starting in 3.0, `xchtmlreport` exits non-zero when part of a result bundle cannot
-be turned into a report. Earlier versions exited 0 and printed a success message
-even when parts of the report were missing, so pipelines had no way to detect an
-incomplete report.
+Starting in 3.0, `xchtmlreport` exits non-zero when it detects that part of a
+result bundle could not be turned into a report. Earlier versions exited 0 and
+printed a success message even when parts of the report were missing, so pipelines
+had no way to detect an incomplete report.
+
+What counts as detected has grown. 3.0.0 reports a bundle it cannot read at all,
+an attachment with nothing behind it, and a failed attachment or log export.
+**Since 4.0** more counts, including a run that stopped early: a host app that
+crashes at launch gives a bundle that 3.0.0 renders and exits 0 on, and that
+`main` exits 3 on.
 
 Exit 0 means no faults were *detected*, which is not yet the same as a guaranteed
 complete report: some XCResultKit decode failures are not surfaced as faults today
@@ -240,8 +295,9 @@ and are still only visible as messages on stderr. See
 [#378](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/378) and the
 follow-on work it tracks.
 
-Exit 1 covers failures to write the output. A missing `-o` directory is not one of
-them: it is created for you, intermediate components included, before any parsing
+Exit 1 covers failures to write the output. In 3.0.0 that includes `-o` pointing
+at a directory that does not exist. **Since 4.0** a missing `-o` directory is not one
+of them: it is created for you, intermediate components included, before any parsing
 or rendering starts. A directory that cannot be created — no write permission on
 the parent, or a file in the way — is an argument error (64), reported up front and
 naming the path.
@@ -251,7 +307,10 @@ always exit 0 on faults, pass `--lenient`. `--lenient` does not affect exit 1 or
 
 ## Fastlane Support
 
-https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport
+There is a third-party plugin, https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport,
+but it is **unmaintained**: it was last updated in June 2021, and people have reported in
+[#64](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/64) that it does not work for them.
+Calling `xchtmlreport` from a lane with fastlane's `sh` action needs no plugin.
 
 ## Contribution
 
