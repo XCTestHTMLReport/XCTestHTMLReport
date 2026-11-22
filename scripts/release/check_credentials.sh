@@ -110,43 +110,67 @@ check_certificate() {
     # empty array under `set -u` is an error.)
     security list-keychains -d user -s "$KEYCHAIN" ${existing[@]+"${existing[@]}"}
 
-    # Read the certificate itself rather than asking for a usable identity
-    # first: an expired certificate is simply absent from `find-identity -v`,
-    # which is how "expired" came to be reported as "not found".
-    local pem_dir="$WORK/release-signing-certs" found=() cn pem
+    # Every Developer ID Application certificate the .p12 brought with it.
+    # Usually one, but an export can carry an old certificate alongside its
+    # renewal, and the old one must not be what gets judged.
+    local pem_dir="$WORK/release-signing-certs" found=() candidates=() cn pem
     rm -rf "$pem_dir"
     mkdir -p "$pem_dir"
     security find-certificate -a -p "$KEYCHAIN" \
         | awk -v dir="$pem_dir" '/-----BEGIN CERTIFICATE-----/ { n++ } { print > (dir "/" n ".pem") }'
-    local developer_id=""
     for pem in "$pem_dir"/*.pem; do
         [ -f "$pem" ] || continue
         cn="$($OPENSSL x509 -in "$pem" -noout -subject -nameopt multiline 2>/dev/null \
             | sed -n 's/^ *commonName *= *//p')"
         found+=("${cn:-unnamed}")
         case "$cn" in
-            "Developer ID Application:"*) developer_id="$pem" ;;
+            "Developer ID Application:"*) candidates+=("$pem") ;;
         esac
     done
-    if [ -z "$developer_id" ]; then
+    if [ "${#candidates[@]}" -eq 0 ]; then
         problem "BUILD_CERTIFICATE_BASE64 holds no Developer ID Application certificate. It holds: $(IFS=';'; echo "${found[*]:-nothing}"). A release is signed with a Developer ID Application certificate, not an Apple Development or Apple Distribution one."
         return
     fi
 
-    local subject serial not_after
-    subject="$($OPENSSL x509 -in "$developer_id" -noout -subject -nameopt multiline | sed -n 's/^ *commonName *= *//p')"
-    serial="$($OPENSSL x509 -in "$developer_id" -noout -serial | sed 's/^serial=//')"
-    not_after="$($OPENSSL x509 -in "$developer_id" -noout -enddate | sed 's/^notAfter=//')"
-    if ! $OPENSSL x509 -in "$developer_id" -noout -checkend 0 >/dev/null; then
-        problem "the certificate in BUILD_CERTIFICATE_BASE64 EXPIRED on ${not_after} (${subject}, serial ${serial}). Create a new Developer ID Application certificate and replace BUILD_CERTIFICATE_BASE64 and P12_PASSWORD: docs/releasing.md has the steps. Releases already published stay valid."
+    # The identity macOS will actually sign with, if there is one, and the
+    # certificate behind it. When there is none, the certificates themselves
+    # say why -- which is the whole point: an expired certificate is simply
+    # absent from `find-identity -v`, and that absence is how "expired" came
+    # to be reported as "not found". An unexpired certificate is judged in
+    # preference to an expired one, since it is the one meant to be in use.
+    local chosen="" fingerprint
+    identity="$(security find-identity -v -p codesigning "$KEYCHAIN" \
+        | awk '/"Developer ID Application:/ { print $2; exit }')"
+    for pem in "${candidates[@]}"; do
+        if [ -n "$identity" ]; then
+            fingerprint="$($OPENSSL x509 -in "$pem" -noout -fingerprint -sha1 | sed 's/^.*=//; s/://g')"
+            [ "$fingerprint" = "$identity" ] || continue
+            chosen="$pem"
+            break
+        fi
+        chosen="$pem"
+        if $OPENSSL x509 -in "$pem" -noout -checkend 0 >/dev/null; then break; fi
+    done
+    if [ -z "$chosen" ]; then
+        # An identity whose certificate is not among those just read.
+        problem "internal: the signing identity ${identity} matches none of the certificates read from BUILD_CERTIFICATE_BASE64"
+        identity=""
         return
     fi
-    if ! $OPENSSL x509 -in "$developer_id" -noout -checkend "$((WARN_DAYS * 86400))" >/dev/null; then
+
+    local subject serial not_after
+    subject="$($OPENSSL x509 -in "$chosen" -noout -subject -nameopt multiline | sed -n 's/^ *commonName *= *//p')"
+    serial="$($OPENSSL x509 -in "$chosen" -noout -serial | sed 's/^serial=//')"
+    not_after="$($OPENSSL x509 -in "$chosen" -noout -enddate | sed 's/^notAfter=//')"
+    if ! $OPENSSL x509 -in "$chosen" -noout -checkend 0 >/dev/null; then
+        problem "the certificate in BUILD_CERTIFICATE_BASE64 EXPIRED on ${not_after} (${subject}, serial ${serial}). Create a new Developer ID Application certificate and replace BUILD_CERTIFICATE_BASE64 and P12_PASSWORD: docs/releasing.md has the steps. Releases already published stay valid."
+        identity=""
+        return
+    fi
+    if ! $OPENSSL x509 -in "$chosen" -noout -checkend "$((WARN_DAYS * 86400))" >/dev/null; then
         warning "the certificate in BUILD_CERTIFICATE_BASE64 expires on ${not_after}, in under ${WARN_DAYS} days (${subject}, serial ${serial}). Renew it before then: docs/releasing.md."
     fi
 
-    identity="$(security find-identity -v -p codesigning "$KEYCHAIN" \
-        | awk '/"Developer ID Application:/ { print $2; exit }')"
     if [ -z "$identity" ]; then
         # Without -v the listing includes identities macOS will not sign
         # with, and says why in a trailing parenthesis. No line at all means
