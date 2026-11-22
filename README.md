@@ -11,7 +11,7 @@
 
 Xcode-like HTML report for Unit and UI Tests
 
-**[▶ Open a live report](https://xctesthtmlreport.github.io/XCTestHTMLReport/)** — rendered from this repository's own sample test run, republished on every merge to `main`. Past releases are at **[/v/](https://xctesthtmlreport.github.io/XCTestHTMLReport/v/)**.
+**[▶ Open a live report](https://xctesthtmlreport.github.io/XCTestHTMLReport/)** — rendered from this repository's own sample test run, republished on every merge to `main`, so it shows the upcoming 4.0 report rather than the 3.0.0 one. Past releases are at **[/v/](https://xctesthtmlreport.github.io/XCTestHTMLReport/v/)**.
 
 ![screenshot](https://i.imgur.com/NHRzoXG.jpg)
 
@@ -30,12 +30,26 @@ Xcode-like HTML report for Unit and UI Tests
 -   Filter out successful, failed, skipped, or mixed-result tests
 -   Displays information about the target device
 -   Displays activity logs
--   Junit report(`-j` flag)
--   Json report(`--json` flag)
--   Shrink bundle size by removing unattached files
--   Automatically convert heic images to browser-friendly format
--   Render as a single html file with inline attachments or as a bundle
--   Downsize image attachments
+-   Junit report (`-j` flag)
+-   Json report (`--json` flag)
+-   Shrink bundle size by removing unattached files (`-d` flag)
+-   Render as a single html file with inline attachments (`-i` flag) or as a bundle
+-   Downsize image attachments (`-z` flag, scaled by `--downsize-scale-factor`)
+-   Convert .heic images to JPEG, but only when downsizing with `-z`. Without it
+    they are left as .heic, which not every browser can display
+    ([#322](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/322))
+
+## Requirements
+
+-   macOS 10.15 or later.
+-   Xcode, because result bundles are read through `xcrun xcresulttool`.
+-   Every change is built with Xcode 16 and with the latest stable Xcode, and
+    tested against result bundles produced by the latest stable Xcode (26.x
+    today). Bundles from older Xcode versions are not tested.
+
+The latest release is **3.0.0**, and that is what Homebrew and Mint install.
+Anything below marked **since 4.0** is on `main` only until 4.0 is released;
+install from `main` to use it.
 
 
 ## Installation
@@ -72,35 +86,56 @@ Install latest from `main` branch
 mint install XCTestHTMLReport/XCTestHTMLReport@main
 ```
 
-## Usage
+### Release binary
 
-Run your UI tests using `xcodebuild` without forgetting to specify the `resultBundlePath`
+Each [release](https://github.com/XCTestHTMLReport/XCTestHTMLReport/releases)
+has `xchtmlreport-<version>.zip` attached: a universal (arm64 and x86_64)
+binary, signed with a Developer ID and notarized by Apple.
 
-``` bash
-$ xcodebuild test -workspace XCTestHTMLReport.xcworkspace -scheme SampleApp -destination 'platform=iOS Simulator,name=iPhone 14,OS=16.0' -resultBundlePath TestResults
+```bash
+VERSION=3.0.0
+curl -LO "https://github.com/XCTestHTMLReport/XCTestHTMLReport/releases/download/${VERSION}/xchtmlreport-${VERSION}.zip"
+unzip "xchtmlreport-${VERSION}.zip"          # extracts release/xchtmlreport
+codesign --verify --strict --verbose release/xchtmlreport
+sudo mv release/xchtmlreport /usr/local/bin/   # or anywhere on your PATH
+xchtmlreport --version
 ```
 
-Then use the previously downloaded xchtmlreport tool to create the HTML report. Additionally, `-i` flag is also available to inline all resources, this is convenient for exporting the html file standalone. HTML file will be much heavier but much more portable.
+## Usage
+
+Run your own project's tests using `xcodebuild` without forgetting to specify the `resultBundlePath`.
+Replace the project, scheme and destination with yours (`-workspace` instead of `-project` if you use one):
+
+``` bash
+$ xcodebuild test -project MyApp.xcodeproj -scheme MyApp -destination 'platform=iOS Simulator,name=<a simulator you have>' -resultBundlePath TestResults
+```
+
+That writes `TestResults.xcresult`. Then use the previously downloaded xchtmlreport tool to create the HTML report. Additionally, `-i` flag is also available to inline all resources, this is convenient for exporting the html file standalone. HTML file will be much heavier but much more portable.
 
 ``` bash
 $ xchtmlreport TestResults.xcresult
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 ```
+
+The report is written next to the result bundle. Pass `-o <directory>` to put it somewhere else.
+
+`xchtmlreport --help` lists every option.
 
 ### Multiple Result Bundle Path
 
 ``` bash
-$ xchtmlreport TestResults1 TestResults2
+$ xchtmlreport TestResults1.xcresult TestResults2.xcresult
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 ```
 
-This will create only one HTML Report in the path you passed with the -r option
+This creates one HTML report covering both bundles, next to the first bundle or in the directory given with `-o`.
+Pass the bundles as arguments: the older `-r` option still works but is deprecated.
 
 ### Progress
 
-A large result bundle takes a while, and a silent run is hard to tell from a
+**Since 4.0.** A large result bundle takes a while, and a silent run is hard to tell from a
 hung one. When standard error is a terminal, each phase is reported as it
 finishes, with the time it took:
 
@@ -110,9 +145,9 @@ $ xchtmlreport TestResults.xcresult
   Reading TestResults.xcresult         18.2s
   Rendering 1284 tests                 12.4s
   Writing report                        0.9s
-Wrote ./index.html (412 MB)            36.3s
+Wrote /path/to/index.html (412 MB)     36.3s
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 ```
 
 Those timings also answer "which part is slow?" on your own bundle rather than
@@ -130,11 +165,11 @@ off.
 You can generate junit reports with the `-j` flag
 
 ``` bash
-$ xchtmlreport -j TestResults1
+$ xchtmlreport -j TestResults.xcresult
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 
-JUnit report successfully created at report.junit
+JUnit report successfully created at /path/to/report.junit
 ```
 
 ### Generate JSON Reports
@@ -142,20 +177,20 @@ JUnit report successfully created at report.junit
 You can generate json reports with the `--json` flag
 
 ``` bash
-$ xchtmlreport --json TestResults1
+$ xchtmlreport --json TestResults.xcresult
 
-Report successfully created at ./index.html
+Report successfully created at /path/to/index.html
 
-JSON report successfully created at ./report.json
+JSON report successfully created at /path/to/report.json
 ```
 
-Starting in 4.0, `report.json` is our own documented, versioned schema —
+**Since 4.0**, `report.json` is our own documented, versioned schema —
 [docs/json-schema.md](docs/json-schema.md) is the contract. The *schema* is
 identical whichever result reader produced it: same keys, same nesting, same
 `schemaVersion`. A few *values* legitimately differ between readers — the
 four differences listed under "Choosing the result reader" below, plus
 `testCase.arguments`, which only the modern reader can populate — and the
-contract documents each one. Earlier versions dumped
+contract documents each one. Earlier versions, 3.0.0 included, dump
 `xcresulttool`'s legacy object graph verbatim; that graph is Apple's
 internal shape and disappears together with the legacy commands, so 4.0
 replaces it once, deliberately. The change is visible at a glance — before:
@@ -178,7 +213,7 @@ the contract document.
 
 ### Choosing the result reader
 
-`xcresulttool`'s legacy API — the way every version before 4.0 read result
+**Since 4.0.** `xcresulttool`'s legacy API — the way every version before 4.0 read result
 bundles — is deprecated and will be removed from Xcode. `xchtmlreport` now
 has two readers and picks one per run:
 
@@ -240,8 +275,9 @@ and are still only visible as messages on stderr. See
 [#378](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/378) and the
 follow-on work it tracks.
 
-Exit 1 covers failures to write the output. A missing `-o` directory is not one of
-them: it is created for you, intermediate components included, before any parsing
+Exit 1 covers failures to write the output. In 3.0.0 that includes `-o` pointing
+at a directory that does not exist. **Since 4.0** a missing `-o` directory is not one
+of them: it is created for you, intermediate components included, before any parsing
 or rendering starts. A directory that cannot be created — no write permission on
 the parent, or a file in the way — is an argument error (64), reported up front and
 naming the path.
@@ -251,7 +287,10 @@ always exit 0 on faults, pass `--lenient`. `--lenient` does not affect exit 1 or
 
 ## Fastlane Support
 
-https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport
+There is a third-party plugin, https://github.com/TitouanVanBelle/fastlane-plugin-xchtmlreport,
+but it is **unmaintained**: it was last updated in June 2021, and people have reported in
+[#64](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/64) that it does not work for them.
+Calling `xchtmlreport` from a lane with fastlane's `sh` action needs no plugin.
 
 ## Contribution
 
