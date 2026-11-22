@@ -1,0 +1,344 @@
+#!/bin/bash
+# Checks every credential the Release workflow needs, and prepares the ones
+# that pass for the steps after it. Run by .github/workflows/release.yml on a
+# macOS runner; docs/releasing.md says what each secret is and how to renew it.
+#
+# WHY THIS EXISTS: the workflow used to hand the certificate to a third-party
+# import action and then ask codesign for an identity by name. When the
+# certificate expired, the import still succeeded, and the first sign of
+# trouble was codesign's "no identity found" -- which is also what a wrong
+# password, a certificate exported without its private key, and a missing
+# secret look like. This script tells those apart and names the secret.
+#
+# It never stops at the first problem. A dry run exists to find out what is
+# wrong before a release is cut, and being told about one expired secret per
+# run is a slow way to learn about three.
+#
+# Usage: check_credentials.sh [check|signing|notary]
+#
+#   check    (default) Checks all five secrets and reports every problem,
+#            then removes everything it wrote: keychain, certificate and key.
+#   signing  Checks the certificate again and KEEPS the keychain, for the
+#            signing step, which deletes it when it is done.
+#   notary   Decodes the API key and KEEPS it, for the notarization step,
+#            without asking Apple about it a second time.
+#
+# The modes exist so that each credential is on disk only for the step that
+# uses it. The job this runs in never builds or runs repository code -- that
+# happens on another runner -- so this is a second line of defence, not the
+# first.
+#
+# Reads from the environment (each one a secret of the `release` environment):
+#   BUILD_CERTIFICATE_BASE64  base64 of a .p12 holding the Developer ID
+#                             Application certificate AND its private key
+#   P12_PASSWORD              the password that .p12 was exported with
+#   ASC_KEY_ID                App Store Connect API key id (Team key)
+#   ASC_ISSUER_ID             App Store Connect API issuer id
+#   ASC_PRIVATE_KEY           that key's .p8, base64-encoded or pasted as PEM
+# `signing` reads only the first two, `notary` only the last three.
+#
+# Optional:
+#   RUNNER_TEMP               where the keychain and key are written
+#                             (default: a fresh temporary directory)
+#   EXPIRY_WARNING_DAYS       warn when the certificate has fewer days left
+#                             than this (default 45)
+#   SKIP_NOTARY_ONLINE_CHECK  set to 1 to skip the one network call `check`
+#                             makes, the authenticated read that proves Apple
+#                             accepts the API key (for running this off a
+#                             runner)
+#
+# Writes to $GITHUB_OUTPUT (when set), on success:
+#   signing:  keychain  path of the temporary keychain holding the identity
+#             identity  SHA-1 of the Developer ID Application identity
+#   notary:   notary_key  path of the decoded .p8
+#
+# No `set -x` anywhere, and nothing here echoes a secret's value: a decoded
+# .p8 is multi-line PEM, and GitHub's log masking works line by line on the
+# exact stored value, so a re-encoded or partial copy would not be masked.
+set -euo pipefail
+# Everything this writes is a credential or next to one.
+umask 077
+
+MODE="${1:-check}"
+case "$MODE" in
+    check) needed=(BUILD_CERTIFICATE_BASE64 P12_PASSWORD ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY) ;;
+    signing) needed=(BUILD_CERTIFICATE_BASE64 P12_PASSWORD) ;;
+    notary) needed=(ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY) ;;
+    *) echo "usage: $0 [check|signing|notary]" >&2; exit 2 ;;
+esac
+
+WORK="${RUNNER_TEMP:-$(mktemp -d)}"
+KEYCHAIN="$WORK/release-signing.keychain-db"
+P12="$WORK/release-signing.p12"
+NOTARY_KEY="$WORK/release-notary-key.p8"
+WARN_DAYS="${EXPIRY_WARNING_DAYS:-45}"
+# The system LibreSSL, by path. A Homebrew OpenSSL 3 earlier in PATH refuses
+# some of what is asked of it here without extra flags, and which one a
+# runner image puts first is not something to depend on.
+OPENSSL=/usr/bin/openssl
+
+# What survives this script is decided at the very end, on success only. Until
+# then, and on every failure, it all goes: the .p12 and the certificates read
+# out of it always, the keychain unless `signing` succeeded, the key unless
+# `notary` did. Deleting the keychain also takes it out of the search list.
+keep_keychain=""
+keep_notary_key=""
+cleanup() {
+    rm -f "$P12"
+    rm -rf "$WORK/release-signing-certs"
+    # Only when there is one: `security delete-keychain` on a path that does
+    # not exist fails, and leaves an empty lock file beside where it looked.
+    if [ -z "$keep_keychain" ] && [ -e "$KEYCHAIN" ]; then
+        security delete-keychain "$KEYCHAIN" >/dev/null 2>&1 || true
+    fi
+    if [ -z "$keep_notary_key" ]; then
+        rm -f "$NOTARY_KEY"
+    fi
+}
+trap cleanup EXIT
+
+problems=0
+problem() {
+    echo "::error title=Release credentials::$*"
+    problems=$((problems + 1))
+}
+warning() { echo "::warning title=Release credentials::$*"; }
+note() { echo "ok - $*"; }
+
+is_set() { [ -n "${!1:-}" ]; }
+
+# --- 1. Is every secret there at all? ---------------------------------------
+# An unset secret reaches a workflow as an empty string, not as an error, so
+# this has to be asked outright.
+missing=()
+for name in "${needed[@]}"; do
+    is_set "$name" || missing+=("$name")
+done
+if [ "${#missing[@]}" -gt 0 ]; then
+    problem "not set: ${missing[*]}. Each has to be a secret of the 'release' environment, which is where this job reads them: gh secret set NAME --env release. (A fork has no such secrets, so a run there always ends here.)"
+fi
+
+# --- 2. The signing certificate ----------------------------------------------
+identity=""
+check_certificate() {
+    if ! printf '%s' "$BUILD_CERTIFICATE_BASE64" | /usr/bin/base64 --decode > "$P12" 2>/dev/null \
+        || [ ! -s "$P12" ]; then
+        problem "BUILD_CERTIFICATE_BASE64 is not valid base64. It should be the output of: base64 -i DeveloperID.p12"
+        return
+    fi
+
+    local keychain_password
+    keychain_password="$($OPENSSL rand -hex 24)"
+    if [ -e "$KEYCHAIN" ]; then
+        security delete-keychain "$KEYCHAIN" >/dev/null 2>&1 || true
+    fi
+    security create-keychain -p "$keychain_password" "$KEYCHAIN"
+    # -u -t 21600: lock only after six hours, which is as long as a job can
+    # run, so the keychain cannot lock itself under the signing step. -l also
+    # locks it on sleep, which a runner does not do.
+    security set-keychain-settings -lut 21600 "$KEYCHAIN"
+    security unlock-keychain -p "$keychain_password" "$KEYCHAIN"
+
+    if ! security import "$P12" -k "$KEYCHAIN" -f pkcs12 -P "$P12_PASSWORD" \
+        -T /usr/bin/codesign -T /usr/bin/security >/dev/null 2>&1; then
+        problem "BUILD_CERTIFICATE_BASE64 could not be imported with P12_PASSWORD: the password does not match the .p12, or the secret is not a PKCS#12 export."
+        return
+    fi
+    # Without `codesign:` in the partition list macOS answers codesign's use
+    # of the key with a GUI prompt nobody is there to click, and the job hangs.
+    # A failure is a warning, not a verdict: it also fails when the .p12
+    # brought no key at all, which is diagnosed properly further down.
+    security set-key-partition-list -S apple-tool:,apple:,codesign: \
+        -s -k "$keychain_password" "$KEYCHAIN" >/dev/null 2>&1 \
+        || warning "could not grant codesign access to the imported key (security set-key-partition-list failed). If signing then stalls until the job times out, this is why."
+    # Appended to the search list, never replacing it: codesign builds the
+    # chain to Apple's root from the keychains already there.
+    local existing=()
+    while IFS= read -r line; do
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line#\"}"
+        existing+=("${line%\"}")
+    done < <(security list-keychains -d user)
+    # (The ${x[@]+...} form is for the system bash 3.2, where expanding an
+    # empty array under `set -u` is an error.)
+    security list-keychains -d user -s "$KEYCHAIN" ${existing[@]+"${existing[@]}"}
+
+    # Every Developer ID Application certificate the .p12 brought with it.
+    # Usually one, but an export can carry an old certificate alongside its
+    # renewal, and the old one must not be what gets judged.
+    local pem_dir="$WORK/release-signing-certs" found=() candidates=() cn pem
+    rm -rf "$pem_dir"
+    mkdir -p "$pem_dir"
+    security find-certificate -a -p "$KEYCHAIN" \
+        | awk -v dir="$pem_dir" '/-----BEGIN CERTIFICATE-----/ { n++ } { print > (dir "/" n ".pem") }'
+    for pem in "$pem_dir"/*.pem; do
+        [ -f "$pem" ] || continue
+        cn="$($OPENSSL x509 -in "$pem" -noout -subject -nameopt multiline 2>/dev/null \
+            | sed -n 's/^ *commonName *= *//p')"
+        found+=("${cn:-unnamed}")
+        case "$cn" in
+            "Developer ID Application:"*) candidates+=("$pem") ;;
+        esac
+    done
+    if [ "${#candidates[@]}" -eq 0 ]; then
+        problem "BUILD_CERTIFICATE_BASE64 holds no Developer ID Application certificate. It holds: $(IFS=';'; echo "${found[*]:-nothing}"). A release is signed with a Developer ID Application certificate, not an Apple Development or Apple Distribution one."
+        return
+    fi
+
+    # The identity macOS will actually sign with, if there is one, and the
+    # certificate behind it. When there is none, the certificates themselves
+    # say why -- which is the whole point: an expired certificate is simply
+    # absent from `find-identity -v`, and that absence is how "expired" came
+    # to be reported as "not found". An unexpired certificate is judged in
+    # preference to an expired one, since it is the one meant to be in use.
+    local chosen="" fingerprint
+    identity="$(security find-identity -v -p codesigning "$KEYCHAIN" \
+        | awk '/"Developer ID Application:/ { print $2; exit }')"
+    for pem in "${candidates[@]}"; do
+        if [ -n "$identity" ]; then
+            fingerprint="$($OPENSSL x509 -in "$pem" -noout -fingerprint -sha1 | sed 's/^.*=//; s/://g')"
+            [ "$fingerprint" = "$identity" ] || continue
+            chosen="$pem"
+            break
+        fi
+        chosen="$pem"
+        if $OPENSSL x509 -in "$pem" -noout -checkend 0 >/dev/null; then break; fi
+    done
+    if [ -z "$chosen" ]; then
+        # An identity whose certificate is not among those just read.
+        problem "internal: the signing identity ${identity} matches none of the certificates read from BUILD_CERTIFICATE_BASE64"
+        identity=""
+        return
+    fi
+
+    local subject serial not_after
+    subject="$($OPENSSL x509 -in "$chosen" -noout -subject -nameopt multiline | sed -n 's/^ *commonName *= *//p')"
+    serial="$($OPENSSL x509 -in "$chosen" -noout -serial | sed 's/^serial=//')"
+    not_after="$($OPENSSL x509 -in "$chosen" -noout -enddate | sed 's/^notAfter=//')"
+    if ! $OPENSSL x509 -in "$chosen" -noout -checkend 0 >/dev/null; then
+        problem "the certificate in BUILD_CERTIFICATE_BASE64 EXPIRED on ${not_after} (${subject}, serial ${serial}). Create a new Developer ID Application certificate and replace BUILD_CERTIFICATE_BASE64 and P12_PASSWORD: docs/releasing.md has the steps. Releases already published stay valid."
+        identity=""
+        return
+    fi
+    if ! $OPENSSL x509 -in "$chosen" -noout -checkend "$((WARN_DAYS * 86400))" >/dev/null; then
+        warning "the certificate in BUILD_CERTIFICATE_BASE64 expires on ${not_after}, in under ${WARN_DAYS} days (${subject}, serial ${serial}). Renew it before then: docs/releasing.md."
+    fi
+
+    if [ -z "$identity" ]; then
+        # Without -v the listing includes identities macOS will not sign
+        # with, and says why in a trailing parenthesis. No line at all means
+        # there is a certificate but no private key to go with it.
+        # Matched by this certificate's SHA-1, so that an expired neighbour
+        # in the same export does not answer for it.
+        local unusable reason
+        fingerprint="$($OPENSSL x509 -in "$chosen" -noout -fingerprint -sha1 | sed 's/^.*=//; s/://g')"
+        unusable="$(security find-identity -p codesigning "$KEYCHAIN" \
+            | awk -v fp="$fingerprint" '$2 == fp { print; exit }')"
+        if [ -z "$unusable" ]; then
+            problem "BUILD_CERTIFICATE_BASE64 holds an unexpired Developer ID Application certificate (serial ${serial}) but not its private key, so it cannot sign. Export it again from the Mac that created it: Keychain Access > My Certificates, where the certificate has its key underneath it. docs/releasing.md has the steps."
+        else
+            reason="$(printf '%s' "$unusable" | sed -n 's/.*(\([A-Z_]*\))$/\1/p')"
+            problem "BUILD_CERTIFICATE_BASE64 holds an unexpired Developer ID Application certificate (serial ${serial}) that macOS will not sign with: ${reason:-no reason given}. CSSMERR_TP_CERT_REVOKED means it was revoked and needs replacing; CSSMERR_TP_NOT_TRUSTED means the chain to Apple's root could not be built, which on a runner means Apple's Developer ID intermediate certificate is missing from the image."
+        fi
+        return
+    fi
+    note "signing certificate: ${subject}, serial ${serial}, valid until ${not_after}"
+}
+if [ "$MODE" != notary ] && is_set BUILD_CERTIFICATE_BASE64 && is_set P12_PASSWORD; then
+    check_certificate
+fi
+
+# --- 3. The App Store Connect API key, which notarization authenticates with -
+notary_ok=""
+check_notary_key() {
+    case "$ASC_PRIVATE_KEY" in
+        *"-----BEGIN"*) printf '%s\n' "$ASC_PRIVATE_KEY" > "$NOTARY_KEY" ;;
+        *)
+            if ! printf '%s' "$ASC_PRIVATE_KEY" | /usr/bin/base64 --decode > "$NOTARY_KEY" 2>/dev/null; then
+                problem "ASC_PRIVATE_KEY is neither a PEM private key nor valid base64. It should be the output of: base64 -i AuthKey_XXXXXXXXXX.p8"
+                return
+            fi
+            ;;
+    esac
+    if ! $OPENSSL pkey -in "$NOTARY_KEY" -noout >/dev/null 2>&1; then
+        problem "ASC_PRIVATE_KEY does not decode to a private key. It should be the .p8 file App Store Connect let you download once, base64-encoded."
+        return
+    fi
+    if [ "$MODE" = notary ]; then
+        # `check` asked Apple at the start of this job; the submission that
+        # follows is the next thing to ask.
+        notary_ok=1
+        return
+    fi
+    if [ "${SKIP_NOTARY_ONLINE_CHECK:-}" = 1 ]; then
+        note "App Store Connect API key parses; Apple was not asked about it (SKIP_NOTARY_ONLINE_CHECK)"
+        notary_ok=1
+        return
+    fi
+    # An authenticated read of the team's notarization history: it submits
+    # nothing, and it fails exactly when a submission would fail to
+    # authenticate. The listing itself is discarded.
+    local answer
+    if ! answer="$(xcrun notarytool history --key "$NOTARY_KEY" --key-id "$ASC_KEY_ID" \
+        --issuer "$ASC_ISSUER_ID" --output-format json 2>&1)"; then
+        answer="$(printf '%s' "$answer" | tr '\n' ' ')"
+        # Only an authentication answer is about the key. Anything else --
+        # a 5xx, a timeout, no network -- is Apple's service or the route to
+        # it, and replacing a good key would not help.
+        case "$answer" in
+            *"status code: 401"* | *"status code: 403"*)
+                problem "Apple's notary service rejected the App Store Connect API key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY): ${answer}. The three must belong to one Team key that is still active and has at least the Developer role; an Individual key cannot notarize. See docs/releasing.md."
+                ;;
+            *)
+                problem "could not ask Apple's notary service about the App Store Connect API key: ${answer}. This is not an authentication failure, so the key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY) may be fine and the service or the network at fault: run again before replacing anything."
+                ;;
+        esac
+        return
+    fi
+    note "App Store Connect API key: accepted by Apple's notary service"
+    notary_ok=1
+}
+if [ "$MODE" != signing ] && is_set ASC_KEY_ID && is_set ASC_ISSUER_ID && is_set ASC_PRIVATE_KEY; then
+    check_notary_key
+fi
+
+# --- Verdict -----------------------------------------------------------------
+if [ "$problems" -gt 0 ]; then
+    echo "error: $problems problem(s) with the release credentials, listed above. docs/releasing.md describes each secret and how to replace it." >&2
+    exit 1
+fi
+# Unreachable with a problem count of zero unless the logic above is wrong;
+# refuse to hand an empty identity to codesign, which would then sign ad hoc.
+if [ "$MODE" != notary ] && [ -z "$identity" ]; then
+    echo "error: internal: no problems recorded, but no signing identity either" >&2
+    exit 1
+fi
+if [ "$MODE" != signing ] && [ -z "$notary_ok" ]; then
+    echo "error: internal: no problems recorded, but no usable API key either" >&2
+    exit 1
+fi
+
+case "$MODE" in
+    check)
+        echo "ok - release credentials are usable; nothing was left on disk"
+        ;;
+    # The keep flag is set last in each case: if handing the result to the
+    # workflow fails, the script exits and the trap still removes everything.
+    signing)
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+            {
+                echo "keychain=$KEYCHAIN"
+                echo "identity=$identity"
+            } >> "$GITHUB_OUTPUT"
+        fi
+        echo "ok - signing identity ready in $KEYCHAIN"
+        keep_keychain=1
+        ;;
+    notary)
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+            echo "notary_key=$NOTARY_KEY" >> "$GITHUB_OUTPUT"
+        fi
+        echo "ok - App Store Connect API key decoded"
+        keep_notary_key=1
+        ;;
+esac
