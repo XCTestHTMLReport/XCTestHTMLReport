@@ -45,8 +45,9 @@ Xcode-like HTML report for Unit and UI Tests
 -   Xcode, because result bundles are read through `xcrun xcresulttool`. The
     Homebrew formula needs Xcode 14 or later to build.
 -   Every change is built with Xcode 16 and with the latest stable Xcode, and
-    tested against result bundles produced by the latest stable Xcode. Bundles
-    from older Xcode versions are not tested.
+    tested against result bundles produced by the latest stable Xcode, plus a
+    newer released Xcode when GitHub's runners offer one ahead of the stable
+    image. Bundles from older Xcode versions are not tested.
 
 The latest release is **3.0.0**, and that is what Homebrew and Mint install.
 Anything below marked **since 4.0** is on `main` only until 4.0 is released;
@@ -95,12 +96,19 @@ binary, signed with a Developer ID and notarized by Apple.
 
 ```bash
 VERSION=3.0.0
-curl -LO "https://github.com/XCTestHTMLReport/XCTestHTMLReport/releases/download/${VERSION}/xchtmlreport-${VERSION}.zip"
-unzip "xchtmlreport-${VERSION}.zip"          # extracts release/xchtmlreport
-codesign --verify --strict --verbose release/xchtmlreport
-sudo mv release/xchtmlreport /usr/local/bin/   # or anywhere on your PATH
-xchtmlreport --version
+curl -fLO "https://github.com/XCTestHTMLReport/XCTestHTMLReport/releases/download/${VERSION}/xchtmlreport-${VERSION}.zip" &&
+  unzip "xchtmlreport-${VERSION}.zip" &&
+  codesign --verify --strict --verbose \
+    -R='anchor apple generic and certificate leaf[subject.OU] = "352UZEKYPP"' \
+    release/xchtmlreport &&
+  sudo mv release/xchtmlreport /usr/local/bin/ &&
+  xchtmlreport --version
 ```
+
+The zip extracts to `release/xchtmlreport`; move it anywhere on your `PATH`.
+The `-R` requirement checks that the binary was signed by this project's
+Developer ID (team `352UZEKYPP`), not just by some valid identity, and each
+step runs only if the one before it succeeded.
 
 ## Usage
 
@@ -192,14 +200,16 @@ identical whichever result reader produced it: same keys, same nesting, same
 four differences listed under "Choosing the result reader" below, plus
 `testCase.arguments`, which only the modern reader can populate — and the
 contract documents each one. Earlier versions, 3.0.0 included, write
-a serialization of `xcresulttool`'s legacy object graph: an array whose
-entries hold `metrics`, `actions`, `issues` and a `metadataRef` carrying the
-raw legacy JSON base64-encoded. That graph is Apple's internal shape and disappears
-together with the legacy commands, so 4.0 replaces it once, deliberately.
-The change is visible at a glance — 3.0.0:
+`xcresulttool`'s legacy invocation record as XCResultKit decodes it: an array
+whose entries have the keys `actions` (an array), `issues`, `metrics` and
+`metadataRef`, in no fixed order. Only `metadataRef.referencedObject.json`
+still holds `xcresulttool`'s own `_type`/`_value` JSON, base64-encoded. That
+record is Apple's internal shape and disappears together with the legacy
+commands, so 4.0 replaces it once, deliberately. The change is visible at a
+glance — 3.0.0:
 
 ``` json
-[{"metrics":{...},"metadataRef":{"id":"...","referencedObject":{"json":"eyJfdHlwZSI6..."}},"actions":[...],"issues":{...}}]
+[{"metadataRef":{"referencedObject":{"json":"eyJzY2hlbWVJZGVudGlmaWVy..."},"targetType":{"name":"ActionsInvocationMetadata"},"id":"0~..."},"metrics":{...},"issues":{...},"actions":[...]}]
 ```
 
 since 4.0:
@@ -274,8 +284,9 @@ had no way to detect an incomplete report.
 
 What counts as detected has grown. 3.0.0 reports a bundle it cannot read at all,
 an attachment with nothing behind it, and a failed attachment or log export.
-**Since 4.0** a run that stopped early is a fault too: a host app that crashes at
-launch gives a bundle that 3.0.0 renders and exits 0 on, and that `main` exits 3 on.
+**Since 4.0** more counts, including a run that stopped early: a host app that
+crashes at launch gives a bundle that 3.0.0 renders and exits 0 on, and that
+`main` exits 3 on.
 
 Exit 0 means no faults were *detected*, which is not yet the same as a guaranteed
 complete report: some XCResultKit decode failures are not surfaced as faults today
