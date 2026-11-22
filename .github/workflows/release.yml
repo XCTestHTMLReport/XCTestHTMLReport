@@ -13,10 +13,12 @@ on:
   # else. (There used to be a `dry_run` checkbox here. Nothing read it, and
   # unticking it changed nothing, which is not what a checkbox promises.)
   #
-  # It has to be run from `main`. The `sign` job below belongs to the
-  # `release` environment, which admits `main` and release tags only; from
-  # any other ref the build still runs, and the `sign` job is refused before
-  # its first step.
+  # Run it from `main`. The `sign` job below belongs to the `release`
+  # environment, which admits `main` and release tags only; from any other
+  # branch the build still runs, and the `sign` job is refused before its
+  # first step. (A manual run started on an existing release tag is admitted
+  # too: it rebuilds and signs that tag's commit under the tag's version, and
+  # publishes nothing.)
   workflow_dispatch:
     inputs:
       notarize:
@@ -132,15 +134,18 @@ jobs:
         mkdir -p unsigned
         cp "$BIN_PATH" unsigned/xchtmlreport
 
-    # Kept for a day: it exists to cross from this runner to the next one,
-    # and the signed archive is the artifact anyone should download.
+    # It exists to cross from this runner to the next one; the signed archive
+    # is the artifact anyone should download. Kept for a week, not a day, so
+    # that "Re-run failed jobs" on a failed `sign` still finds it: that button
+    # keeps this job's result and does not build again. After a week, use
+    # "Re-run all jobs".
     - name: Hand the unsigned binary to the signing job
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: unsigned
         path: unsigned/xchtmlreport
         if-no-files-found: error
-        retention-days: 1
+        retention-days: 7
 
   sign:
     runs-on: macos-latest
@@ -172,6 +177,10 @@ jobs:
     # the three GitHub-owned actions below and the tools on the runner image.
     # It does not build, and it does not run the binary it signs.
     environment: release
+    # Signing takes seconds and notarization is capped at 30 minutes below.
+    # The default limit is six hours, which is how long this job would sit if
+    # codesign ever stopped to ask for a keychain password nobody can type.
+    timeout-minutes: 60
     permissions:
       contents: read
     env:
@@ -486,7 +495,9 @@ jobs:
     # that this exact archive came out of this workflow at this tag's commit.
     # Anyone can check a download against it:
     #
-    #   gh attestation verify xchtmlreport-X.Y.Z.zip --repo XCTestHTMLReport/XCTestHTMLReport
+    #   gh attestation verify xchtmlreport-X.Y.Z.zip --repo XCTestHTMLReport/XCTestHTMLReport \
+    #     --signer-workflow XCTestHTMLReport/XCTestHTMLReport/.github/workflows/release.yml \
+    #     --source-ref refs/tags/X.Y.Z
     #
     # Here rather than in the sign job so that it attests the bytes about to
     # be published, after their trip through the artifact store, and before

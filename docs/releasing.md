@@ -21,8 +21,15 @@ new release up on its own (see [`homebrew-bump.yml`](../.github/workflows/homebr
 3. Tag the commit and push the tag:
 
    ```bash
-   git tag 4.0.0        # or 4.0.0rc1 for a candidate
+   git tag 4.0.0
    git push origin 4.0.0
+   ```
+
+   or, for a candidate:
+
+   ```bash
+   git tag 4.0.0rc1
+   git push origin 4.0.0rc1
    ```
 
    Only a repository admin can push one: a ruleset restricts tags of this
@@ -48,11 +55,14 @@ A manual run is always a dry run: it builds, signs and packages version
 `0.0.0-dryrun` and publishes nothing, whatever its inputs. Only a tag push
 publishes.
 
-It has to be run from `main`. The workflow builds in one job and signs in
-another, on a second runner that never runs what the first one built. The
-`sign` job belongs to the `release` environment ([below](#secrets)), which
-admits `main` and release tags only: from any other branch the build still
-runs, and `sign` is refused before its first step.
+Run it from `main`. The workflow builds in one job and signs in another, on a
+second runner that never runs what the first one built. The `sign` job belongs
+to the `release` environment ([below](#secrets)), which admits `main` and
+release tags only: from any other branch the build still runs, and `sign` is
+refused before its first step. (The environment would also admit a manual run
+started on an existing release tag. That rebuilds and signs that release's
+commit under its own version, publishes nothing, and is not a dry run of
+`main`.)
 
 `sign` starts by checking every credential, and reports each problem as an
 annotation on the run that names the secret at fault:
@@ -98,8 +108,13 @@ Anyone can check all three on a download:
 unzip xchtmlreport-4.0.0.zip
 codesign --verify --strict -vv release/xchtmlreport
 codesign --verify -R="notarized" --check-notarization -vv release/xchtmlreport
-gh attestation verify xchtmlreport-4.0.0.zip --repo XCTestHTMLReport/XCTestHTMLReport
+gh attestation verify xchtmlreport-4.0.0.zip --repo XCTestHTMLReport/XCTestHTMLReport \
+  --signer-workflow XCTestHTMLReport/XCTestHTMLReport/.github/workflows/release.yml \
+  --source-ref refs/tags/4.0.0
 ```
+
+The last two flags are what make the attestation mean "this release": without
+them, any attestation from any workflow or ref of the repository would pass.
 
 Releases before attestation was added (4.0.0rc1 and earlier) have none.
 
@@ -225,6 +240,11 @@ up: revoking, unlike expiring, invalidates everything it ever signed.
 
 4. Run a dry run from `main` with `notarize=true`, then revoke the key it
    replaces.
+
+The three `ASC_*` secrets have only ever been set in the environment. If one is
+ever set at repository level by mistake, delete it there
+(`gh secret delete NAME -R XCTestHTMLReport/XCTestHTMLReport`), for the same
+reason as the certificate.
 
 A key made for this repository alone can be revoked without touching anything
 else that talks to App Store Connect, which is the reason not to reuse one.

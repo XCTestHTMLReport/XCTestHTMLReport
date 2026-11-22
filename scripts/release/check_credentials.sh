@@ -146,8 +146,11 @@ check_certificate() {
     fi
     # Without `codesign:` in the partition list macOS answers codesign's use
     # of the key with a GUI prompt nobody is there to click, and the job hangs.
+    # A failure is a warning, not a verdict: it also fails when the .p12
+    # brought no key at all, which is diagnosed properly further down.
     security set-key-partition-list -S apple-tool:,apple:,codesign: \
-        -s -k "$keychain_password" "$KEYCHAIN" >/dev/null 2>&1 || true
+        -s -k "$keychain_password" "$KEYCHAIN" >/dev/null 2>&1 \
+        || warning "could not grant codesign access to the imported key (security set-key-partition-list failed). If signing then stalls until the job times out, this is why."
     # Appended to the search list, never replacing it: codesign builds the
     # chain to Apple's root from the keychains already there.
     local existing=()
@@ -278,7 +281,18 @@ check_notary_key() {
     local answer
     if ! answer="$(xcrun notarytool history --key "$NOTARY_KEY" --key-id "$ASC_KEY_ID" \
         --issuer "$ASC_ISSUER_ID" --output-format json 2>&1)"; then
-        problem "Apple's notary service rejected the App Store Connect API key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY): $(printf '%s' "$answer" | tr '\n' ' '). The three must belong to one Team key that is still active and has at least the Developer role; an Individual key cannot notarize. See docs/releasing.md."
+        answer="$(printf '%s' "$answer" | tr '\n' ' ')"
+        # Only an authentication answer is about the key. Anything else --
+        # a 5xx, a timeout, no network -- is Apple's service or the route to
+        # it, and replacing a good key would not help.
+        case "$answer" in
+            *"status code: 401"* | *"status code: 403"*)
+                problem "Apple's notary service rejected the App Store Connect API key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY): ${answer}. The three must belong to one Team key that is still active and has at least the Developer role; an Individual key cannot notarize. See docs/releasing.md."
+                ;;
+            *)
+                problem "could not ask Apple's notary service about the App Store Connect API key: ${answer}. This is not an authentication failure, so the key (ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY) may be fine and the service or the network at fault: run again before replacing anything."
+                ;;
+        esac
         return
     fi
     note "App Store Connect API key: accepted by Apple's notary service"
@@ -308,8 +322,9 @@ case "$MODE" in
     check)
         echo "ok - release credentials are usable; nothing was left on disk"
         ;;
+    # The keep flag is set last in each case: if handing the result to the
+    # workflow fails, the script exits and the trap still removes everything.
     signing)
-        keep_keychain=1
         if [ -n "${GITHUB_OUTPUT:-}" ]; then
             {
                 echo "keychain=$KEYCHAIN"
@@ -317,12 +332,13 @@ case "$MODE" in
             } >> "$GITHUB_OUTPUT"
         fi
         echo "ok - signing identity ready in $KEYCHAIN"
+        keep_keychain=1
         ;;
     notary)
-        keep_notary_key=1
         if [ -n "${GITHUB_OUTPUT:-}" ]; then
             echo "notary_key=$NOTARY_KEY" >> "$GITHUB_OUTPUT"
         fi
         echo "ok - App Store Connect API key decoded"
+        keep_notary_key=1
         ;;
 esac
