@@ -58,6 +58,19 @@ struct TestResultsTests: Decodable {
 /// the schema alone — no fixture produces them yet — so nothing here may
 /// require their presence.
 struct TestNode: Decodable {
+    /// Where a `Failure Message` fired, from Xcode 27.1 on. Through Xcode 26
+    /// the same two facts were the prefix of `name`
+    /// (`"FirstSuite.swift:86: XCTAssertTrue failed - Test failed"`); 27.1
+    /// moved them here and left `name` as the bare message — under the pinned
+    /// `--schema-version 0.1.0` as well, so the pin does not shield a reader
+    /// from it. Present on assertion failures only: skip reasons and expected
+    /// failures carried no prefix before and carry no location now.
+    struct SourceLocation: Decodable {
+        /// Absolute, as recorded on the machine that ran the tests.
+        let filePath: String?
+        let lineNumber: Int?
+    }
+
     let name: String?
     let nodeType: String?
     let nodeIdentifier: String?
@@ -65,6 +78,7 @@ struct TestNode: Decodable {
     let result: String?
     let durationInSeconds: Double?
     let details: String?
+    let sourceLocation: SourceLocation?
     let children: [TestNode]?
 }
 

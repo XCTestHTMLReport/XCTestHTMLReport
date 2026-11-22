@@ -428,6 +428,17 @@ equivalent — measured on `TestResults`:
 | `get test-results tests`, `Failure Message` node | `FirstSuite.swift:66: XCTAssertTrue failed - Test failed` |
 | `get test-results activities`, activity title | `XCTAssertTrue failed - Test failed` |
 
+**Xcode 27.1 moved the location (added 2026-11-21).** The table above is the
+Xcode 26 tool. From 27.1 the `Failure Message` node's `name` is the bare
+message and the file and line sit beside it as
+`"sourceLocation": {"filePath": "/abs/…/FirstSuite.swift", "lineNumber": 86}` —
+under the pinned `--schema-version 0.1.0` too. The reader composes
+`<last path component>:<line>: <name>` from those fields
+(`ModernResultReader.failureText(of:)`), which is the Xcode 26 string exactly,
+so the join below and the rendered title are the same on both. That is
+composing stated fields, not the parse the next paragraphs rule out. Skip
+reasons and expected failures have no `sourceLocation`, as they had no prefix.
+
 The activities document drops the file and line, **not the failure itself**
 (refined 2026-08-12, from Task 8's execution): it reports every assertion
 failure as a failure-flagged activity row of its own, positioned and

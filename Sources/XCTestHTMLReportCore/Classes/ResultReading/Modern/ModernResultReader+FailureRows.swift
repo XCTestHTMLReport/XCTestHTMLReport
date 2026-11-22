@@ -12,12 +12,45 @@
 import Foundation
 
 extension ModernResultReader {
+    /// The text of one `Failure Message` node, `file:line` included.
+    ///
+    /// Through Xcode 26 the node's `name` is the whole string —
+    /// `"FirstSuite.swift:86: XCTAssertTrue failed - Test failed"`. Xcode 27.1
+    /// splits it: `name` is the bare message and the location is a structured
+    /// `sourceLocation` beside it. Read as before, every failure title lost
+    /// its file and line. So where a location is given, the title is put back
+    /// together in exactly the shape the older tool wrote — the file's last
+    /// path component, the line, the message — and one bundle reads the same
+    /// on either toolchain.
+    ///
+    /// This composes fields the format states; it does not parse a string
+    /// apart, which is what "Failure location" in the design spec rules out.
+    /// A `name` that already opens with the prefix is left alone, so a tool
+    /// that ever reports both does not render the location twice.
+    static func failureText(of node: TestNode) -> String? {
+        guard let name = node.name else {
+            return nil
+        }
+        guard
+            let location = node.sourceLocation,
+            let line = location.lineNumber,
+            let file = location.filePath.map({ ($0 as NSString).lastPathComponent }),
+            !file.isEmpty
+        else {
+            return name
+        }
+        let prefix = "\(file):\(line): "
+        return name.hasPrefix(prefix) ? name : prefix + name
+    }
+
     /// Joins the tests document's `Failure Message` nodes onto the activity
     /// tree.
     ///
     /// Both documents describe the same failure, each holding half of it. The
     /// `Failure Message` node keeps the `file:line` prefix
-    /// (`"FirstSuite.swift:86: XCTAssertTrue failed - Test failed"`) but has
+    /// (`"FirstSuite.swift:86: XCTAssertTrue failed - Test failed"` — written
+    /// that way by the tool through Xcode 26, put back together from the
+    /// node's `sourceLocation` by `failureText(of:)` from 27.1) but has
     /// no timestamp; the activities document reports the failure as a
     /// failure-flagged activity row — positioned and timestamped, nested
     /// inside the user's own activity when the assertion fired there — but
