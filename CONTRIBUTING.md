@@ -8,6 +8,7 @@ Please read it before you start participating.
 * [Reporting Issues](#reporting-issues)
 * [Submitting Pull Requests](#submitting-pull-requests)
 * [AI-assisted contributions](#ai-assisted-contributions)
+* [Releasing](#releasing)
 
 ## Reporting Issues
 
@@ -190,3 +191,10 @@ This is not a judgment about machine-written code. Reviewing a patch costs more
 than generating one, and a maintainer's review time is the scarce resource here.
 A patch nobody asked for spends that resource without consent, and it does so
 whether or not the code is any good.
+
+## Releasing
+
+For maintainers: [`docs/releasing.md`](docs/releasing.md) covers cutting a
+release, the dry run that checks one can be cut, and the signing and
+notarization secrets the release workflow reads, including how to renew them
+when Apple expires one.

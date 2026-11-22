@@ -12,7 +12,11 @@ on:
       dry_run:
         type: boolean
         default: true
-        description: "Build, sign and package, but do not notarize or publish"
+        description: "Build, sign and package, but do not publish"
+      notarize:
+        type: boolean
+        default: false
+        description: "Also submit the dry-run build to Apple's notary service, and check the ticket"
 
 # Declared per job rather than at workflow level, so no job silently inherits
 # a grant it does not need: the build only reads, publishing writes releases,
@@ -34,16 +38,33 @@ jobs:
         # credentials, because create-pull-request pushes a branch from it.
         persist-credentials: false
 
-    - name: Configure Signing
-      uses: Apple-Actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
-      with:
-        p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-        p12-password: ${{ secrets.P12_PASSWORD }}
-
     - name: Setup Xcode version
       uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
       with:
         xcode-version: latest-stable
+
+    # First, so a dry run answers "can this repository cut a release today?"
+    # in seconds, and names the credential that says no: missing, expired,
+    # wrong password, exported without its key, or refused by Apple. The
+    # script imports the certificate into a keychain of its own with a few
+    # `security` calls, which is all the third-party import action was doing
+    # -- and that action reported an expired certificate as a success, leaving
+    # codesign to say "no identity found" several minutes later.
+    #
+    # continue-on-error, so a failure here does not also hide whether the
+    # release build itself still works: the build and its version check run
+    # either way, and the job stops at "Require usable credentials" below,
+    # just before the first step that needs them.
+    - name: Check release credentials
+      id: credentials
+      continue-on-error: true
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+      run: ./scripts/release/check_credentials.sh
 
     - name: Generate Metadata
       id: metadata
@@ -101,32 +122,127 @@ jobs:
           exit 1
         fi
 
-    - name: Sign
+    - name: Require usable credentials
+      if: steps.credentials.outcome != 'success'
       run: |
-        codesign --verbose --verify --options=runtime -f \
-        -s "Developer ID Application: Tyler Vick (${{ secrets.AC_TEAM_ID }})" \
-        ${{ steps.metadata.outputs.bin_path }}
+        echo "::error title=Release credentials::The release build above is fine, but nothing can be signed: \"Check release credentials\" failed, and its annotations on this run name each secret at fault. docs/releasing.md says how to replace them."
+        exit 1
+
+    # By the SHA-1 the credentials step read out of its own keychain, rather
+    # than by "Developer ID Application: <name> (<team id>)". The name matched
+    # whatever identity any keychain on the runner happened to offer, and
+    # needed the team id kept as a secret to spell it.
+    #
+    # --options runtime (the hardened runtime) and --timestamp (a secure
+    # timestamp from Apple) are both things notarization refuses a binary
+    # without. The timestamp is also why a release keeps verifying after the
+    # certificate that signed it expires.
+    - name: Sign
+      env:
+        IDENTITY: ${{ steps.credentials.outputs.identity }}
+        KEYCHAIN: ${{ steps.credentials.outputs.keychain }}
+        BIN_PATH: ${{ steps.metadata.outputs.bin_path }}
+      run: |
+        codesign --force --options runtime --timestamp \
+          --sign "$IDENTITY" --keychain "$KEYCHAIN" "$BIN_PATH"
 
     - name: Verify
       # --deep is deprecated by Apple and is not the right check for a lone
       # executable; --strict on the binary itself is.
+      #
+      # A valid signature is not yet one Apple will notarize, so the three
+      # properties notarization insists on are asserted here, where a miss is
+      # a one-line message rather than a JSON log fetched from the notary
+      # service: a Developer ID signer, the hardened runtime, and a secure
+      # timestamp (an ad-hoc or untimestamped signature prints "Signed Time="
+      # instead of "Timestamp=").
+      env:
+        BIN_PATH: ${{ steps.metadata.outputs.bin_path }}
       run: |
-        codesign -vvv --strict ${{ steps.metadata.outputs.bin_path }}
+        codesign --verify -vvv --strict "$BIN_PATH"
+        DETAILS="$(codesign --display -vv "$BIN_PATH" 2>&1)"
+        echo "$DETAILS"
+        grep -q '^Authority=Developer ID Application: ' <<<"$DETAILS" \
+          || { echo "::error::not signed by a Developer ID Application certificate"; exit 1; }
+        grep -q '^CodeDirectory .*flags=.*runtime' <<<"$DETAILS" \
+          || { echo "::error::signed without the hardened runtime"; exit 1; }
+        grep -q '^Timestamp=' <<<"$DETAILS" \
+          || { echo "::error::signed without a secure timestamp"; exit 1; }
 
     - name: Package
+      env:
+        BIN_PATH: ${{ steps.metadata.outputs.bin_path }}
+        ARCHIVE: ${{ steps.metadata.outputs.archive_name }}
       run: |
-        ditto -c -k \
-        --keepParent "${{ steps.metadata.outputs.bin_path }}" \
-        ${{ steps.metadata.outputs.archive_name }}
+        ditto -c -k --keepParent "$BIN_PATH" "$ARCHIVE"
+        shasum -a 256 "$ARCHIVE"
 
+    # Authenticated with an App Store Connect API key, where this used to
+    # pass an Apple ID and an app-specific password: the key is scoped to a
+    # role, can be revoked on its own, and is not a person's account password.
+    #
+    # The status is read out of the answer rather than trusted to the exit
+    # code: `--wait` promises to wait for a verdict, not to exit non-zero on
+    # the verdict "Invalid", and a release must not depend on which it does.
+    # On anything but "Accepted" the notary log, which
+    # names the offending file and rule, is printed before failing.
     - name: Notarize
-      if: github.event_name == 'push'
+      id: notarize
+      if: github.event_name == 'push' || inputs.notarize
+      env:
+        NOTARY_KEY: ${{ steps.credentials.outputs.notary_key }}
+        ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        ARCHIVE: ${{ steps.metadata.outputs.archive_name }}
       run: |
-        xcrun notarytool submit ${{ steps.metadata.outputs.archive_name }} \
-        --apple-id ${{ secrets.AC_USERNAME }} \
-        --password ${{ secrets.AC_PASSWORD }} \
-        --team-id ${{ secrets.AC_TEAM_ID }} \
-        --wait
+        auth=(--key "$NOTARY_KEY" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID")
+        RESULT="$RUNNER_TEMP/notary-result.json"
+        xcrun notarytool submit "$ARCHIVE" "${auth[@]}" \
+          --wait --timeout 30m --output-format json > "$RESULT" || true
+        cat "$RESULT"; echo
+        STATUS="$(plutil -extract status raw -o - "$RESULT" 2>/dev/null || true)"
+        ID="$(plutil -extract id raw -o - "$RESULT" 2>/dev/null || true)"
+        if [[ "$STATUS" != "Accepted" ]]; then
+          if [[ -n "$ID" ]]; then
+            xcrun notarytool log "$ID" "${auth[@]}" || true
+          fi
+          echo "::error::notarization of ${ARCHIVE} ended as '${STATUS:-no answer}', not 'Accepted' (submission ${ID:-none})"
+          exit 1
+        fi
+        echo "Notarized: submission ${ID}"
+
+    # A ticket cannot be stapled to a bare executable or to a zip -- stapler
+    # only takes app bundles, disk images and installer packages -- so
+    # Gatekeeper looks this one up online, by the binary's code directory
+    # hash, the first time someone runs it. This asks the same question
+    # Gatekeeper will, and so fails the release if Apple's answer for the
+    # exact binary being shipped is anything but "notarized". A few tries,
+    # because the ticket can take a moment to be served after the verdict.
+    - name: Verify the notarization ticket
+      if: steps.notarize.outcome == 'success'
+      env:
+        BIN_PATH: ${{ steps.metadata.outputs.bin_path }}
+      run: |
+        for attempt in 1 2 3 4 5 6; do
+          if codesign --verify --strict -R="notarized" --check-notarization -vv "$BIN_PATH"; then
+            # What a user's Mac will say. Informational: the line above is the gate.
+            spctl --assess --type install -vvv "$BIN_PATH" || true
+            exit 0
+          fi
+          echo "no ticket yet (attempt ${attempt}); waiting"
+          sleep 20
+        done
+        echo "::error::Apple accepted the submission, but no notarization ticket is being served for the signed binary"
+        exit 1
+
+    # always(), so the certificate and the API key do not outlive a failed or
+    # cancelled run on the runner's disk. Deleting the keychain also takes it
+    # back out of the search list.
+    - name: Remove signing material
+      if: always()
+      run: |
+        security delete-keychain "$RUNNER_TEMP/release-signing.keychain-db" 2>/dev/null || true
+        rm -f "$RUNNER_TEMP/release-signing.p12" "$RUNNER_TEMP/release-notary-key.p8"
 
     - name: Archive
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -136,19 +252,33 @@ jobs:
 
     - name: Dry run summary
       if: github.event_name == 'workflow_dispatch'
+      env:
+        NOTARIZED: ${{ steps.notarize.outcome }}
+        ARCHIVE: ${{ steps.metadata.outputs.archive_name }}
       run: |
         {
           echo "### Dry run complete"
-          echo "Built, signed and packaged \`${{ steps.metadata.outputs.archive_name }}\`."
-          echo "Notarization and publishing were skipped."
+          echo "Built, signed and packaged \`${ARCHIVE}\`."
+          echo "The signing certificate and the notarization key were both checked."
+          if [[ "$NOTARIZED" == "success" ]]; then
+            echo "Apple notarized the build and is serving its ticket. Nothing was published."
+          else
+            echo "Nothing was submitted for notarization, and nothing was published."
+          fi
         } >> "$GITHUB_STEP_SUMMARY"
 
   release:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'push'
+    # id-token and attestations are for the provenance attestation below:
+    # the first mints the short-lived OIDC token Sigstore signs against, the
+    # second stores the result. Neither reaches the build job, which is the
+    # one holding the signing certificate.
     permissions:
       contents: write
+      id-token: write
+      attestations: write
 
     steps:
     # Sparse and credential-free: the only thing this job wants from the tree
@@ -214,6 +344,21 @@ jobs:
         fi
         cat "$NOTES_FILE" >> release-body.md
         echo "have_notes=true" >> "$GITHUB_OUTPUT"
+
+    # Signing and notarization say who built the binary and that Apple found
+    # no malware in it. This says where: a signed statement, kept by GitHub,
+    # that this exact archive came out of this workflow at this tag's commit.
+    # Anyone can check a download against it:
+    #
+    #   gh attestation verify xchtmlreport-X.Y.Z.zip --repo XCTestHTMLReport/XCTestHTMLReport
+    #
+    # Here rather than in the build job so that it attests the bytes about to
+    # be published, after their trip through the artifact store, and before
+    # the release exists -- a release is never public without one.
+    - name: Attest the archive's provenance
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-path: application/xchtmlreport-*.zip
 
     - name: Release
       # The GitHub CLI is preinstalled on the runner and does everything the
