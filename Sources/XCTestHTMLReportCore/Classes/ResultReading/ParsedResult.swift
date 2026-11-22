@@ -99,7 +99,7 @@ extension ParsedGroup {
     ///   `SystemFailureCanaryTests` is for: it asserts a freshly generated
     ///   crash bundle still contains this literal, on both readers, so the
     ///   rename fails the suite on the toolchain that introduces it — and the
-    ///   `toolchain-drift` beta leg reaches that toolchain before a release
+    ///   `toolchain-drift` preview leg reaches that toolchain before a release
     ///   does. The literal appears in no binary and no `.strings` table under
     ///   `Xcode.app`; it is written into the bundle at run time, which is weak
     ///   evidence it is not localized, and no evidence at all that it is

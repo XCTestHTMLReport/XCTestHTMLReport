@@ -8,13 +8,27 @@ name: Toolchain Drift
 #
 # Two legs run the same detection steps against two toolchains:
 #
-#   stable — `macos-latest`, the Xcode users actually have. This is the leg
-#            that matters: it fails the run and files the `drift` issue.
-#   beta   — the `xcode-<N>` preview image, whose default Xcode is the current
-#            beta with matching simulator runtimes preinstalled. It answers
-#            "what does the next Xcode break?" roughly two months before GA
-#            reaches `macos-latest`. It is advisory only: it never reddens the
-#            run, never touches the `drift` issue, and never writes the cache.
+#   stable  — `macos-latest`, the Xcode the image calls stable. It fails the
+#             run and files the `drift` issue.
+#   preview — the `xcode-<N>` preview image and its default Xcode, with
+#             matching simulator runtimes preinstalled. It answers "what does
+#             the next Xcode break?" before that Xcode reaches `macos-latest`.
+#             It never reddens the run.
+#
+# Which leg a toolchain runs on and how its findings are filed are separate
+# questions, and the second is answered by the Xcode itself. The preview image
+# starts each cycle holding a beta and goes on to hold the release: by November
+# 2026 its default was Xcode 27.1 (27A9275), a release build users had had for
+# weeks, while `macos-latest` was still Xcode 26. Every failure on it was still
+# being filed under `drift-beta` as "advance notice, not a regression", on a
+# green run (#478). So the `Record toolchain` step reads the running Xcode's
+# license type and reports under one of two channels:
+#
+#   stable — a release build, on either leg. Files and comments on the `drift`
+#            issue for that Xcode major, and saves the fixture cache.
+#   beta   — a pre-release build, which only the preview leg can be running.
+#            Advisory only: files under `drift-beta`, never touches a `drift`
+#            issue, never writes the cache.
 #
 # Every signal here runs against the *current* toolchain, so nothing is
 # cache-restored: fixtures are regenerated from scratch on purpose.
@@ -23,7 +37,7 @@ name: Toolchain Drift
 # effect once merged to main, and edits on feature branches are exercised
 # only via workflow_dispatch after merge. Leg discovery below deliberately
 # does not look at `github.event_name`, so a manual dispatch exercises the
-# beta leg exactly as a scheduled run does; keep it that way.
+# preview leg exactly as a scheduled run does; keep it that way.
 on:
   schedule:
     # Twice a week, off the top of the hour (GitHub sheds load at :00).
@@ -45,15 +59,15 @@ jobs:
   # with an unknown GitHub-hosted label does not fail fast, it waits for a
   # self-hosted runner that will never arrive, and a job that sits queued holds
   # its concurrency group. Deciding the label against a live source before any
-  # macOS job is requested is the first of the two defences; the per-channel
+  # macOS job is requested is the first of the two defences; the per-leg
   # concurrency group on `drift` below is the second, for the cases discovery
   # cannot see (a stale `XCODE_BETA_RUNNER` pin, or an image retired in the
   # window between discovery and scheduling).
   discover:
     runs-on: ubuntu-latest
-    # Advisory beta machinery must never redden the run. The drift job already
+    # Preview-leg machinery must never redden the run. The drift job already
     # survives a failed discover (!cancelled() + the hard-coded fallback
-    # matrix); this closes the one remaining path where beta-only plumbing
+    # matrix); this closes the one remaining path where preview-only plumbing
     # could fail the workflow.
     continue-on-error: true
     permissions:
@@ -61,71 +75,45 @@ jobs:
     outputs:
       matrix: ${{ steps.legs.outputs.matrix }}
     steps:
+    # Only for the local action below, which test.yml shares.
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    # Kill switch and manual pin, both without editing this file: set the
+    # XCODE_BETA_RUNNER repository variable to `off` to drop the preview leg,
+    # or to a runner label (`xcode-28`) to force one before discovery learns of
+    # it. Every failure in the action leaves the label empty and simply drops
+    # the preview leg. That is the only acceptable direction: this job must
+    # never take the stable signal down with it.
+    - name: Discover the Xcode preview runner
+      id: preview
+      uses: ./.github/actions/discover-preview-runner
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        override: ${{ vars.XCODE_BETA_RUNNER }}
+
     - name: Decide which toolchain legs run
       id: legs
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Kill switch and manual pin, both without editing this file: set the
-        # repository variable to `off` to drop the beta leg, or to a runner
-        # label (`xcode-28`) to force one before discovery below learns of it.
-        # Passed through `env` rather than interpolated into the script, so a
-        # variable value can never become shell syntax.
-        OVERRIDE: ${{ vars.XCODE_BETA_RUNNER }}
+        LABEL: ${{ steps.preview.outputs.label }}
+        SKIP_REASON: ${{ steps.preview.outputs.skip-reason }}
       run: |
-        stable='{"channel":"stable","runner":"macos-latest","issue_label":"drift","experimental":false}'
-        label=''
-        skip_reason='no Xcode beta runner image is currently published'
+        stable='{"leg":"stable","runner":"macos-latest","experimental":false}'
 
-        if [ "$OVERRIDE" = 'off' ]; then
-          skip_reason='disabled by the XCODE_BETA_RUNNER repository variable'
-        elif [ -n "$OVERRIDE" ]; then
-          echo "Beta runner label pinned to '${OVERRIDE}' by the XCODE_BETA_RUNNER repository variable."
-          label="$OVERRIDE"
+        preview=''
+        if [ -n "$LABEL" ]; then
+          preview=",{\"leg\":\"preview\",\"runner\":\"${LABEL}\",\"experimental\":true}"
+          echo "Preview leg: \`${LABEL}\`." >> "$GITHUB_STEP_SUMMARY"
         else
-          # actions/runner-images ships a manifest per image it currently
-          # serves, and deletes that manifest in the same commit that
-          # deprecates the image (macos-13's went in "deprecate macOS 13
-          # code"). So "a manifest named xcode-<N> exists" is a live check on
-          # whether the preview label is still served. Release tags are not:
-          # `xcode-27/...` tags stay in the list long after the label is gone.
-          #
-          # Every failure here — API outage, rate limit, no such manifest —
-          # leaves the label empty and simply drops the beta leg. That is the
-          # only acceptable direction: this job must never take the stable
-          # signal down with it.
-          major="$(gh api repos/actions/runner-images/contents/images/macos \
-            --jq '[.[].name | capture("^xcode-(?<m>[0-9]+)(-arm64)?-Readme[.]md$").m | tonumber] | max // empty' \
-            2>/dev/null || true)"
-          if [ -n "$major" ]; then
-            label="xcode-${major}"
-          fi
+          echo "Preview leg skipped — ${SKIP_REASON}." >> "$GITHUB_STEP_SUMMARY"
         fi
 
-        # The label reaches both `runs-on` and a JSON string below, so reject
-        # anything that is not shaped like a runner label rather than trusting
-        # the variable or the API response to be well behaved.
-        case "$label" in
-        '') ;;
-        *[!a-zA-Z0-9._-]*)
-          echo "::warning::Ignoring '${label}': not a plain runner label. Beta leg skipped."
-          skip_reason="'${label}' is not a plain runner label"
-          label=''
-          ;;
-        esac
-
-        beta=''
-        if [ -n "$label" ]; then
-          beta=",{\"channel\":\"beta\",\"runner\":\"${label}\",\"issue_label\":\"drift-beta\",\"experimental\":true}"
-          echo "Beta leg: \`${label}\`." >> "$GITHUB_STEP_SUMMARY"
-        else
-          echo "Beta leg skipped — ${skip_reason}." >> "$GITHUB_STEP_SUMMARY"
-        fi
-
-        echo "matrix={\"include\":[${stable}${beta}]}" >> "$GITHUB_OUTPUT"
+        echo "matrix={\"include\":[${stable}${preview}]}" >> "$GITHUB_OUTPUT"
 
   drift:
     needs: discover
-    # The beta leg must never cost the stable signal anything, and the new
+    # The preview leg must never cost the stable signal anything, and the new
     # dependency above is itself a way it could: a failed `discover` would
     # otherwise skip this job entirely and the run would detect nothing. So
     # run regardless of how discovery went, falling back to a stable-only
@@ -133,41 +121,47 @@ jobs:
     # purpose — a fallback that referenced discovery's output would inherit
     # exactly the failure it is there to survive.)
     if: ${{ !cancelled() }}
-    name: drift (${{ matrix.channel }})
+    name: drift (${{ matrix.leg }})
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       issues: write
-    # A beta failure annotates the run; it does not redden it. The stable leg
-    # keeps its `exit 1` → red run behaviour untouched.
+    # A preview-leg failure annotates the run; it does not redden it, whichever
+    # channel it reports under. This is decided here, per leg, before the job
+    # knows what Xcode the image holds — so a release build on the preview
+    # image files a `drift` issue and fails its own job, but the run stays
+    # green. The stable leg keeps its `exit 1` → red run behaviour untouched.
     continue-on-error: ${{ matrix.experimental }}
-    # Serialised per channel rather than per workflow. Two drift runs must not
+    # Serialised per leg rather than per workflow. Two drift runs must not
     # overlap — each boots a simulator, regenerates every fixture and writes the
-    # cache — but a group shared with the beta leg would hand it the one lever
-    # it must never have over the stable signal. A job requesting a label
+    # cache — but a group shared with the preview leg would hand it the one
+    # lever it must never have over the stable signal. A job requesting a label
     # GitHub does not serve sits queued instead of failing, and while it sits
-    # it holds its group; scoping the group to `matrix.channel` keeps that
-    # blast radius inside the beta leg no matter how the label went stale.
+    # it holds its group; scoping the group to `matrix.leg` keeps that blast
+    # radius inside the preview leg no matter how the label went stale.
     concurrency:
-      group: toolchain-drift-${{ matrix.channel }}
+      group: toolchain-drift-${{ matrix.leg }}
     strategy:
-      # Without this a failing beta leg would cancel the stable one mid-run.
+      # Without this a failing preview leg would cancel the stable one mid-run.
       fail-fast: false
-      matrix: ${{ fromJSON(needs.discover.outputs.matrix || '{"include":[{"channel":"stable","runner":"macos-latest","issue_label":"drift","experimental":false}]}') }}
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix || '{"include":[{"leg":"stable","runner":"macos-latest","experimental":false}]}') }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
-    # Stable leg only. The beta image ships exactly one Xcode — the beta — and
-    # it is already `/Applications/Xcode.app` and already the active developer
-    # dir, so `latest-stable` has nothing there to resolve to and this step
-    # would fail the leg before it measured anything. Using the image default
-    # is also the contract that survives each beta seed: the real bundle is
-    # `Xcode_27_beta_<N>.app` and the `_beta_N` moves, while the
-    # `Xcode_<major>.<minor>.app` symlinks are maintained across seeds.
+    # Stable leg only. The preview image's default Xcode is already
+    # `/Applications/Xcode.app` and already the active developer dir. While the
+    # image holds only a beta, `latest-stable` has nothing there to resolve to
+    # and this step would fail the leg before it measured anything; once it
+    # holds releases as well (27.0, 27.1 and 27.2 side by side, by November
+    # 2026) it would resolve to the newest point release rather than the one
+    # the image selects. Using the image default is the contract that survives
+    # both: across beta seeds the real bundle is `Xcode_27_beta_<N>.app` and
+    # the `_beta_N` moves, while `/Applications/Xcode.app` always points at
+    # whatever the image means people to use.
     - name: Setup Xcode version
-      if: matrix.channel == 'stable'
+      if: matrix.leg == 'stable'
       uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
       with:
         xcode-version: latest-stable
@@ -178,9 +172,40 @@ jobs:
     # without it this step only survives because the default shell
     # (`bash -e {0}`) leaves pipefail off, and adding `shell: bash` (which
     # GitHub runs with `-o pipefail`) would silently re-break it.
+    #
+    # The channel is decided first and written out before anything that can
+    # fail, so a toolchain broken enough to stop this step still reports under
+    # the right label.
+    #
+    # `licenseType` in the Xcode bundle's own LicenseInfo.plist is `GM` for a
+    # release and `Beta` for a pre-release seed. It is read rather than
+    # inferred from the build number, because a trailing letter there does not
+    # mean beta: the preview image lists the released Xcode 27.0 as build
+    # 27A266a. Anything other than a readable `GM` on the preview leg stays
+    # `beta`. That is the safe direction for a guess — a mislabelled release
+    # is filed as advance notice, as all of them were before, while a
+    # mislabelled beta would put pre-release noise on the `drift` issue.
+    #
+    # The stable leg is `stable` without being asked: `latest-stable` never
+    # resolves to a pre-release, and the one alarm this workflow exists to
+    # protect should not hang on a plist read.
     - name: Record toolchain
       id: toolchain
+      env:
+        LEG: ${{ matrix.leg }}
       run: |
+        channel=stable
+        if [ "$LEG" != 'stable' ]; then
+          license_type="$(/usr/libexec/PlistBuddy -c 'Print :licenseType' \
+            "$(xcode-select -p)/../Resources/LicenseInfo.plist" 2>/dev/null || true)"
+          echo "Xcode license type: ${license_type:-unreadable}"
+          if [ "$license_type" != 'GM' ]; then
+            channel=beta
+          fi
+        fi
+        echo "Reporting channel: ${channel}"
+        echo "channel=${channel}" >> "$GITHUB_OUTPUT"
+
         xcodebuild -version
         swift --version
         xcresulttool_line="$({ xcrun xcresulttool version 2>&1 || true; } | head -n 1)"
@@ -195,10 +220,10 @@ jobs:
     # that `xcrun xcresulttool get --legacy` depends on. It is expected to
     # disappear when Apple removes legacy support — the exact event the
     # migration (#391) is racing. When this step fails, treat it as the alarm.
-    # On the beta leg it is the single most valuable signal in this workflow:
-    # Apple's Xcode 27 release notes say nothing about `xcresulttool` either
-    # way, so running the probe on the beta is the only way to learn the answer
-    # before GA lands on `macos-latest`.
+    # On the preview leg it is the single most valuable signal in this
+    # workflow: Apple's Xcode 27 release notes say nothing about `xcresulttool`
+    # either way, so running the probe there is the only way to learn the
+    # answer before that Xcode lands on `macos-latest`.
     # `!cancelled()`: this probe needs only `xcrun`, and a toolchain broken
     # enough to hard-fail the record step above (`xcodebuild`/`swift` exiting
     # non-zero) is exactly when the legacy alarm matters most — it must still
@@ -233,7 +258,7 @@ jobs:
     # continue-on-error: the pre-warm is a side effect — its failure must not
     # gate any detection signal below.
     #
-    # Runs on the beta leg too, even though that leg never saves: the action
+    # Runs on the preview leg too, even when that leg will not save: the action
     # shells out to `xcodebuild -version` and scripts/select_simulator.py, and
     # either breaking on a new toolchain or a brand-new simulator runtime is
     # itself drift worth seeing early.
@@ -313,16 +338,17 @@ jobs:
     # until it rotates (#454). Verify only runs when generation succeeded, so
     # its success implies both.
     #
-    # Stable leg only. Poisoning across legs is already impossible — the key
-    # embeds the Xcode build, so beta fixtures land under
-    # `fixtures-xcode27.0-…` while test.yml looks up `fixtures-xcode26.x-…`,
-    # and test.yml has no restore-keys for a prefix match to sneak through. The
-    # beta entry is skipped because it is dead weight: nothing can ever restore
-    # it, and it counts against the repo's 10 GB cache budget, where its only
-    # possible effect is pushing the *useful* stable entry closer to LRU
-    # eviction.
+    # Stable channel only — which is both legs once the preview image holds a
+    # release, because test.yml runs its suite on that image too and looks up
+    # exactly this key. Poisoning across legs is impossible either way: the key
+    # embeds the Xcode build, so the two legs can never write the same entry,
+    # and test.yml has no restore-keys for a prefix match to sneak through. A
+    # beta's entry is skipped because it is dead weight: the next seed changes
+    # the build and with it the key, so nothing would restore it for long, and
+    # it counts against the repo's 10 GB cache budget, where its only lasting
+    # effect is pushing the *useful* entries closer to LRU eviction.
     - name: Save fixtures to cache
-      if: matrix.channel == 'stable' && steps.fixture-key.outcome == 'success' && steps.verify.outcome == 'success'
+      if: steps.toolchain.outputs.channel == 'stable' && steps.fixture-key.outcome == 'success' && steps.verify.outcome == 'success'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
@@ -378,22 +404,27 @@ jobs:
         || steps.tool.outcome == 'failure') }}
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
-        name: xcresult-fixtures-${{ matrix.channel }}
+        name: xcresult-fixtures-${{ matrix.leg }}
         path: Tests/XCTestHTMLReportTests/Resources
         retention-days: 5
         if-no-files-found: ignore
 
     # Turns step outcomes into a filed issue, so a broken scheduled run cannot
-    # rot unseen in the Actions tab. One open issue per label collects repeat
-    # failures as comments; a later green run comments on it too, so the
+    # rot unseen in the Actions tab. One open issue per toolchain collects
+    # repeat failures as comments; a later green run comments on it too, so the
     # maintainer can tell a persistent break from a resolved one.
     #
-    # One step serves both legs, parameterised by `matrix.issue_label` and
-    # `matrix.channel`. A second copy for the beta leg is exactly how the two
+    # One step serves both legs and both channels, parameterised by the channel
+    # `Record toolchain` decided. A second copy for betas is exactly how the two
     # would drift apart, and the dedup and green-comment behaviour is the part
     # that must not (#454). What the channel changes: which label is searched
     # and filed under, the issue title, the banner that opens a beta body, and
     # whether the step exits non-zero at the end.
+    #
+    # The channel falls back to the leg's own default if `Record toolchain`
+    # never wrote one, which takes the runner failing before the step started:
+    # `stable` on the stable leg, and `beta` on the preview leg for the reason
+    # given there.
     #
     # `!cancelled()` rather than `always()`: a manually cancelled run is not
     # drift and must not file anything.
@@ -403,9 +434,9 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         REPO: ${{ github.repository }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        CHANNEL: ${{ matrix.channel }}
+        CHANNEL: ${{ steps.toolchain.outputs.channel || (matrix.leg == 'stable' && 'stable' || 'beta') }}
+        LEG: ${{ matrix.leg }}
         RUNNER_LABEL: ${{ matrix.runner }}
-        ISSUE_LABEL: ${{ matrix.issue_label }}
         XCODE: ${{ steps.toolchain.outputs.xcode }}
         XCRESULTTOOL: ${{ steps.toolchain.outputs.xcresulttool }}
         LEGACY: ${{ steps.legacy.outcome }}
@@ -416,6 +447,12 @@ jobs:
         TOOL: ${{ steps.tool.outcome }}
         TOOL_EXIT: ${{ steps.tool.outputs.exit_code }}
       run: |
+        if [ "$CHANNEL" = "beta" ]; then
+          ISSUE_LABEL=drift-beta
+        else
+          ISSUE_LABEL=drift
+        fi
+
         faults=()
         if [ "$LEGACY" = "failure" ]; then
           faults+=("**Legacy \`xcresulttool\` marker vanished.** \`xcrun xcresulttool version\` no longer reports a \`legacy commands format version\`, meaning Apple has likely removed the \`--legacy\` command surface. The #391 migration loses its differential baseline the moment this toolchain reaches users — treat as urgent.")
@@ -465,21 +502,44 @@ jobs:
         } > "$RUNNER_TEMP/summary.md"
         cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
 
-        # Scoped to this leg's label, so the beta leg can never comment on,
-        # reopen or resolve the stable `drift` issue — the one alarm whose
-        # trustworthiness the whole design is protecting. Nothing here ever
-        # applies both labels, but a human might, so the beta leg also skips
-        # anything carrying `drift` rather than trusting that it never happens.
-        # Deliberately one-directional: promoting a beta finding to a real
-        # regression by adding `drift` to it should let the *stable* leg adopt
-        # that issue, not make it file a duplicate.
+        # Scoped to this channel's label, so a beta can never comment on,
+        # reopen or resolve a `drift` issue — the alarm whose trustworthiness
+        # the whole design is protecting. Nothing here ever applies both
+        # labels, but a human might, so a beta also skips anything carrying
+        # `drift` rather than trusting that it never happens. Deliberately
+        # one-directional: promoting a beta finding to a real regression by
+        # adding `drift` to it should let a *stable* report adopt that issue,
+        # not make it file a duplicate.
+        #
+        # The stable channel has one more thing to keep apart. Two legs can
+        # report under it at once — `macos-latest` on one Xcode major and the
+        # preview image on the next — and they are different toolchains: a
+        # green run on Xcode 26 says nothing about an issue filed for Xcode 27,
+        # and must not comment "this may be resolved" on it. So a stable report
+        # takes the open `drift` issue whose title names its own Xcode major,
+        # which every title this step writes does (as does a promoted beta
+        # issue's). Failing that it adopts one that names no Xcode at all — an
+        # issue a person filed or retitled — and it never touches one that
+        # names a different major: it files its own instead.
+        xcode_major="${XCODE%%.*}"
         if [ "$CHANNEL" = "beta" ]; then
           select_issue='map(select([.labels[].name] | index("drift") | not)) | .[0].number // empty'
         else
-          select_issue='.[0].number // empty'
+          case "$xcode_major" in
+          ''|*[!0-9]*)
+            # No usable version — `xcodebuild -version` itself failed. Fall
+            # back to "any open issue" rather than filing one per run.
+            select_issue='.[0].number // empty'
+            ;;
+          *)
+            select_issue="(map(select(.title | test(\"Xcode ${xcode_major}[.]\"))) | .[0].number)"
+            select_issue="${select_issue} // (map(select(.title | test(\"Xcode [0-9]+[.]\") | not)) | .[0].number)"
+            select_issue="${select_issue} // empty"
+            ;;
+          esac
         fi
         open_issue="$(gh issue list --repo "$REPO" --label "$ISSUE_LABEL" --state open \
-          --json number,labels --jq "$select_issue")"
+          --json number,title,labels --jq "$select_issue")"
 
         if [ "${#faults[@]}" -eq 0 ]; then
           echo "No drift detected."
@@ -504,15 +564,17 @@ jobs:
           if [ "$CHANNEL" = "beta" ]; then
             echo "> [!WARNING]"
             echo "> **This is a beta toolchain report — advance notice, not a regression.**"
-            echo "> It comes from the \`${RUNNER_LABEL}\` preview runner image, whose default Xcode is a"
-            echo "> pre-release beta (${XCODE}). Nothing here blocks a merge, reddens a run, or means the"
+            echo "> It comes from the \`${RUNNER_LABEL}\` preview runner image, whose default Xcode is"
+            echo "> currently a pre-release (${XCODE}). Nothing here blocks a merge, reddens a run, or means the"
             echo "> shipping toolchain is broken — that is tracked separately under the \`drift\` label."
             echo "> Beta failures are expected to be noisy, especially in the weeks after WWDC. Read this"
             echo "> as roughly two months of warning about what Xcode GA will bring to \`macos-latest\`."
             echo
             echo "A [beta toolchain drift run](${RUN_URL}) failed against a pre-release Xcode. Each item below is an independent failure signal."
-          else
+          elif [ "$LEG" = "stable" ]; then
             echo "A scheduled [toolchain drift run](${RUN_URL}) failed against the newest Xcode available on the runners. Each item below is an independent failure signal."
+          else
+            echo "A scheduled [toolchain drift run](${RUN_URL}) failed against Xcode ${XCODE}, a release build, on the \`${RUNNER_LABEL}\` preview runner image. \`macos-latest\` does not carry this Xcode yet, but people have it installed: this is a regression on a shipping toolchain, not advance notice. Each item below is an independent failure signal."
           fi
           echo
           for fault in "${faults[@]}"; do
@@ -524,7 +586,7 @@ jobs:
           # The pointer matters as much as the upload: #478 was triaged from
           # logs because nobody knew there was nothing to download.
           echo "The \`.xcresult\` bundles this leg generated are attached to the run as"
-          echo "\`xcresult-fixtures-${CHANNEL}\` (5-day retention) — interrogate those rather than"
+          echo "\`xcresult-fixtures-${LEG}\` (5-day retention) — interrogate those rather than"
           echo "these logs. Nothing is attached if generation failed before writing a bundle."
           echo
           echo "_Filed automatically by the \`toolchain-drift\` workflow (#392). While this issue stays open, later failing runs append comments here instead of filing duplicates._"
@@ -541,9 +603,11 @@ jobs:
         fi
 
         # The issue is the durable signal; on the stable leg the red run is the
-        # ambient one. The beta leg exits 0 instead: the job is already
-        # continue-on-error, so failing here as well would add nothing but a
-        # red step inside a run that is green by design.
+        # ambient one. A release build on the preview leg fails this step too:
+        # the job is continue-on-error, so the run stays green, but its job is
+        # marked failed in the run's own list rather than passing with an open
+        # regression. A beta exits 0 instead, because failing there would add
+        # nothing but a red step inside a run that is green by design.
         if [ "$CHANNEL" = "stable" ]; then
           exit 1
         fi

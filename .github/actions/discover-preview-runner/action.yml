@@ -1,0 +1,88 @@
+# Finds the `xcode-<N>` preview runner image GitHub currently serves, if any.
+#
+# Shared by toolchain-drift.yml (the scheduled preview leg) and test.yml (the
+# pull request legs on the same image), for the reason fixture-cache-key is
+# shared: two copies of this would drift apart, and the half that went stale
+# would be the one requesting a runner label that no longer exists.
+#
+# That is the hazard this action exists for. `runs-on` with an unknown
+# GitHub-hosted label does not fail fast: it waits for a self-hosted runner
+# that will never arrive, and a job that sits queued holds its concurrency
+# group and leaves its pull request's checks pending forever. So the label is
+# decided against a live source, on a free ubuntu runner, before any macOS job
+# is requested.
+#
+# Every failure in here — API outage, rate limit, no such manifest, a
+# malformed override — leaves `label` empty. That is the only acceptable
+# direction: a caller that gets no label drops its preview legs and runs the
+# rest, so this can never take a stable signal down with it.
+name: Discover the Xcode preview runner
+description: Resolve the xcode-<N> preview runner label currently served, or nothing
+inputs:
+  token:
+    description: Token for reading the public actions/runner-images repository
+    required: true
+  override:
+    description: >-
+      The XCODE_BETA_RUNNER repository variable: `off` disables the preview
+      legs, a runner label forces one, empty discovers it
+    required: false
+    default: ''
+outputs:
+  label:
+    description: The preview runner label, or empty when there is none to use
+    value: ${{ steps.discover.outputs.label }}
+  skip-reason:
+    description: Why `label` is empty, for the step summary
+    value: ${{ steps.discover.outputs.skip_reason }}
+runs:
+  using: composite
+  steps:
+    - name: Resolve the preview runner label
+      id: discover
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        # Passed through `env` rather than interpolated into the script, so a
+        # variable value can never become shell syntax.
+        OVERRIDE: ${{ inputs.override }}
+      run: |
+        label=''
+        skip_reason='no Xcode preview runner image is currently published'
+
+        if [ "$OVERRIDE" = 'off' ]; then
+          skip_reason='disabled by the XCODE_BETA_RUNNER repository variable'
+        elif [ -n "$OVERRIDE" ]; then
+          echo "Preview runner label pinned to '${OVERRIDE}' by the XCODE_BETA_RUNNER repository variable."
+          label="$OVERRIDE"
+        else
+          # actions/runner-images ships a manifest per image it currently
+          # serves, and deletes that manifest in the same commit that
+          # deprecates the image (macos-13's went in "deprecate macOS 13
+          # code"). So "a manifest named xcode-<N> exists" is a live check on
+          # whether the preview label is still served. Release tags are not:
+          # `xcode-27/...` tags stay in the list long after the label is gone.
+          major="$(gh api repos/actions/runner-images/contents/images/macos \
+            --jq '[.[].name | capture("^xcode-(?<m>[0-9]+)(-arm64)?-Readme[.]md$").m | tonumber] | max // empty' \
+            2>/dev/null || true)"
+          if [ -n "$major" ]; then
+            label="xcode-${major}"
+          fi
+        fi
+
+        # The label reaches both `runs-on` and a JSON string in the caller, so
+        # reject anything that is not shaped like a runner label rather than
+        # trusting the variable or the API response to be well behaved.
+        case "$label" in
+        '') ;;
+        *[!a-zA-Z0-9._-]*)
+          echo "::warning::Ignoring '${label}': not a plain runner label. Preview legs skipped."
+          skip_reason="'${label}' is not a plain runner label"
+          label=''
+          ;;
+        esac
+
+        {
+          echo "label=${label}"
+          echo "skip_reason=${skip_reason}"
+        } >> "$GITHUB_OUTPUT"
