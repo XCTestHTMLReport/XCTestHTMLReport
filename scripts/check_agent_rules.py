@@ -11,8 +11,9 @@ failures are quiet, so this script makes them loud:
   100 characters (the width cap keeps "50 lines" from meaning 50 paragraphs).
 - `AGENTS.md` exists and points at `CLAUDE.md`.
 - Every file under `docs/learnings/`, at any depth, is linked from the index,
-  and every local link in the index names a file that exists there. An empty
-  directory fails too: an index over nothing proves nothing.
+  every local link in the index names a file that exists there, and every
+  bullet in the index carries such a link. An empty directory fails too: an
+  index over nothing proves nothing.
 
 Usage: check_agent_rules.py [repo-root]   (defaults to the repository root)
 Exit 0 when everything holds, 1 with one `::error::` line per problem otherwise.
@@ -21,6 +22,7 @@ Exit 0 when everything holds, 1 with one `::error::` line per problem otherwise.
 import os
 import re
 import sys
+from urllib.parse import unquote
 
 MAX_LINES = 50
 MAX_LINE_LENGTH = 100
@@ -90,21 +92,31 @@ def check_learnings(root):
         return [(index_name, "is missing")]
 
     with open(index_path, encoding="utf-8") as handle:
-        targets = LINK.findall(handle.read())
+        index_lines = handle.read().splitlines()
 
     linked = set()
     problems = []
-    for target in targets:
-        if re.match(r"[a-z][a-z0-9+.-]*:", target) or target.startswith("#"):
-            continue  # an external link or an anchor, not a learning
-        normalised = os.path.normpath(target.split("#", 1)[0]).replace(os.sep, "/")
-        if normalised.startswith("../") or normalised == INDEX:
-            problems.append((index_name, f"links {target}, which is not a learning"))
-            continue
-        if not os.path.isfile(os.path.join(directory, normalised)):
-            problems.append((index_name, f"links {target}, which does not exist"))
-            continue
-        linked.add(normalised)
+    for number, line in enumerate(index_lines, start=1):
+        entries = 0
+        for target in LINK.findall(line):
+            if re.match(r"[a-z][a-z0-9+.-]*:", target) or target.startswith("#"):
+                continue  # an external link or an anchor, not a learning
+            # Markdown keeps URL escapes in a destination, so `a%20b.md` is
+            # the file `a b.md`.
+            path = unquote(target.split("#", 1)[0])
+            normalised = os.path.normpath(path).replace(os.sep, "/")
+            if os.path.isabs(path) or normalised.startswith("../") or normalised == INDEX:
+                problems.append((index_name, f"links {target}, which is not a learning"))
+                continue
+            if not os.path.isfile(os.path.join(directory, normalised)):
+                problems.append((index_name, f"links {target}, which does not exist"))
+                continue
+            linked.add(normalised)
+            entries += 1
+        # A bullet is an entry, and an entry is a file: one with no link to a
+        # learning would list something nobody can open.
+        if re.match(r"\s*[-*+]\s", line) and entries == 0:
+            problems.append((index_name, f"line {number} is an entry with no learning linked"))
 
     files = learning_files(directory)
     if not files:

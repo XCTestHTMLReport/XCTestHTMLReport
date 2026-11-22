@@ -147,6 +147,36 @@ class CheckAgentRulesTests(unittest.TestCase):
         )
         self.assertFailsWith("links ../../CLAUDE.md, which is not a learning")
 
+    def test_an_absolute_link_fails(self):
+        target = os.path.join(self.root, "CLAUDE.md")
+        self.write(
+            "docs/learnings/INDEX.md",
+            f"- [A trap](a-trap.md)\n- [Rules]({target})\n",
+        )
+        self.assertFailsWith(f"links {target}, which is not a learning")
+
+    def test_a_url_escaped_link_names_the_unescaped_file(self):
+        self.write("docs/learnings/read guard.md", "# Read guard\n")
+        self.write(
+            "docs/learnings/INDEX.md",
+            "- [A trap](a-trap.md)\n- [Read guard](read%20guard.md)\n",
+        )
+        self.assertPasses()
+
+    def test_a_bullet_with_no_learning_linked_fails(self):
+        self.write(
+            "docs/learnings/INDEX.md",
+            "- [A trap](a-trap.md)\n- A trap nobody wrote down\n",
+        )
+        self.assertFailsWith("line 2 is an entry with no learning linked")
+
+    def test_a_bullet_linking_only_elsewhere_fails(self):
+        self.write(
+            "docs/learnings/INDEX.md",
+            "- [A trap](a-trap.md)\n- [#511](https://github.com/o/r/pull/511)\n",
+        )
+        self.assertFailsWith("line 2 is an entry with no learning linked")
+
     def test_external_links_and_anchors_are_not_entries(self):
         self.write(
             "docs/learnings/INDEX.md",

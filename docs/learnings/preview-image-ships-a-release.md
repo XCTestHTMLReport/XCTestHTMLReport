@@ -18,7 +18,8 @@ What #515 changed, so the label is never the answer again:
 - `test.yml` runs pull requests on the newest preview image whose *default
   Xcode is a release*, found by `.github/actions/discover-preview-runner`
   with `require: release` from the image manifest. A beta never shows a pull
-  request a red leg.
+  request a red leg, unless the `XCODE_PR_PREVIEW_RUNNER` variable pins a
+  label, which skips that check.
 
 **Ask the Xcode, not the label.** When a preview leg fails, check
 `Record toolchain` in its log for the license type before calling it a beta.
