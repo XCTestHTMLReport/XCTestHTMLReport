@@ -201,7 +201,8 @@ four differences listed under "Choosing the result reader" below, plus
 `testCase.arguments`, which only the modern reader can populate — and the
 contract documents each one. Earlier versions, 3.0.0 included, write
 `xcresulttool`'s legacy invocation record as XCResultKit decodes it: an array
-whose entries have the keys `actions` (an array), `issues`, `metrics` and
+with one entry per bundle, `null` for a bundle it could not read, otherwise an
+object with the keys `actions` (an array), `issues`, `metrics` and
 `metadataRef`, in no fixed order. Only `metadataRef.referencedObject.json`
 still holds `xcresulttool`'s own `_type`/`_value` JSON, base64-encoded. That
 record is Apple's internal shape and disappears together with the legacy
