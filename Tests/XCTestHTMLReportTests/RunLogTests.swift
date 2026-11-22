@@ -188,13 +188,15 @@ final class RunLogTests: XCTestCase {
         )
     }
 
-    /// Xcode 27.1 writes an empty legacy array as its envelope with no
-    /// `_values` inside — `{"_type": {"_name": "Array"}}` — where Xcode 26
-    /// left the key out altogether. A decoder that required `_values` failed
-    /// the entire log on the first leaf section, which is every log there is:
-    /// each fixture exported no log, recorded `.logExportFailed` and exited 3.
-    /// Both spellings of "empty" must read as empty, and the content beside
-    /// them must survive.
+    /// A bundle written by Xcode 27.1 holds an empty legacy array as its
+    /// envelope with no `_values` inside — `{"_type": {"_name": "Array"}}` —
+    /// where one written by Xcode 26 leaves the key out altogether. It is the
+    /// bundle that decides, not the tool reading it, so this shape reaches a
+    /// report rendered on Xcode 26 as well. A decoder that required `_values`
+    /// failed the entire log on the first leaf section, which is every log
+    /// there is: each such bundle exported no log, recorded
+    /// `.logExportFailed` and exited 3. Both spellings of "empty" must read as
+    /// empty, and the content beside them must survive.
     func testLegacyDecoderReadsAnArrayEnvelopeWithNoValuesAsEmpty() throws {
         let document = try JSONDecoder().decode(
             LegacyRunLogDocument.self,
