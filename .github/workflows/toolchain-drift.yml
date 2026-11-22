@@ -86,11 +86,17 @@ jobs:
     # it. Every failure in the action leaves the label empty and simply drops
     # the preview leg. That is the only acceptable direction: this job must
     # never take the stable signal down with it.
+    #
+    # `require: any` — the newest preview image whatever it holds, because a
+    # beta is what this leg is for. test.yml asks the same action for the
+    # newest image with a *release* default instead, and has its own variable
+    # (XCODE_PR_PREVIEW_RUNNER), so neither switch touches the other workflow.
     - name: Discover the Xcode preview runner
       id: preview
       uses: ./.github/actions/discover-preview-runner
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        require: any
         override: ${{ vars.XCODE_BETA_RUNNER }}
 
     - name: Decide which toolchain legs run

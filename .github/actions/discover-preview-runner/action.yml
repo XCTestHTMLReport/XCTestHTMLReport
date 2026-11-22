@@ -1,7 +1,7 @@
-# Finds the `xcode-<N>` preview runner image GitHub currently serves, if any.
+# Finds an `xcode-<N>` preview runner image GitHub currently serves, if any.
 #
 # Shared by toolchain-drift.yml (the scheduled preview leg) and test.yml (the
-# pull request legs on the same image), for the reason fixture-cache-key is
+# pull request legs on a preview image), for the reason fixture-cache-key is
 # shared: two copies of this would drift apart, and the half that went stale
 # would be the one requesting a runner label that no longer exists.
 #
@@ -12,20 +12,37 @@
 # decided against a live source, on a free ubuntu runner, before any macOS job
 # is requested.
 #
-# Every failure in here — API outage, rate limit, no such manifest, a
-# malformed override — leaves `label` empty. That is the only acceptable
-# direction: a caller that gets no label drops its preview legs and runs the
-# rest, so this can never take a stable signal down with it.
+# The two callers ask different questions, which is what `require` is for:
+#
+#   any     — the newest preview image, whatever it holds. The drift workflow
+#             wants this one: a beta is exactly what it is there to watch.
+#   release — the newest preview image whose *default* Xcode is a release.
+#             Pull requests want this one. Taking the newest unconditionally
+#             would mean that the day an `xcode-28` image appears, holding a
+#             beta, every pull request grows two legs that fail on changes
+#             that have nothing to do with them, and loses its Xcode 27 legs
+#             in the same moment.
+#
+# Every failure in here — API outage, rate limit, no such manifest, a manifest
+# that will not parse, a malformed override — leaves `label` empty. That is
+# the only acceptable direction: a caller that gets no label drops its preview
+# legs and runs the rest, so this can never take a stable signal down with it.
 name: Discover the Xcode preview runner
-description: Resolve the xcode-<N> preview runner label currently served, or nothing
+description: Resolve an xcode-<N> preview runner label currently served, or nothing
 inputs:
   token:
     description: Token for reading the public actions/runner-images repository
     required: true
+  require:
+    description: >-
+      `any` for the newest preview image, `release` for the newest one whose
+      default Xcode is a release build
+    required: false
+    default: any
   override:
     description: >-
-      The XCODE_BETA_RUNNER repository variable: `off` disables the preview
-      legs, a runner label forces one, empty discovers it
+      The caller's repository variable: `off` disables its preview legs, a
+      runner label forces one (and skips the `require` check), empty discovers
     required: false
     default: ''
 outputs:
@@ -43,17 +60,23 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
-        # Passed through `env` rather than interpolated into the script, so a
-        # variable value can never become shell syntax.
+        # Passed through `env` rather than interpolated into the script, so
+        # neither value can ever become shell syntax.
         OVERRIDE: ${{ inputs.override }}
+        REQUIRE: ${{ inputs.require }}
       run: |
+        images=repos/actions/runner-images/contents/images/macos
         label=''
-        skip_reason='no Xcode preview runner image is currently published'
+        if [ "$REQUIRE" = 'release' ]; then
+          skip_reason='no Xcode preview runner image currently defaults to a release Xcode'
+        else
+          skip_reason='no Xcode preview runner image is currently published'
+        fi
 
         if [ "$OVERRIDE" = 'off' ]; then
-          skip_reason='disabled by the XCODE_BETA_RUNNER repository variable'
+          skip_reason='disabled by a repository variable'
         elif [ -n "$OVERRIDE" ]; then
-          echo "Preview runner label pinned to '${OVERRIDE}' by the XCODE_BETA_RUNNER repository variable."
+          echo "Preview runner label pinned to '${OVERRIDE}' by a repository variable."
           label="$OVERRIDE"
         else
           # actions/runner-images ships a manifest per image it currently
@@ -62,12 +85,54 @@ runs:
           # code"). So "a manifest named xcode-<N> exists" is a live check on
           # whether the preview label is still served. Release tags are not:
           # `xcode-27/...` tags stay in the list long after the label is gone.
-          major="$(gh api repos/actions/runner-images/contents/images/macos \
-            --jq '[.[].name | capture("^xcode-(?<m>[0-9]+)(-arm64)?-Readme[.]md$").m | tonumber] | max // empty' \
+          manifests="$(gh api "$images" \
+            --jq '.[].name | select(test("^xcode-[0-9]+(-arm64)?-Readme[.]md$"))' \
             2>/dev/null || true)"
-          if [ -n "$major" ]; then
-            label="xcode-${major}"
-          fi
+          majors="$(sed -n -E 's/^xcode-([0-9]+).*/\1/p' <<<"$manifests" | sort -rnu)"
+
+          for major in $majors; do
+            if [ "$REQUIRE" != 'release' ]; then
+              label="xcode-${major}"
+              break
+            fi
+
+            # The manifest is also the only place that says, before a macOS
+            # runner exists to ask, what the image's default Xcode is. Its
+            # `### Xcode` table has one row marked `(default)`, and the image
+            # maintainers mark a pre-release in that row twice over:
+            #
+            #   | 27.0 (beta) (default) | 27A5228h | /Applications/Xcode_27_beta_4.app            | …
+            #   | 27.0 (default)        | 27A266a  | /Applications/Xcode_27_Release_Candidate.app | …
+            #   | 27.1 (default)        | 27A9275  | /Applications/Xcode_27.1.app                 | …
+            #
+            # (the three states of the xcode-27 image between August and
+            # November 2026). Only the last is a release. A release candidate
+            # is left out on purpose: it is not what people have installed
+            # yet, and it lasts a week.
+            #
+            # A manifest that cannot be fetched, or has no default row, says
+            # nothing — so that image is passed over rather than assumed to be
+            # a release. The running Xcode has the authoritative answer in its
+            # LicenseInfo.plist, which toolchain-drift.yml reads; this is the
+            # cheap one, good enough to decide which legs to ask for.
+            name="$(grep -E "^xcode-${major}(-arm64)?-Readme[.]md$" <<<"$manifests" | head -n 1)"
+            manifest="$(gh api -H 'Accept: application/vnd.github.raw' \
+              "${images}/${name}" 2>/dev/null || true)"
+            default_row="$(awk '
+              /^### Xcode/ { table = 1; next }
+              table && /^#/ { exit }
+              table && /\(default\)/ { print; exit }
+            ' <<<"$manifest")"
+            if [ -z "$default_row" ]; then
+              echo "xcode-${major}: no default Xcode found in ${name:-its manifest}; passed over."
+            elif grep -qiE 'beta|release[ _]candidate' <<<"$default_row"; then
+              echo "xcode-${major}: default Xcode is a pre-release; passed over."
+            else
+              echo "xcode-${major}: default Xcode is a release."
+              label="xcode-${major}"
+              break
+            fi
+          done
         fi
 
         # The label reaches both `runs-on` and a JSON string in the caller, so

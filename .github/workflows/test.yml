@@ -15,7 +15,21 @@ jobs:
   # Decides whether the Xcode preview legs below exist, on a free ubuntu runner
   # in ~10s, so a retired `xcode-<N>` label can never park a macOS job in the
   # queue and leave a pull request's checks pending forever. The shared action
-  # explains the hazard; toolchain-drift.yml uses it the same way.
+  # explains the hazard; toolchain-drift.yml uses it too, with one difference
+  # that matters.
+  #
+  # The drift workflow takes the newest preview image whatever it holds,
+  # because watching a beta is its job. A pull request must not: it asks for
+  # the newest image whose default Xcode is a *release* (`require: release`).
+  # So when an `xcode-28` image appears holding a beta, these legs stay on
+  # Xcode 27 for as long as that image is served, and move to 28 when its
+  # default becomes a release — never showing a pull request a red leg for a
+  # toolchain nobody can ship on.
+  #
+  # XCODE_PR_PREVIEW_RUNNER is these legs' own switch, separate from the drift
+  # workflow's XCODE_BETA_RUNNER so that turning one off leaves the other
+  # running: set the repository variable to `off` to drop the preview legs
+  # from pull requests, or to a runner label to pin them to one image.
   discover:
     runs-on: ubuntu-latest
     # The preview legs are extra coverage. Nothing about finding them may cost
@@ -34,7 +48,8 @@ jobs:
       uses: ./.github/actions/discover-preview-runner
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        override: ${{ vars.XCODE_BETA_RUNNER }}
+        require: release
+        override: ${{ vars.XCODE_PR_PREVIEW_RUNNER }}
 
     - name: Decide which legs run
       id: legs
@@ -110,10 +125,16 @@ jobs:
 
     # Which Xcode a leg ran is otherwise only recoverable from the fixture
     # cache key, and on the preview legs it is not fixed by this file at all.
+    # The license type is the Xcode's own word on whether it is a release
+    # (`GM`) or not (`Beta`): discovery chose this image from its manifest,
+    # and this line is where a disagreement between the two would show.
     - name: Record toolchain
       run: |
         xcodebuild -version
         xcrun xcresulttool version
+        license_type="$(/usr/libexec/PlistBuddy -c 'Print :licenseType' \
+          "$(xcode-select -p)/../Resources/LicenseInfo.plist" 2>/dev/null || true)"
+        echo "Xcode license type: ${license_type:-unreadable}"
 
     # Fixture generation boots a simulator and runs the sample app's UI tests;
     # it dominates this job's wall time (#412). The bundles are deterministic
