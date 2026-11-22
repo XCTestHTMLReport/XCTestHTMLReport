@@ -16,17 +16,17 @@
 #
 # Usage: check_credentials.sh [check|signing|notary]
 #
-#   check    (default) Checks all five secrets, then removes everything it
-#            wrote: keychain, certificate and key. Runs BEFORE the build, so
-#            the answer comes in seconds -- and leaves nothing behind for the
-#            build to read. `swift build` compiles this package and its
-#            third-party dependencies, plugins and macros included, as the
-#            runner's user; a decoded API key or an unlocked keychain sitting
-#            in $RUNNER_TEMP at that point is theirs to take.
+#   check    (default) Checks all five secrets and reports every problem,
+#            then removes everything it wrote: keychain, certificate and key.
 #   signing  Checks the certificate again and KEEPS the keychain, for the
-#            signing step. Runs after the last step that executes built code.
+#            signing step, which deletes it when it is done.
 #   notary   Decodes the API key and KEEPS it, for the notarization step,
 #            without asking Apple about it a second time.
+#
+# The modes exist so that each credential is on disk only for the step that
+# uses it. The job this runs in never builds or runs repository code -- that
+# happens on another runner -- so this is a second line of defence, not the
+# first.
 #
 # Reads from the environment (each one a secret of the `release` environment):
 #   BUILD_CERTIFICATE_BASE64  base64 of a .p12 holding the Developer ID
@@ -86,7 +86,9 @@ keep_notary_key=""
 cleanup() {
     rm -f "$P12"
     rm -rf "$WORK/release-signing-certs"
-    if [ -z "$keep_keychain" ]; then
+    # Only when there is one: `security delete-keychain` on a path that does
+    # not exist fails, and leaves an empty lock file beside where it looked.
+    if [ -z "$keep_keychain" ] && [ -e "$KEYCHAIN" ]; then
         security delete-keychain "$KEYCHAIN" >/dev/null 2>&1 || true
     fi
     if [ -z "$keep_notary_key" ]; then
@@ -127,7 +129,9 @@ check_certificate() {
 
     local keychain_password
     keychain_password="$($OPENSSL rand -hex 24)"
-    security delete-keychain "$KEYCHAIN" >/dev/null 2>&1 || true
+    if [ -e "$KEYCHAIN" ]; then
+        security delete-keychain "$KEYCHAIN" >/dev/null 2>&1 || true
+    fi
     security create-keychain -p "$keychain_password" "$KEYCHAIN"
     # -u -t 21600: lock only after six hours, which is as long as a job can
     # run, so the keychain cannot lock itself under the signing step. -l also

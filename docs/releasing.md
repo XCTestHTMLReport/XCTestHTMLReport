@@ -47,11 +47,13 @@ A manual run is always a dry run: it builds, signs and packages version
 `0.0.0-dryrun` and publishes nothing, whatever its inputs. Only a tag push
 publishes.
 
-It has to be run from `main`. The job that signs belongs to the `release`
-environment ([below](#secrets)), which admits `main` and release tags only, so
-a run from any other branch is refused before its first step.
+It has to be run from `main`. The workflow builds in one job and signs in
+another, on a second runner that never runs what the first one built. The
+`sign` job belongs to the `release` environment ([below](#secrets)), which
+admits `main` and release tags only: from any other branch the build still
+runs, and `sign` is refused before its first step.
 
-It starts by checking every credential and reports each problem as an
+`sign` starts by checking every credential, and reports each problem as an
 annotation on the run that names the secret at fault:
 
 | The annotation says | What to do |
@@ -70,8 +72,13 @@ happen in a job that only a tag push runs, so the first real exercise of those
 two is a release (a release candidate is a cheap one). Notarizing a build
 nobody ships is harmless.
 
-The build and its version check run even when a credential is bad, so one dry
-run says whether the release build works *and* whether it can be signed.
+Because the two are separate jobs, one dry run answers two questions
+separately: `build` says whether the release build works, and `sign` whether
+it can be signed.
+
+Every run of `sign`, dry runs included, is recorded by GitHub as a deployment
+to `release` and shows up under *Deployments* on the repository's front page.
+That is how environments work, not a sign that something was published.
 
 ## What a released binary carries
 
@@ -113,15 +120,36 @@ Set one with `--env release`:
 gh secret set NAME --env release -R XCTestHTMLReport/XCTestHTMLReport
 ```
 
-The environment is what keeps them from a branch. A repository secret can be
-read by a workflow run from any ref, so anyone with write access could push a
-branch that edits the workflow and take the Developer ID key, or dispatch the
-workflow from that branch and download a signed, notarized build of it. The
-`release` environment's deployment rule admits the `main` branch and tags
-matching `*.*.*`, and GitHub refuses the signing job for anything else.
-`*.*.*` covers `4.1.0` and `4.1.0rc1`, and would cover a `v4.1.0` or
-`v4.1.0-rc.1` scheme too; a scheme with fewer than two dots would need its own
-rule added under *Settings → Environments → release*.
+**What the environment closes.** A repository secret can be read by a workflow
+run from any ref, so anyone with write access could push a branch that edits
+the workflow and take the Developer ID key, or dispatch the workflow from that
+branch and download a signed, notarized build of it. The `release`
+environment's deployment rule admits the `main` branch and tags matching
+`*.*.*`, and GitHub refuses the signing job for anything else. `*.*.*` covers
+`4.1.0` and `4.1.0rc1`, and would cover a `v4.1.0` or `v4.1.0-rc.1` scheme too;
+a scheme with fewer than two dots would need its own rule added under
+*Settings → Environments → release*.
+
+**What it does not close.** A tag push runs the workflow as it stands in the
+tagged commit, and the rule admits any tag of that shape whatever it points
+at. Someone who can push a tag can therefore tag a commit of their own, not on
+`main`, that carries an edited workflow, and the signing job will run it with
+the secrets. No file in this repository can prevent that, because the file
+that would do the preventing is the one being edited. It needs one of these
+two settings alongside the environment:
+
+- **A tag ruleset** (*Settings → Rules → Rulesets → New tag ruleset*): target
+  tags matching `*.*.*`, enable *Restrict creations*, *Restrict updates* and
+  *Restrict deletions*, and put only the people who cut releases on the bypass
+  list. The *Repository admin* role on that list would admit every admin, so
+  use a team if that is too wide. This is the better fit: it guards the tag,
+  which is also what Homebrew and Mint build from.
+- **A required reviewer on the environment** (*Settings → Environments →
+  release*). Every run of the signing job, dry runs included, then waits for
+  that person's approval. It protects the secrets but not the tag.
+
+Until one of them is in place, the secrets are as safe as the least careful
+account with write access.
 
 A repository-level secret of the same name is still read when the environment
 has none, which defeats the point. Once the five are set in the environment,
