@@ -115,8 +115,8 @@ a green run of all of it locally means a green run on your pull request.
 
 ### Optional: run the checks before committing
 
-CI runs shellcheck, SwiftFormat, and SwiftLint. The same checks can run locally on
-staged files, so you find problems before pushing.
+CI runs shellcheck, actionlint, SwiftFormat, and SwiftLint. The same checks can run
+locally on staged files, so you find problems before pushing.
 
 [mise](https://mise.jdx.dev) installs the versions pinned in `mise.toml` — the
 same ones CI uses, so a linter release cannot fail your pull request on a file

@@ -137,9 +137,11 @@ jobs:
     - name: Dry run summary
       if: github.event_name == 'workflow_dispatch'
       run: |
-        echo "### Dry run complete" >> "$GITHUB_STEP_SUMMARY"
-        echo "Built, signed and packaged \`${{ steps.metadata.outputs.archive_name }}\`." >> "$GITHUB_STEP_SUMMARY"
-        echo "Notarization and publishing were skipped." >> "$GITHUB_STEP_SUMMARY"
+        {
+          echo "### Dry run complete"
+          echo "Built, signed and packaged \`${{ steps.metadata.outputs.archive_name }}\`."
+          echo "Notarization and publishing were skipped."
+        } >> "$GITHUB_STEP_SUMMARY"
 
   release:
     runs-on: ubuntu-latest

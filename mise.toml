@@ -23,6 +23,9 @@ shellcheck = "0.11.0"
 # Audits the workflow files. CI-only: its most useful audits are online and
 # want a token, which a pre-commit hook has no business holding.
 zizmor = "1.29.0"
+# Lints the workflow files themselves: undefined expressions, misspelled keys,
+# and -- through the shellcheck pinned above -- the shell in `run:` blocks.
+"aqua:rhysd/actionlint" = "1.7.12"
 # Runs the pre-commit hook. See hk.pkl.
 hk = "1.55.0"
 # Not required to run hk, which evaluates hk.pkl with its built-in pklr

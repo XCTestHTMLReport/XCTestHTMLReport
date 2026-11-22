@@ -41,6 +41,11 @@ concurrency:
 jobs:
   build:
     runs-on: macos-latest
+    # One to two minutes on a fixture cache hit. A miss generates the fixtures
+    # here, which has taken up to sixteen minutes on its own and puts a healthy
+    # run near twenty. Timing out would cancel the deploy and skip the cache
+    # save, so the ceiling is well clear of that. The default is six hours.
+    timeout-minutes: 45
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
