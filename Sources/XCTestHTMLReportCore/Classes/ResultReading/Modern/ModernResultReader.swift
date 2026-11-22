@@ -227,7 +227,7 @@ struct ModernResultReader: ResultReader {
     private func failureMessages(of node: TestNode) -> [String] {
         (node.children ?? [])
             .filter { $0.nodeType == "Failure Message" }
-            .compactMap(\.name)
+            .compactMap(Self.failureText)
     }
 
     /// One repetition's activities, read out of the test's single document.

@@ -503,9 +503,12 @@ of this document under-weighted both:
   provided the `xcresulttool` reader is kept as the reference implementation
   rather than replaced.
 - **Drift is already detected automatically.** `toolchain-drift.yml` runs twice
-  weekly against stable *and* beta Xcode, regenerates every fixture from
-  scratch, runs the full suite, and files an issue on failure. The beta leg
-  gives roughly two months of warning before a change reaches GA.
+  weekly against `macos-latest` *and* the Xcode preview image, regenerates
+  every fixture from scratch, runs the full suite, and files an issue on
+  failure. While the preview image holds a beta, that leg gives roughly two
+  months of warning before a change reaches GA; once it holds the release, its
+  failures are filed as regressions, and `test.yml` runs every pull request on
+  it as well.
 
 What those do not cover: fixtures only exercise shapes the sample app produces,
 so a schema change touching anything it never emits slips through; and between a

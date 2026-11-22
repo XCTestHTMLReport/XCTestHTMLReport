@@ -188,6 +188,62 @@ final class RunLogTests: XCTestCase {
         )
     }
 
+    /// A bundle written by Xcode 27.1 holds an empty legacy array as its
+    /// envelope with no `_values` inside — `{"_type": {"_name": "Array"}}` —
+    /// where one written by Xcode 26 leaves the key out altogether. It is the
+    /// bundle that decides, not the tool reading it, so this shape reaches a
+    /// report rendered on Xcode 26 as well. A decoder that required `_values`
+    /// failed the entire log on the first leaf section, which is every log
+    /// there is: each such bundle exported no log, recorded
+    /// `.logExportFailed` and exited 3. Both spellings of "empty" must read as
+    /// empty, and the content beside them must survive.
+    func testLegacyDecoderReadsAnArrayEnvelopeWithNoValuesAsEmpty() throws {
+        let document = try JSONDecoder().decode(
+            LegacyRunLogDocument.self,
+            from: Data("""
+            {
+              "_type": { "_name": "ActivityLogSection" },
+              "attachments": { "_type": { "_name": "Array" } },
+              "domainType": { "_type": { "_name": "String" }, "_value": "com.apple.dt.unit.cocoaUnitTest" },
+              "title": { "_type": { "_name": "String" }, "_value": "Test MainScheme" },
+              "messages": { "_type": { "_name": "Array" } },
+              "subsections": {
+                "_type": { "_name": "Array" },
+                "_values": [
+                  {
+                    "_type": { "_name": "ActivityLogUnitTestSection" },
+                    "title": { "_type": { "_name": "String" }, "_value": "Launch actions" },
+                    "messages": {
+                      "_type": { "_name": "Array" },
+                      "_values": [
+                        {
+                          "_type": { "_name": "ActivityLogMessage" },
+                          "title": { "_type": { "_name": "String" }, "_value": "Platform: iOS Simulator" }
+                        }
+                      ]
+                    },
+                    "subsections": { "_type": { "_name": "Array" } }
+                  }
+                ]
+              }
+            }
+            """.utf8)
+        )
+
+        XCTAssertEqual(document.root.messages, [])
+        XCTAssertEqual(document.root.subsections.map(\.title), ["Launch actions"])
+        XCTAssertEqual(document.root.subsections.first?.messages, ["Platform: iOS Simulator"])
+        XCTAssertEqual(document.root.subsections.first?.subsections.count, 0)
+        XCTAssertEqual(
+            document.runLogSection.formatted(),
+            """
+            -------- Test MainScheme --------
+            \t-------- Launch actions --------
+            \tPlatform: iOS Simulator
+            """
+        )
+    }
+
     func testFormattedLaysOutHeadersMessagesThenChildren() throws {
         let document = try JSONDecoder().decode(
             LegacyRunLogDocument.self, from: legacyDocument
