@@ -1,0 +1,73 @@
+name: Bug report
+description: Something xchtmlreport did wrong, or did not do
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The fields below are the
+        things that most often decide whether a report can be reproduced.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: xchtmlreport version
+      description: The output of `xchtmlreport --version`.
+      placeholder: "3.0.0"
+    validations:
+      required: true
+  - type: input
+    id: xcode
+    attributes:
+      label: Xcode version
+      description: The Xcode that produced the `.xcresult` bundle (`xcodebuild -version`).
+      placeholder: "Xcode 26.1"
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      description: The full `xchtmlreport` command line, flags included.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: exit-code
+    attributes:
+      label: Exit code
+      description: Run `echo $?` straight after the command.
+      placeholder: "1"
+    validations:
+      required: true
+  - type: textarea
+    id: stderr
+    attributes:
+      label: Error output
+      description: Everything the command printed to stderr. Leave empty if it printed nothing.
+      render: text
+  - type: dropdown
+    id: bundle
+    attributes:
+      label: Can you share the .xcresult bundle?
+      description: >-
+        A bundle that reproduces the problem is the fastest route to a fix.
+        Issues are public, so only attach one that holds nothing private.
+      options:
+        - "Yes, attached or linked below"
+        - "Yes, on request"
+        - "No"
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: The zipped bundle, screenshots of the report, or other details that help.
