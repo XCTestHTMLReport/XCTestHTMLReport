@@ -44,12 +44,13 @@ class CheckAgentRulesTests(unittest.TestCase):
     def remove(self, relative):
         os.remove(os.path.join(self.root, relative))
 
-    def run_check(self, root=None):
+    def run_check(self, root=None, env=None):
         return subprocess.run(
             [sys.executable, SCRIPT, root or self.root],
             capture_output=True,
             text=True,
             check=False,
+            env=env,
         )
 
     def assertPasses(self):
@@ -254,6 +255,23 @@ class CheckAgentRulesTests(unittest.TestCase):
             "- [A trap](a-trap.md)\n- [Draft](draft.md)\n",
         )
         self.assertFailsWith("links draft.md, which is untracked or hidden")
+
+    def test_under_a_git_hook_only_the_learnings_are_listed(self):
+        # git sets GIT_DIR for its hooks. Read naively, that made every
+        # tracked file in the repository look like an unindexed learning.
+        self.make_checkout()
+        hook_environment = dict(os.environ, GIT_DIR=os.path.join(self.root, ".git"))
+        result = self.run_check(env=hook_environment)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_under_a_git_hook_a_staged_unindexed_learning_still_fails(self):
+        self.make_checkout()
+        self.write("docs/learnings/another-trap.md", "# Another\n")
+        self.git("add", "docs/learnings/another-trap.md")
+        hook_environment = dict(os.environ, GIT_DIR=os.path.join(self.root, ".git"))
+        result = self.run_check(env=hook_environment)
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("docs/learnings/another-trap.md is not listed", result.stdout)
 
     def test_a_tree_nested_in_another_checkout_is_walked(self):
         # git would answer for the outer checkout, where none of this tree is

@@ -82,20 +82,32 @@ def tracked_files(root, directory):
     `root` is not the top of a git checkout (or git is missing). The top-level
     test matters: a tree nested inside some other checkout would otherwise
     read as having no tracked files at all."""
+    # A git hook runs with GIT_DIR set, and git then takes the current
+    # directory as the top of the work tree, whatever it is: under the
+    # pre-commit hook, `git -C <learnings dir> ls-files` listed the whole
+    # repository as if it lived there. Dropping GIT_DIR and GIT_WORK_TREE lets
+    # git find the checkout itself; GIT_INDEX_FILE stays, because under a
+    # hook it is the index about to be committed.
+    environment = {
+        name: value
+        for name, value in os.environ.items()
+        if name not in ("GIT_DIR", "GIT_WORK_TREE")
+    }
     try:
         top = subprocess.run(
             ["git", "-C", root, "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, check=True, env=environment,
         ).stdout.strip()
         if os.path.realpath(top) != os.path.realpath(root):
             return None
+        prefix = os.path.relpath(directory, root).replace(os.sep, "/") + "/"
         listed = subprocess.run(
-            ["git", "-C", directory, "ls-files", "-z", "--cached", "--", "."],
-            capture_output=True, text=True, check=True,
+            ["git", "-C", root, "ls-files", "-z", "--cached", "--", prefix],
+            capture_output=True, text=True, check=True, env=environment,
         ).stdout
     except (OSError, subprocess.CalledProcessError):
         return None
-    return {path for path in listed.split("\0") if path}
+    return {path[len(prefix):] for path in listed.split("\0") if path.startswith(prefix)}
 
 
 def walked_files(directory):

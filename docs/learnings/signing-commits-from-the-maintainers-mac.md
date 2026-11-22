@@ -17,7 +17,10 @@ git -c gpg.format=ssh -c user.signingkey=~/.ssh/git-agent-signing.pub \
     -c gpg.ssh.program=ssh-keygen -c commit.gpgsign=true commit ...
 ```
 
-and fetch and push over HTTPS with `gh`'s token, leaving the remote alone:
+and fetch and push over HTTPS with `gh`'s token, leaving the remote alone.
+That works because `gh auth setup-git` has made `gh` git's credential helper
+for `https://github.com` there. Without it the commands prompt for a password,
+which an agent run cannot answer:
 
 ```bash
 git fetch https://github.com/XCTestHTMLReport/XCTestHTMLReport.git main
