@@ -241,6 +241,9 @@ class CheckAgentRulesTests(unittest.TestCase):
     def test_in_a_checkout_a_tracked_dotfile_still_needs_an_entry(self):
         self.write("docs/learnings/.DS_Store", "\0finder\0")
         self.make_checkout()
+        # Forced, because a global excludes file commonly ignores .DS_Store,
+        # and `add -A` would then leave this fixture untracked.
+        self.git("add", "-f", "docs/learnings/.DS_Store")
         self.assertFailsWith("docs/learnings/.DS_Store is not listed")
 
     def test_in_a_checkout_linking_an_untracked_file_fails(self):
