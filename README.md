@@ -11,7 +11,7 @@
 
 Xcode-like HTML report for Unit and UI Tests
 
-**[▶ Open a live report](https://xctesthtmlreport.github.io/XCTestHTMLReport/)** — rendered from this repository's own sample test run, republished on every merge to `main`, so it shows the upcoming 4.0 report rather than the 3.0.0 one. Past releases are at **[/v/](https://xctesthtmlreport.github.io/XCTestHTMLReport/v/)**.
+**[▶ Open a live report](https://xctesthtmlreport.github.io/XCTestHTMLReport/)** — rendered from this repository's own sample test run, republished on every merge to `main`, so it shows the upcoming 4.0 report rather than the 3.0.0 one.
 
 ![screenshot](https://i.imgur.com/NHRzoXG.jpg)
 
@@ -41,11 +41,12 @@ Xcode-like HTML report for Unit and UI Tests
 
 ## Requirements
 
--   macOS 10.15 or later.
--   Xcode, because result bundles are read through `xcrun xcresulttool`.
+-   macOS 10.15 is the declared deployment target; nothing that old is tested.
+-   Xcode, because result bundles are read through `xcrun xcresulttool`. The
+    Homebrew formula needs Xcode 14 or later to build.
 -   Every change is built with Xcode 16 and with the latest stable Xcode, and
-    tested against result bundles produced by the latest stable Xcode (26.x
-    today). Bundles from older Xcode versions are not tested.
+    tested against result bundles produced by the latest stable Xcode. Bundles
+    from older Xcode versions are not tested.
 
 The latest release is **3.0.0**, and that is what Homebrew and Mint install.
 Anything below marked **since 4.0** is on `main` only until 4.0 is released;
@@ -190,16 +191,18 @@ identical whichever result reader produced it: same keys, same nesting, same
 `schemaVersion`. A few *values* legitimately differ between readers — the
 four differences listed under "Choosing the result reader" below, plus
 `testCase.arguments`, which only the modern reader can populate — and the
-contract documents each one. Earlier versions, 3.0.0 included, dump
-`xcresulttool`'s legacy object graph verbatim; that graph is Apple's
-internal shape and disappears together with the legacy commands, so 4.0
-replaces it once, deliberately. The change is visible at a glance — before:
+contract documents each one. Earlier versions, 3.0.0 included, write
+a serialization of `xcresulttool`'s legacy object graph: an array whose
+entries hold `metrics`, `actions`, `issues` and a `metadataRef` carrying the
+raw legacy JSON base64-encoded. That graph is Apple's internal shape and disappears
+together with the legacy commands, so 4.0 replaces it once, deliberately.
+The change is visible at a glance — 3.0.0:
 
 ``` json
-[{"_type":{"_name":"ActionsInvocationRecord"},"actions":{"_type":{"_name":"Array"},"_values":[...
+[{"metrics":{...},"metadataRef":{"id":"...","referencedObject":{"json":"eyJfdHlwZSI6..."}},"actions":[...],"issues":{...}}]
 ```
 
-after:
+since 4.0:
 
 ``` json
 {
@@ -239,7 +242,7 @@ avoid:
   user-supplied `XCTAttachment` name, so the modern reader labels
   attachments by their type (`Screenshot`, `Video`, `File`).
 - **Failure title prefixes.** Legacy renders
-  `Assertion Failure at File.swift:12: message`; modern renders
+  `Assertion Failure at File.swift:12:message`; modern renders
   `File.swift:12: message` — the new format pre-joins the string and drops
   the issue type.
 - **Wrapper groups.** Legacy nests two extra levels
@@ -264,10 +267,15 @@ reports across readers.
 | 3 | Report was generated but is **degraded** — some of the result bundle could not be fully processed |
 | 64 | Invalid arguments |
 
-Starting in 3.0, `xchtmlreport` exits non-zero when part of a result bundle cannot
-be turned into a report. Earlier versions exited 0 and printed a success message
-even when parts of the report were missing, so pipelines had no way to detect an
-incomplete report.
+Starting in 3.0, `xchtmlreport` exits non-zero when it detects that part of a
+result bundle could not be turned into a report. Earlier versions exited 0 and
+printed a success message even when parts of the report were missing, so pipelines
+had no way to detect an incomplete report.
+
+What counts as detected has grown. 3.0.0 reports a bundle it cannot read at all,
+an attachment with nothing behind it, and a failed attachment or log export.
+**Since 4.0** a run that stopped early is a fault too: a host app that crashes at
+launch gives a bundle that 3.0.0 renders and exits 0 on, and that `main` exits 3 on.
 
 Exit 0 means no faults were *detected*, which is not yet the same as a guaranteed
 complete report: some XCResultKit decode failures are not surfaced as faults today

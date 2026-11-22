@@ -7,8 +7,9 @@ repository's **Security** tab, choose **Report a vulnerability**
 ([direct link](https://github.com/XCTestHTMLReport/XCTestHTMLReport/security/advisories/new)).
 That opens a private report only the maintainers can see.
 
-Include the `xchtmlreport --version` output, the command you ran, and the
-smallest result bundle or input that shows the problem.
+Include the `xchtmlreport --version` output, how you installed it (Homebrew,
+Mint, or the release binary), the command you ran, and the smallest result
+bundle or input that shows the problem.
 
 ## What counts
 
@@ -23,4 +24,4 @@ anyway.
 
 ## Supported versions
 
-Fixes go into the latest release.
+Fixes go into the next release.
