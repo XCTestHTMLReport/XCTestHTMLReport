@@ -15,12 +15,17 @@ failures are quiet, so this script makes them loud:
   bullet in the index carries such a link. An empty directory fails too: an
   index over nothing proves nothing.
 
+In a git checkout only tracked files count (staged ones included, so the
+pre-commit hook sees a new learning), so a `.DS_Store` or an editor's scratch
+file cannot fail the check. Outside one, every file except dotfiles counts.
+
 Usage: check_agent_rules.py [repo-root]   (defaults to the repository root)
 Exit 0 when everything holds, 1 with one `::error::` line per problem otherwise.
 """
 
 import os
 import re
+import subprocess
 import sys
 from urllib.parse import unquote
 
@@ -72,14 +77,48 @@ def check_agents(root):
     return []
 
 
-def learning_files(directory):
-    """Every file under the learnings directory except the index, as paths
-    relative to it with forward slashes, which is how the index links them."""
+def tracked_files(root, directory):
+    """The files git tracks under `directory`, relative to it, or None when
+    `root` is not the top of a git checkout (or git is missing). The top-level
+    test matters: a tree nested inside some other checkout would otherwise
+    read as having no tracked files at all."""
+    try:
+        top = subprocess.run(
+            ["git", "-C", root, "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        if os.path.realpath(top) != os.path.realpath(root):
+            return None
+        listed = subprocess.run(
+            ["git", "-C", directory, "ls-files", "-z", "--cached", "--", "."],
+            capture_output=True, text=True, check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return {path for path in listed.split("\0") if path}
+
+
+def walked_files(directory):
+    """Every file under `directory` except dotfiles and anything in a dot
+    directory, for a tree that is not a git checkout."""
     found = set()
-    for current, _, files in os.walk(directory):
+    for current, directories, files in os.walk(directory):
+        directories[:] = [name for name in directories if not name.startswith(".")]
         for name in files:
+            if name.startswith("."):
+                continue
             relative = os.path.relpath(os.path.join(current, name), directory)
             found.add(relative.replace(os.sep, "/"))
+    return found
+
+
+def learning_files(root, directory):
+    """Every learning except the index, as paths relative to the learnings
+    directory with forward slashes, which is how the index links them."""
+    found = tracked_files(root, directory)
+    if found is None:
+        found = walked_files(directory)
+    found = set(found)
     found.discard(INDEX)
     return found
 
@@ -94,6 +133,7 @@ def check_learnings(root):
     with open(index_path, encoding="utf-8") as handle:
         index_lines = handle.read().splitlines()
 
+    files = learning_files(root, directory)
     linked = set()
     problems = []
     for number, line in enumerate(index_lines, start=1):
@@ -111,6 +151,11 @@ def check_learnings(root):
             if not os.path.isfile(os.path.join(directory, normalised)):
                 problems.append((index_name, f"links {target}, which does not exist"))
                 continue
+            if normalised not in files:
+                # It exists here but not in git (or is a dotfile outside a
+                # checkout), so a clean clone would not have it.
+                problems.append((index_name, f"links {target}, which is untracked or hidden"))
+                continue
             linked.add(normalised)
             entries += 1
         # A bullet is an entry, and an entry is a file: one with no link to a
@@ -118,7 +163,6 @@ def check_learnings(root):
         if re.match(r"\s*[-*+]\s", line) and entries == 0:
             problems.append((index_name, f"line {number} is an entry with no learning linked"))
 
-    files = learning_files(directory)
     if not files:
         problems.append((LEARNINGS, "holds no learnings besides the index"))
     for missing in sorted(files - linked):

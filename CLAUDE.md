@@ -23,16 +23,18 @@ handled; `docs/learnings/INDEX.md` lists traps this project has already paid for
   SwiftLint: reformatting it changes the bytes of every report.
 - On generated fixtures, assert totals and relationships, never the exact
   pass/fail split.
-- The release dry run never reaches the `release` job; a change there is
-  unverified until a tag.
+- The release dry run skips notarizing and the `release` job; a change to
+  either is unverified until a tag.
 
 ## How work flows
 
-- GitHub issues are the backlog. Changes land through pull requests on a
-  ruleset-protected `main`: required checks pass, squash merge only.
-- The owner merges changes to the tool's source; an agent does not.
-- An agent never runs a release step: tags, GitHub releases, the Homebrew bump,
-  the Pages release.
+- Issues are the backlog. Changes land by pull request on `main`, whose ruleset
+  needs the required checks, 0 approvals, no bypass, squash merge only.
+- The owner merges changes to the tool's source (`Sources/`, `Package.swift`).
+  The steward agent may merge docs, tests and tooling once every check is
+  green and an independent agent review left nothing to fix.
+- An agent never merges anyone else's pull request, and never runs a release
+  step: tags, GitHub releases, the Homebrew bump, the Pages release.
 - A red check is not always your diff: compare with `main`, re-run once.
 
 ## Changes

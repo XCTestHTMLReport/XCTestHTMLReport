@@ -1,12 +1,11 @@
 # The release job cannot be exercised by the dry run
 
 `release.yml` can be run by hand (`workflow_dispatch`) as a dry run: it builds,
-signs and packages without publishing. It is the way to check the signing
-credentials before a tag.
+signs and packages. It is the way to check the signing credentials before a tag.
 
-But the `release` and `bump_version` jobs are guarded on
-`github.event_name == 'push'`, so a dry run skips them. Anything only they
-touch is unverified until a real tag.
+On `main` today, the `Notarize` step and the `release` and `bump_version` jobs
+are guarded on `github.event_name == 'push'`, so a dry run skips all three.
+Anything only they touch is unverified until a real tag.
 
 This nearly bit once: a dependency bump moved `upload-artifact` to v7 and left
 `download-artifact` behind. The build job uploads the signed binary and the

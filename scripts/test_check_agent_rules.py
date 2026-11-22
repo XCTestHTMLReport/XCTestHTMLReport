@@ -202,6 +202,65 @@ class CheckAgentRulesTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout.count("::error"), 2, result.stdout)
 
+    # --- files nobody meant to add ----------------------------------------
+
+    def git(self, *arguments):
+        subprocess.run(
+            ["git", "-C", self.root, *arguments],
+            capture_output=True, check=True,
+        )
+
+    def make_checkout(self):
+        self.git("init", "-q")
+        self.git("add", "-A")
+
+    def test_outside_a_checkout_dotfiles_are_not_learnings(self):
+        self.write("docs/learnings/.DS_Store", "\0finder\0")
+        self.write("docs/learnings/.cache/scratch.md", "# Scratch\n")
+        self.assertPasses()
+
+    def test_in_a_checkout_an_untracked_file_is_not_a_learning(self):
+        self.make_checkout()
+        self.write("docs/learnings/.DS_Store", "\0finder\0")
+        self.write("docs/learnings/draft.md", "# Not added yet\n")
+        self.assertPasses()
+
+    def test_in_a_checkout_a_gitignored_file_is_not_a_learning(self):
+        self.write(".gitignore", "*.swp\n")
+        self.make_checkout()
+        self.write("docs/learnings/a-trap.md.swp", "editor swap\n")
+        self.assertPasses()
+
+    def test_in_a_checkout_a_staged_unindexed_learning_fails(self):
+        # The pre-commit hook runs before the commit exists: staged counts.
+        self.make_checkout()
+        self.write("docs/learnings/another-trap.md", "# Another\n")
+        self.git("add", "docs/learnings/another-trap.md")
+        self.assertFailsWith("docs/learnings/another-trap.md is not listed")
+
+    def test_in_a_checkout_a_tracked_dotfile_still_needs_an_entry(self):
+        self.write("docs/learnings/.DS_Store", "\0finder\0")
+        self.make_checkout()
+        self.assertFailsWith("docs/learnings/.DS_Store is not listed")
+
+    def test_in_a_checkout_linking_an_untracked_file_fails(self):
+        self.make_checkout()
+        self.write("docs/learnings/draft.md", "# Not added yet\n")
+        self.write(
+            "docs/learnings/INDEX.md",
+            "- [A trap](a-trap.md)\n- [Draft](draft.md)\n",
+        )
+        self.assertFailsWith("links draft.md, which is untracked or hidden")
+
+    def test_a_tree_nested_in_another_checkout_is_walked(self):
+        # git would answer for the outer checkout, where none of this tree is
+        # tracked, and every learning would read as absent.
+        self.git("init", "-q")
+        nested = os.path.join(self.root, "nested")
+        shutil.copytree(self.root, nested, ignore=shutil.ignore_patterns(".git", "nested"))
+        result = self.run_check(nested)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     # --- this repository --------------------------------------------------
 
     def test_this_repository_passes(self):
