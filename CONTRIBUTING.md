@@ -104,6 +104,7 @@ simulator, because they render from a hand-written synthetic fixture instead:
   XCHR_VISUAL_DIR="$(pwd)/visual/fixtures" swift test --filter VisualFixtureDumpTests
   cd visual
   npm ci
+  npx playwright install chromium   # on Linux, add --with-deps as CI does
   npx playwright test
   ```
 
