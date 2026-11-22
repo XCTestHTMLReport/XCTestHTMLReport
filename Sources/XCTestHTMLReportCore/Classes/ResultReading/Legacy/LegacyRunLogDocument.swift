@@ -72,8 +72,10 @@ struct LegacyRunLogNode: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         // Every key here is absent rather than null when it has nothing in it
-        // — an empty `messages` array is simply not written — so all three are
-        // optional reads with an empty default.
+        // — through Xcode 26 an empty `messages` array is simply not written
+        // — so all three are optional reads with an empty default. Xcode 27.1
+        // writes the empty array's envelope instead; `LegacyValues` reads that
+        // as empty too.
         title = try container
             .decodeIfPresent(LegacyValue.self, forKey: .title)?.value ?? ""
         messages = try container
@@ -116,8 +118,20 @@ private struct LegacyValue: Decodable {
 // MARK: - LegacyValues
 
 /// A legacy array, which is always wrapped: `{"_type": …, "_values": [ … ]}`.
+///
+/// An empty one is spelled two ways. Through Xcode 26 the whole key is left
+/// out of its parent; from Xcode 27.1 the envelope is written and `_values`
+/// is left out of *it* — `"messages": {"_type": {"_name": "Array"}}`, on 29
+/// of the 46 nodes of `TestResults`. Requiring `_values` turned every one of
+/// those into a `keyNotFound` that failed the whole log, so both spellings
+/// read as empty.
 private struct LegacyValues<Element: Decodable>: Decodable {
     let values: [Element]
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        values = try container.decodeIfPresent([Element].self, forKey: .values) ?? []
+    }
 
     private enum CodingKeys: String, CodingKey {
         case values = "_values"
