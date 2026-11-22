@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest something xchtmlreport could do
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem or workflow behind the request.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help
+      description: The flag, output or behaviour you have in mind, if you have one.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today
+      description: Any workaround you use, or alternatives you considered.
