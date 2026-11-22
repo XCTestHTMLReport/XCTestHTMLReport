@@ -162,9 +162,10 @@ jobs:
     # commit it points at. So a person who can push a tag can tag a commit of
     # their own, off `main`, carrying an edited copy of this file, and this job
     # will hand it the secrets. Nothing in this repository's files can stop
-    # that; it is closed in the repository's settings, by a tag ruleset that
-    # restricts who may create tags matching `*.*.*`, or by a required
-    # reviewer on the environment. docs/releasing.md describes both.
+    # that; it is closed in the repository's settings, by the "release tags"
+    # ruleset, which lets only repository admins create, move or delete a tag
+    # matching `*.*.*`. The environment and that ruleset are a pair: either
+    # one alone leaves a route open. docs/releasing.md describes both.
     #
     # WHAT THIS JOB TRUSTS. Its own steps: this file and
     # scripts/release/check_credentials.sh, both as of the ref being run, plus
@@ -180,12 +181,16 @@ jobs:
       ARCHIVE: xchtmlreport-${{ needs.build.outputs.version }}.zip
 
     steps:
-    # Only the credential script. Nothing else in the tree is needed to sign,
-    # and what is not checked out cannot be run by mistake.
+    # Only the credential script: one file. Nothing else in the tree is
+    # needed to sign, and what is not checked out cannot be run by mistake.
+    # Cone mode is off because a cone is never just the directory it names --
+    # it also brings every file at the repository root and directly under
+    # scripts/, prepareTestResults.sh among them.
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
-        sparse-checkout: scripts/release
+        sparse-checkout-cone-mode: false
+        sparse-checkout: /scripts/release/check_credentials.sh
 
     # Names the credential that says no: missing, expired, wrong password,
     # exported without its key, or refused by Apple -- every one of them, not

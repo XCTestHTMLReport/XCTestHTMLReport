@@ -25,7 +25,8 @@ new release up on its own (see [`homebrew-bump.yml`](../.github/workflows/homebr
    git push origin 4.0.0
    ```
 
-   Tags are `X.Y.Z` or `X.Y.ZrcN`, with no `v` prefix. An `rc` tag is published
+   Only a repository admin can push one: a ruleset restricts tags of this
+   shape ([why](#secrets)). Tags are `X.Y.Z` or `X.Y.ZrcN`, with no `v` prefix. An `rc` tag is published
    as a pre-release and never becomes "Latest".
 4. After a final release the workflow opens a pull request bumping
    `Version.swift` to the next patch version. Major and minor bumps are made by
@@ -130,26 +131,32 @@ environment's deployment rule admits the `main` branch and tags matching
 a scheme with fewer than two dots would need its own rule added under
 *Settings → Environments → release*.
 
-**What it does not close.** A tag push runs the workflow as it stands in the
-tagged commit, and the rule admits any tag of that shape whatever it points
-at. Someone who can push a tag can therefore tag a commit of their own, not on
-`main`, that carries an edited workflow, and the signing job will run it with
-the secrets. No file in this repository can prevent that, because the file
-that would do the preventing is the one being edited. It needs one of these
-two settings alongside the environment:
+**What it does not close, and what does.** A tag push runs the workflow as it
+stands in the tagged commit, and the rule admits any tag of that shape whatever
+it points at. Someone who can push a tag could therefore tag a commit of their
+own, not on `main`, that carries an edited workflow, and the signing job would
+run it with the secrets. No file in this repository can prevent that, because
+the file that would do the preventing is the one being edited.
 
-- **A tag ruleset** (*Settings → Rules → Rulesets → New tag ruleset*): target
-  tags matching `*.*.*`, enable *Restrict creations*, *Restrict updates* and
-  *Restrict deletions*, and put only the people who cut releases on the bypass
-  list. The *Repository admin* role on that list would admit every admin, so
-  use a team if that is too wide. This is the better fit: it guards the tag,
-  which is also what Homebrew and Mint build from.
-- **A required reviewer on the environment** (*Settings → Environments →
-  release*). Every run of the signing job, dry runs included, then waits for
-  that person's approval. It protects the secrets but not the tag.
+It is closed by a companion setting, which is in place: the **`release tags`
+ruleset** (*Settings → Rules → Rulesets*). It targets tags matching `*.*.*`
+and restricts creating, updating and deleting them, with the *Repository
+admin* role as its only bypass. So only an admin can cut, move or remove a
+release tag, which also guards what Homebrew and Mint build from. Write access
+alone no longer reaches the secrets by either route.
 
-Until one of them is in place, the secrets are as safe as the least careful
-account with write access.
+The two settings are a pair, and each is useless without the other: the
+environment without the ruleset leaves the tag route open, and the ruleset
+without the environment leaves the branch route open. Change either only with
+the other in mind. If the tag scheme ever changes shape, both patterns change
+with it. Admins are trusted by this arrangement; to narrow it further, put a
+team on the ruleset's bypass list in place of the role, or add a required
+reviewer to the environment (every run of the signing job, dry runs included,
+then waits for that person's approval).
+
+`main` has a ruleset of its own (pull request required, with required checks
+that include the `actions` workflow audit), so the workflow a dry run or a
+properly cut tag runs is one that went through review.
 
 A repository-level secret of the same name is still read when the environment
 has none, which defeats the point. Once the five are set in the environment,
