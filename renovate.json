@@ -119,8 +119,8 @@
     {
       "description": [
         "Actions: minor and patch releases as one pull request, along with",
-        "digest moves -- a new commit behind a tag pinned only by its major,",
-        "as `# v8` is."
+        "digest moves -- a tag that now points at a different commit than",
+        "the one pinned."
       ],
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
