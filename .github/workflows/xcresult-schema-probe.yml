@@ -48,6 +48,10 @@ jobs:
           - os: macos-15
             xcode_version: "16"
     runs-on: ${{ matrix.os }}
+    # About eleven minutes in the two runs so far, most of it fixture
+    # generation, which has taken up to sixteen on its own elsewhere. The
+    # default is six hours.
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

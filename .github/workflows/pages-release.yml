@@ -31,6 +31,9 @@ concurrency:
 jobs:
   publish-version:
     runs-on: macos-latest
+    # Generates fixtures uncached, which takes about twenty minutes in the
+    # jobs that do the same. The default is six hours.
+    timeout-minutes: 45
     # The only job in either workflow that writes. It pushes one immutable
     # directory into the pages-site store; everything else reads.
     permissions:

@@ -11,6 +11,18 @@ on:
 permissions:
   contents: read
 
+# A push to a pull request makes the run for the previous push worthless, so
+# cancel it rather than let it hold a runner to the end. Only runs of the same
+# pull request share a group. Everything else -- a push to `main`, a manual
+# dispatch -- gets a group of its own, keyed on the run id, so it neither
+# cancels nor waits behind anything. A shared group for `main` would not do,
+# even with cancel-in-progress off: GitHub keeps one pending run per group and
+# cancels the older one when a third arrives, so merges landing close together
+# would lose a verdict -- and here the fixture cache too, which is saved post-job.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   # Decides whether the Xcode preview legs below exist, on a free ubuntu runner
   # in ~10s, so a retired `xcode-<N>` label can never park a macOS job in the
@@ -82,6 +94,14 @@ jobs:
     if: ${{ !cancelled() }}
     name: test (${{ matrix.result_reader }}${{ matrix.suffix }})
     runs-on: ${{ matrix.runner }}
+    # Seven to nine minutes on a fixture cache hit. What this is sized for is a
+    # miss, which adds fixture generation, and that depends on the image: about
+    # sixteen minutes on `macos-latest`, around forty on a preview image, where
+    # a healthy cold-cache leg has taken about fifty-six minutes end to end.
+    # Timing out there would also skip the cache save and leave the next run
+    # just as cold. The default is six hours, which is how long a hung
+    # simulator would otherwise hold the runner.
+    timeout-minutes: ${{ matrix.runner == 'macos-latest' && 45 || 75 }}
     strategy:
       fail-fast: false
       # Two axes, spelled out as legs because one of them is discovered.

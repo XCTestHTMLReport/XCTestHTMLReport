@@ -11,6 +11,18 @@ on:
 permissions:
   contents: read
 
+# A push to a pull request makes the run for the previous push worthless, so
+# cancel it rather than let it hold a runner to the end. Only runs of the same
+# pull request share a group. Everything else -- a push to `main`, a manual
+# dispatch -- gets a group of its own, keyed on the run id, so it neither
+# cancels nor waits behind anything. A shared group for `main` would not do,
+# even with cancel-in-progress off: GitHub keeps one pending run per group and
+# cancels the older one when a third arrives, so merges landing close together
+# would lose a verdict.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
@@ -25,6 +37,8 @@ jobs:
           - os: macos-15
             xcode_version: "16"
     runs-on: ${{ matrix.os }}
+    # A release build takes one to two minutes. The default is six hours.
+    timeout-minutes: 20
 
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

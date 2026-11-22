@@ -129,6 +129,12 @@ jobs:
     if: ${{ !cancelled() }}
     name: drift (${{ matrix.leg }})
     runs-on: ${{ matrix.runner }}
+    # A backstop for the steps that carry no timeout of their own. It has to
+    # stay above the sum of the ones that do (30 + 90 + 45 + 15 + 15): the report
+    # step at the end is what files the issue, and a job-level timeout that
+    # fired first would turn a hung simulator into a silent cancellation. The
+    # beta leg takes up to fifty minutes when nothing hangs.
+    timeout-minutes: 210
     permissions:
       contents: read
       issues: write
@@ -400,7 +406,14 @@ jobs:
     # difference is deliberate: those outcomes mean the step never ran, so
     # there is no bundle behind them to attach. Widening this to match would
     # only ever upload a stale or empty directory.
+    #
+    # Bounded, and allowed to fail, for the sake of the step after it: the
+    # bundles are evidence, the issue is the alarm. An upload that stalled
+    # would otherwise run into the job-level timeout, which cancels the job
+    # and takes `Report drift` with it.
     - name: Upload fixtures on drift
+      continue-on-error: true
+      timeout-minutes: 15
       if: >-
         ${{ !cancelled() && (steps.legacy.outcome == 'failure'
         || steps.build.outcome == 'failure'

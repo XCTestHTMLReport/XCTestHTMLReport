@@ -19,6 +19,11 @@ hooks {
         steps {
             ["shellcheck"] = Builtins.shellcheck
 
+            // Workflow files only. It runs the shellcheck above over every
+            // `run:` block, so a workflow's shell is held to the same rules as
+            // the scripts.
+            ["actionlint"] = Builtins.actionlint
+
             // No builtin ships for SwiftFormat, so this step is spelled out.
             // --lint reports rather than reformats, for the reason above.
             ["swiftformat"] {
