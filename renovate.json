@@ -52,8 +52,31 @@
     "The three-day minimumReleaseAge is a supply-chain hedge: a release",
     "pulled or re-tagged within days of publication never gets proposed.",
     "",
-    "Nothing automerges, by choice. main's ruleset needs 0 approvals and",
-    "the required checks, so automerge could work; it is not switched on."
+    "Automerge covers tooling only: minor, patch and digest updates from",
+    "the github-actions, mise and npm managers and the hk pins in hk.pkl.",
+    "Those change how this repository is linted, tested and built, not what",
+    "it ships, and a green run of the required checks is the same evidence",
+    "a human merge of them rests on. Package.swift and Package.resolved",
+    "never automerge: they change the dependencies of the shipped tool and",
+    "its library product, and their merge stays the owner's. Majors of",
+    "anything never automerge either. Both are excluded by omission -- the",
+    "automerge rules below name only the tooling managers and update types",
+    "-- and a grouped pull request automerges only when every update in it",
+    "would on its own.",
+    "",
+    "How it merges. Renovate merges the pull request itself (platformAutomerge",
+    "is off, as GitHub auto-merge is disabled on this repository), through the",
+    "pull request API with the squash method, the only one main's ruleset",
+    "allows, so the ruleset applies exactly as it does to a person. Renovate",
+    "merges only once every check run on the branch has passed and GitHub",
+    "reports the pull request mergeable; a failed, pending or cancelled check",
+    "holds it, and the ruleset's required checks would refuse the merge",
+    "regardless. automergeType stays at its default, `pr`: `branch` would push",
+    "to main directly, which the ruleset forbids. automergeSchedule stays at",
+    "its default, any time: the Monday schedule above bounds when pull",
+    "requests open and rebase, and a pull request whose checks finish after",
+    "9am still merges that day instead of waiting a week. The three-day",
+    "minimumReleaseAge applies to these as to everything else."
   ],
   "extends": [
     "config:best-practices",
@@ -62,6 +85,7 @@
   "labels": ["dependencies"],
   "schedule": ["before 9am on monday"],
   "minimumReleaseAge": "3 days",
+  "platformAutomerge": false,
   "customManagers": [
     {
       "customType": "regex",
@@ -140,6 +164,28 @@
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "browser test packages minor and patch"
+    },
+    {
+      "description": [
+        "Tooling merges itself when green: minor, patch and digest updates",
+        "of the actions, the mise tools and the browser test packages.",
+        "Majors and the Swift packages are excluded by omission. See the",
+        "note at the top."
+      ],
+      "matchManagers": ["github-actions", "mise", "npm"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true
+    },
+    {
+      "description": [
+        "The hk pins in hk.pkl, which move with the hk entry in mise.toml.",
+        "Matched by file because the Package.resolved pins come from a",
+        "custom regex manager as well."
+      ],
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["hk.pkl"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true
     },
     {
       "description": [
