@@ -147,6 +147,15 @@ enum KnownLossMasker {
             // the other rules' line anchors survive; both renders pass
             // through the same parse-serialize path, so any parser
             // normalisation applies symmetrically.
+            //
+            // That symmetry needs source reuse off. Since SwiftSoup 2.13.9 the
+            // default serializer copies an unmodified element's original
+            // bytes, so the document shell (`<html>`, `<head>`, `</body>`)
+            // came back as written in the modern render, which has no wrapper
+            // to remove, and normalised in the legacy one, which does: six
+            // differing lines from mutation history alone, not from content.
+            // Re-serializing every node makes the output a function of the
+            // tree, whichever render was edited.
             do {
                 let document = try SwiftSoup.parse(html)
                 document.outputSettings().prettyPrint(pretty: false)
@@ -169,7 +178,8 @@ enum KnownLossMasker {
                     }
                     try group.unwrap()
                 }
-                return try document.outerHtml()
+                let bytes = try document.outerHtmlUTF8WithoutSourceReuse()
+                return String(bytes: bytes, encoding: .utf8) ?? html
             } catch {
                 // An unparseable report would mask nothing and fail the
                 // differential loudly, which is the right failure mode.
