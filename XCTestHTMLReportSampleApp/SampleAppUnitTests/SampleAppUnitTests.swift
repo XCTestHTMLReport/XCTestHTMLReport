@@ -64,7 +64,7 @@ class SampleAppUnitTests: XCTestCase {
     }
 
     func testWithLogAttachment() {
-        let logData = "log1\nlog2\nlog3".data(using: .utf8)!
+        let logData = Data("log1\nlog2\nlog3".utf8)
         let attachment = XCTAttachment(data: logData, uniformTypeIdentifier: "com.apple.log")
         attachment.name = "myLogFile"
         attachment.lifetime = .keepAlways
@@ -72,7 +72,7 @@ class SampleAppUnitTests: XCTestCase {
     }
 
     func testWithLogAttachmentWithoutName() {
-        let logData = "log4\nlog5\nlog6".data(using: .utf8)!
+        let logData = Data("log4\nlog5\nlog6".utf8)
         let attachment = XCTAttachment(data: logData, uniformTypeIdentifier: "com.apple.log")
         attachment.lifetime = .keepAlways
         add(attachment)

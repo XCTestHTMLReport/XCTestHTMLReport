@@ -299,9 +299,9 @@ final class DifferentialTests: XCTestCase {
     func testAttachmentPayloadsAreByteIdenticalAcrossBackends() throws {
         try requireBothBackends()
 
-        /// Keyed by filename and counted, not collected into a Set: a Set
-        /// collapses duplicates, so a backend that dropped one of two identical
-        /// screen recordings would still compare equal.
+        // Keyed by filename and counted, not collected into a Set: a Set
+        // collapses duplicates, so a backend that dropped one of two identical
+        // screen recordings would still compare equal.
         func payloads(_ summary: Summary) -> [String: [Data]] {
             var byName: [String: [Data]] = [:]
             for attachment in summary.allAttachments {

@@ -72,12 +72,11 @@ enum AttachmentType: String {
     }
 
     fileprivate var mimeType: String? {
-        if #available(macOS 11.0, *) {
-            if let systemType = UTType(rawValue),
-               let mimeType = systemType.preferredMIMEType
-            {
-                return mimeType
-            }
+        if #available(macOS 11.0, *),
+           let systemType = UTType(rawValue),
+           let mimeType = systemType.preferredMIMEType
+        {
+            return mimeType
         }
 
         switch self {
@@ -203,10 +202,7 @@ struct Attachment: HTML {
     /// is `.none` by construction, which is not degradation (#387). Only a
     /// payload that existed and produced no content is a genuine failure.
     var failedToResolve: Bool {
-        guard payloadId != nil else {
-            return false
-        }
-        guard case .none = content else {
+        guard payloadId != nil, case .none = content else {
             return false
         }
         return true

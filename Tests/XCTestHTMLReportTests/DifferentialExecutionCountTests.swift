@@ -48,9 +48,9 @@ extension DifferentialTests {
             for (index, pair) in zip(legacy.runs, modern.runs).enumerated() {
                 let (legacyRun, modernRun) = pair
 
-                /// Per test, not just per run: two backends can reach the same
-                /// total from different rows, and a total-only assertion would
-                /// report the disagreement without naming what disagrees.
+                // Per test, not just per run: two backends can reach the same
+                // total from different rows, and a total-only assertion would
+                // report the disagreement without naming what disagrees.
                 func counts(_ run: Run) -> [String: Int] {
                     Dictionary(
                         run.allTests.map { ($0.identifier, $0.executionCount) },
