@@ -27,7 +27,7 @@ zizmor = "1.29.0"
 # and -- through the shellcheck pinned above -- the shell in `run:` blocks.
 "aqua:rhysd/actionlint" = "1.7.12"
 # Runs the pre-commit hook. See hk.pkl.
-hk = "1.55.0"
+hk = "2.13.0"
 # Not required to run hk, which evaluates hk.pkl with its built-in pklr
 # evaluator. This is here so editors and a manual `pkl eval hk.pkl` work
 # without a separate install.
