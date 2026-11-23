@@ -17,6 +17,7 @@ file: `scripts/check_agent_rules.py` fails CI otherwise.
 - [The legacy run-log shape follows the writing Xcode](legacy-run-log-follows-the-writing-xcode.md) — cross bundle writer and reader before blaming either
 - [Exact pass/fail splits are not assertable](generated-fixture-counts-are-not-exact.md) — assert what the sample sources determine
 - [`HTMLTemplates.swift` is hand-maintained](html-templates-is-hand-maintained.md) — reformatting it changes every report
+- [SwiftSoup reuses source bytes](swiftsoup-reuses-source-bytes.md) — an edited and an untouched document serialize differently
 
 ## Tooling
 
