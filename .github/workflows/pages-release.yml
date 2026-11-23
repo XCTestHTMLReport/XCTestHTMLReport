@@ -128,7 +128,7 @@ jobs:
   # Reuses pages.yml wholesale rather than duplicating assembly and deploy.
   deploy:
     needs: publish-version
-    uses: ./.github/workflows/pages.yml
+    uses: ./.github/workflows/pages.yml # zizmor: ignore[self-repository] -- actionlint rejects $/ until rhysd/actionlint#711
     permissions:
       contents: read
       pages: write

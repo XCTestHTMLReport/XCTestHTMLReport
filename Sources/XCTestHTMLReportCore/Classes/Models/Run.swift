@@ -200,10 +200,7 @@ struct Run {
     /// re-reading the raw invocation-record JSON, which XCResultKit keeps
     /// internal (`getRootJson` is not public).
     var logFailedToResolve: Bool {
-        guard logReference != nil else {
-            return false
-        }
-        guard case .none = logContent else {
+        guard logReference != nil, case .none = logContent else {
             return false
         }
         return true

@@ -249,20 +249,18 @@ public struct Summary {
         )
 
         for attachment in allAttachments {
-            guard attachment.failedToResolve else {
-                continue
-            }
-            guard flaggedAttachments.insert(attachment.faultDescription).inserted else {
+            guard attachment.failedToResolve,
+                  flaggedAttachments.insert(attachment.faultDescription).inserted
+            else {
                 continue
             }
             faultCollector.record(.unresolvedAttachment, attachment.faultDescription)
         }
 
         for run in runs {
-            guard run.logFailedToResolve else {
-                continue
-            }
-            guard flaggedLogs.insert(run.logFaultDescription).inserted else {
+            guard run.logFailedToResolve,
+                  flaggedLogs.insert(run.logFaultDescription).inserted
+            else {
                 continue
             }
             faultCollector.record(.unresolvedLog, run.logFaultDescription)

@@ -192,8 +192,8 @@ private extension JUnitReport.TestCase {
             // decision, not a side effect of the redesign.
             state = .unknown
         }
-        /// Activities can be nested in infinite levels so here everything should be flatted
-        /// To replicate cascading we add some indent
+        // Activities can be nested in infinite levels so here everything should be flatted
+        // To replicate cascading we add some indent
         func flatSubActivities(
             of activity: Activity,
             indent: Int,

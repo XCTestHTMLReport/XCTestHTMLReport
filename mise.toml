@@ -17,12 +17,12 @@
 # drift there is what .github/workflows/toolchain-drift.yml watches for.
 
 [tools]
-swiftformat = "0.62.1"
-swiftlint = "0.65.0"
+swiftformat = "0.64.7"
+swiftlint = "0.65.1"
 shellcheck = "0.11.0"
 # Audits the workflow files. CI-only: its most useful audits are online and
 # want a token, which a pre-commit hook has no business holding.
-zizmor = "1.29.0"
+zizmor = "1.32.0"
 # Lints the workflow files themselves: undefined expressions, misspelled keys,
 # and -- through the shellcheck pinned above -- the shell in `run:` blocks.
 "aqua:rhysd/actionlint" = "1.7.12"
@@ -31,7 +31,7 @@ hk = "2.13.0"
 # Not required to run hk, which evaluates hk.pkl with its built-in pklr
 # evaluator. This is here so editors and a manual `pkl eval hk.pkl` work
 # without a separate install.
-pkl = "0.32.1"
+pkl = "0.33.1"
 
 [env]
 # Wraps the installed git hooks in `mise x`, so a hook resolves the pinned
