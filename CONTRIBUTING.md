@@ -160,11 +160,16 @@ git config --local --unset-all core.hooksPath
 need to send one by hand. It runs weekly and covers the Swift packages, the
 GitHub Actions pins, the tools in `mise.toml` and `hk.pkl`, and the npm packages
 under `visual/`. Its Dependency Dashboard issue lists what is pending.
-[`renovate.json`](renovate.json) says what it watches and what it deliberately
-leaves alone. After editing that file, check it:
+Minor and patch updates of the tooling (the Actions, `mise.toml` and `hk.pkl`,
+and `visual/`) merge themselves once every check passes; Swift package updates,
+digest updates (an action's tag that moved) and every major wait for the
+maintainer. A grouped pull request merges
+itself only when every update in it would.
+[`renovate.json`](renovate.json) says what it watches, what merges itself, and
+what it deliberately leaves alone. After editing that file, check it:
 
 ```bash
-npx --yes --package renovate -- renovate-config-validator --strict
+npx --yes --package renovate@latest -- renovate-config-validator --strict
 ```
 
 ## AI-assisted contributions
