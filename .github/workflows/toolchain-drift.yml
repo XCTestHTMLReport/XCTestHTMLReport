@@ -93,7 +93,7 @@ jobs:
     # (XCODE_PR_PREVIEW_RUNNER), so neither switch touches the other workflow.
     - name: Discover the Xcode preview runner
       id: preview
-      uses: ./.github/actions/discover-preview-runner
+      uses: ./.github/actions/discover-preview-runner # zizmor: ignore[self-repository] -- actionlint rejects $/ until rhysd/actionlint#711
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         require: any
@@ -277,7 +277,7 @@ jobs:
     - name: Compute fixture cache key
       id: fixture-key
       continue-on-error: true
-      uses: ./.github/actions/fixture-cache-key
+      uses: ./.github/actions/fixture-cache-key # zizmor: ignore[self-repository] -- actionlint rejects $/ until rhysd/actionlint#711
 
     # Deliberately no cache restore: this job exists to prove the current
     # toolchain can still produce fixtures at all. Fixture generation does not

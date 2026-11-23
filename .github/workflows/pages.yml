@@ -75,7 +75,7 @@ jobs:
     # at all. Any divergence here would silently forfeit that (#436, #392).
     - name: Compute fixture cache key
       id: fixture-key
-      uses: ./.github/actions/fixture-cache-key
+      uses: ./.github/actions/fixture-cache-key # zizmor: ignore[self-repository] -- actionlint rejects $/ until rhysd/actionlint#711
 
     - name: Restore cached fixtures
       id: fixture-cache
