@@ -23,5 +23,4 @@ file: `scripts/check_agent_rules.py` fails CI otherwise.
 
 - [SwiftLint run unscoped lints `.build`](swiftlint-unscoped-reads-build.md) — thousands of findings means the wrong tree
 - [`read` under `set -e` skips its guard](read-under-set-e-skips-its-guard.md) — empty input kills the script before the error message
-- [`npx --package renovate` can run a stale Renovate](npx-renovate-reuses-a-stale-cache.md) — validate with `renovate@latest`
 - [Signing git commits from the maintainer's Mac](signing-commits-from-the-maintainers-mac.md) — agent key inline, HTTPS push, never unsigned
