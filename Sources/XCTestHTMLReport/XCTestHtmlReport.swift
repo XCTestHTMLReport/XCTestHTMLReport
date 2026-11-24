@@ -82,6 +82,15 @@ struct SummaryOptions: ParsableArguments {
         return .linking
     }
 
+    @Flag(
+        name: .long,
+        help: ArgumentHelp(
+            "Show runs on destinations with the same device model and OS version as one destination "
+                + "in the HTML report, as Xcode does for parallel testing clones and merged bundles"
+        )
+    )
+    var mergeDestinations = false
+
     @Option(
         name: .long,
         help: ArgumentHelp(
@@ -174,7 +183,8 @@ struct XCTestHtmlReport: ParsableCommand {
             downsizeImagesEnabled: summaryOptions.downsizeImages,
             downsizeScaleFactor: summaryOptions.downsizeScaleFactor,
             faultCollector: faultCollector,
-            backend: summaryOptions.resultReader
+            backend: summaryOptions.resultReader,
+            mergeDestinations: summaryOptions.mergeDestinations
         )
 
         Logger.step("Building HTML..")

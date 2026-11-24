@@ -118,6 +118,16 @@ final class CliTests: XCTestCase {
         try XCTAssertContains(try XCTUnwrap(maybeStdOut), "successfully created")
     }
 
+    func testMergeDestinationsFlagMergesEquivalentRuns() throws {
+        let testResultsUrl = try XCTUnwrap(testResultsUrl)
+        // One bundle passed twice yields two runs on the same destination.
+        let document = try parseReportDocument(
+            xchtmlreportArgs: ["--merge-destinations", testResultsUrl.path, testResultsUrl.path]
+        )
+
+        XCTAssertEqual(try document.select("[id^=tests_]").count, 1)
+    }
+
     func testUnreadableBundleExitsNonZeroWithFaultSummary() throws {
         let bogus = NSTemporaryDirectory() + "/DoesNotExist.xcresult"
         try? FileManager.default.createDirectory(
