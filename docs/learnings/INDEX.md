@@ -11,6 +11,7 @@ file: `scripts/check_agent_rules.py` fails CI otherwise.
 - [A "beta" runner image can hold the shipping Xcode](preview-image-ships-a-release.md) — ask the Xcode, not the label
 - [One pending run per concurrency group](one-pending-run-per-concurrency-group.md) — a ref-keyed group drops runs on `main`
 - [The release job is unreachable by the dry run](release-job-is-unreachable-by-dry-run.md) — it builds and signs; attesting, publishing and the second artifact hand-off wait for a tag
+- [A tag's shape reaches the package managers](tag-shape-reaches-package-managers.md) — Mint, Homebrew and version-increment each parse tags their own way
 
 ## Reading bundles and testing
 

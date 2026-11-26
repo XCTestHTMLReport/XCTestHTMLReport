@@ -2,9 +2,16 @@ name: Release
 
 on:
   push:
+   # v-prefixed semver: v4.0.0, and v4.0.0-rc.2 for a candidate. Generate
+   # Metadata below rejects anything after the hyphen that is not a semver
+   # pre-release. The unprefixed tags used up to 4.0.0rc1 (3.0.0, 4.0.0rc1) are
+   # not listed: a tag push runs this file as it stands in the tagged commit,
+   # and every one of those commits carries the old patterns, so dropping them
+   # here changes nothing for a past release and refuses an old-style tag on a
+   # new commit.
    tags:
-   - '[0-9]+.[0-9]+.[0-9]+'
-   - '[0-9]+.[0-9]+.[0-9]+rc[0-9]+'
+   - 'v[0-9]+.[0-9]+.[0-9]+'
+   - 'v[0-9]+.[0-9]+.[0-9]+-*'
   # Lets the whole build/sign/package path be exercised without publishing
   # anything. Before this existed the only way to test a release was to cut one.
   #
@@ -65,19 +72,33 @@ jobs:
     - name: Generate Metadata
       id: metadata
       run: |
+        # The tag is v-prefixed (v4.0.0, v4.0.0-rc.2); the version is not.
+        # The prefix comes off here, once, because everything downstream reads
+        # VERSION: the stamp in Version.swift, the --version check against the
+        # built binary, the archive name, and the release-notes lookup.
         if [[ "$GITHUB_REF" =~ ^refs/tags/ ]]; then
-          VERSION="${GITHUB_REF#refs/tags/}"
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          # Semver 2.0.0's core and pre-release grammar. The trigger's globs
+          # cannot say this, and an old-style tag (4.0.0rc1, or anything
+          # without the v) has no business being released by this file.
+          SEMVER='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$'
+          if [[ "$TAG" != v* || ! "$VERSION" =~ $SEMVER ]]; then
+            echo "::error::'${TAG}' is not a release tag: expected vX.Y.Z or vX.Y.Z-<pre-release>, e.g. v4.0.0 or v4.0.0-rc.2"
+            exit 1
+          fi
         else
           VERSION="0.0.0-dryrun"
         fi
-        # `rc` tags carry no hyphen in the X.Y.ZrcN form this repo uses, so a
-        # `contains(github.ref, '-')` test never fired for them and release
-        # candidates shipped as full releases.
-        if [[ "$VERSION" == *rc* ]]; then PRERELEASE=true; else PRERELEASE=false; fi
+        # Anything but a bare X.Y.Z is a pre-release -- -rc.2, -beta.1, any
+        # semver suffix -- and is published as one, so it never becomes
+        # "Latest". (The dry run's 0.0.0-dryrun counts as one too; nothing
+        # reads it, because a dry run publishes nothing.)
+        if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then PRERELEASE=false; else PRERELEASE=true; fi
         # Release notes are kept per X.Y.Z, so every candidate publishes the
         # same document as the final release and the two cannot drift:
-        # 4.0.0rc1 and 4.0.0 both resolve to docs/release-notes/4.0.0.md.
-        BASE="${VERSION%%rc*}"
+        # v4.0.0-rc.2 and v4.0.0 both resolve to docs/release-notes/4.0.0.md.
+        BASE="${VERSION%%-*}"
         {
           echo "version=${VERSION}"
           echo "base_version=${BASE}"
@@ -160,7 +181,8 @@ jobs:
     # The environment's deployment rule admits the `main` branch and tags
     # matching `*.*.*`, and GitHub refuses this job for any other ref before
     # a single step runs. `*.*.*` covers every tag the trigger above can fire
-    # on (4.1.0, 4.1.0rc1), and would cover v4.1.0 and v4.1.0-rc.1 as well.
+    # on (v4.0.0, v4.0.0-rc.2): it needs two dots, and `*` matches the `v` and
+    # the pre-release suffix alike.
     #
     # WHAT IT DOES NOT. A tag push runs this workflow as it stands in the
     # tagged commit, and the rule admits any tag of that shape, whatever
@@ -473,9 +495,11 @@ jobs:
           {
             echo "> [!IMPORTANT]"
             echo "> **${TAG} is a release candidate**, published as a pre-release."
-            echo "> \`brew install xctesthtmlreport\` and"
-            echo "> \`mint install XCTestHTMLReport/XCTestHTMLReport\` keep resolving to the"
-            echo "> latest stable release, so this one is opt-in:"
+            # Mint is not named as staying on stable: it orders tags as semver,
+            # and v4.0.0-rc.2 sorts above every 3.x, so an unpinned
+            # `mint install` takes a candidate until its final release exists.
+            echo "> \`brew install xctesthtmlreport\` keeps resolving to the latest stable"
+            echo "> release, so this one is opt-in. Install it with:"
             echo ">"
             echo "> \`\`\`bash"
             echo "> mint install XCTestHTMLReport/XCTestHTMLReport@${TAG}"
@@ -497,7 +521,7 @@ jobs:
     #
     #   gh attestation verify xchtmlreport-X.Y.Z.zip --repo XCTestHTMLReport/XCTestHTMLReport \
     #     --signer-workflow XCTestHTMLReport/XCTestHTMLReport/.github/workflows/release.yml \
-    #     --source-ref refs/tags/X.Y.Z
+    #     --source-ref refs/tags/vX.Y.Z
     #
     # Here rather than in the sign job so that it attests the bytes about to
     # be published, after their trip through the artifact store, and before
@@ -560,10 +584,14 @@ jobs:
       contents: write
       pull-requests: write
     # Never bump after a release candidate. Beyond making no sense on its own
-    # terms, rc tags use the form X.Y.ZrcN, which is not valid semver (that
-    # would be X.Y.Z-rcN). version-increment cannot parse it, silently falls
-    # back to the last parseable tag, and proposes a version that goes
-    # backwards — after 3.0.0rc1 it proposed 2.5.2.
+    # terms, version-increment cannot see a candidate at all: it takes the
+    # current version from the highest tag matching ^v?X.Y.Z$ and skips every
+    # pre-release, whatever its form. After 3.0.0rc1 that proposed 2.5.2, and
+    # after v4.0.0-rc.2 it would propose 3.0.1 -- the last stable tag plus one,
+    # behind the candidate just published. After a final tag it reads the
+    # tag correctly, v prefix or not (v4.0.0 gives 4.0.1, plus the
+    # -pre.<sha> label it adds to any run whose ref is not main), and that is
+    # the only time this job runs.
     if: github.event_name == 'push' && needs.build.outputs.prerelease != 'true'
     steps:
       # Keeps its credentials on purpose: create-pull-request pushes the

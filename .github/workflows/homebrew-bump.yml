@@ -16,7 +16,7 @@ on:
       version:
         type: string
         required: true
-        description: "Release tag to bump to, e.g. 3.0.0"
+        description: "Release tag to bump to, e.g. v4.0.0"
 
 # Only reads the tree. The repository default is write, so scope the token
 # down explicitly rather than inheriting more than is needed.
@@ -38,8 +38,11 @@ jobs:
         RAW_VERSION: ${{ inputs.version }}
       run: |
         TAG="${RAW_VERSION#refs/tags/}"
-        if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$ ]]; then
-          echo "::error::'${TAG}' is not a release tag (expected X.Y.Z or X.Y.ZrcN)"
+        # Release tags are v-prefixed semver from 4.0.0 on: v4.0.0, or
+        # v4.0.0-rc.2 for a candidate. Unprefixed tags (3.0.0, 4.0.0rc1) are
+        # older than any formula this would ever be asked to move to.
+        if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+          echo "::error::'${TAG}' is not a release tag (expected vX.Y.Z or vX.Y.Z-<pre-release>, e.g. v4.0.0)"
           exit 1
         fi
         echo "tag=${TAG}" >> "$GITHUB_OUTPUT"

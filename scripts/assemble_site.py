@@ -20,8 +20,9 @@ import sys
 # into a CI failure with headroom instead of a rejected deployment.
 MAX_BYTES = 800 * 1024 * 1024
 
-# pages-release.yml's tag glob only ever writes MAJOR.MINOR.PATCH, so anything
-# else means the manifest was written by something other than this design.
+# pages-release.yml strips the v from its stable-only tag (v4.0.0 -> 4.0.0) and
+# only ever writes MAJOR.MINOR.PATCH, so anything else means the manifest was
+# written by something other than this design.
 # Rejecting it here is what keeps a hostile or hand-edited versions.json from
 # reaching the filesystem or the generated hrefs, and what makes the listing's
 # integer sort total rather than a crash.

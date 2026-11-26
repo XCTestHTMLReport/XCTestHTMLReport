@@ -76,11 +76,15 @@ brew install xctesthtmlreport --HEAD
 
 Install via [Mint](https://github.com/yonaskolb/Mint)
 
-Install latest stable version
+Install the newest release
 
 ```bash
 mint install XCTestHTMLReport/XCTestHTMLReport
 ```
+
+Mint counts release candidates (`v4.0.0-rc.2`) as releases, so while one is
+the newest tag this installs it. Pin a version to choose:
+`mint install XCTestHTMLReport/XCTestHTMLReport@3.0.0`.
 
 Install latest from `main` branch
 
@@ -104,6 +108,9 @@ curl -fLO "https://github.com/XCTestHTMLReport/XCTestHTMLReport/releases/downloa
   sudo mv release/xchtmlreport /usr/local/bin/ &&
   xchtmlreport --version
 ```
+
+From 4.0.0 on, release tags carry a `v` (`v4.0.0`) and the file name does
+not, so for those the download path is `releases/download/v${VERSION}/`.
 
 The zip extracts to `release/xchtmlreport`; move it anywhere on your `PATH`.
 The `-R` requirement checks that the binary was signed by this project's
