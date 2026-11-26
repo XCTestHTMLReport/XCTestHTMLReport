@@ -18,6 +18,7 @@ file: `scripts/check_agent_rules.py` fails CI otherwise.
 - [Exact pass/fail splits are not assertable](generated-fixture-counts-are-not-exact.md) — assert what the sample sources determine
 - [`HTMLTemplates.swift` is hand-maintained](html-templates-is-hand-maintained.md) — reformatting it changes every report
 - [SwiftSoup reuses source bytes](swiftsoup-reuses-source-bytes.md) — an edited and an untouched document serialize differently
+- [Benchmark against the last release](benchmark-against-the-last-release.md) — 4.0 serialised reads 3.0.0 ran concurrently, and main-vs-main never showed it
 
 ## Tooling
 

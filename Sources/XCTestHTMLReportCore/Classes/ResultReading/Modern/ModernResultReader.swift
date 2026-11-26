@@ -76,20 +76,35 @@ struct ModernResultReader: ResultReader {
                 return nil
             }
 
-            // One run per destination, matching legacy's one-run-per-ActionRecord.
-            return ParsedResult(runs: devices.map { device in
-                ParsedRun(
-                    destination: ParsedDestination(
-                        displayName: device.deviceName ?? "",
-                        deviceIdentifier: device.deviceId ?? "",
-                        modelName: device.modelName ?? "",
-                        operatingSystemVersion: device.osVersion ?? ""
-                    ),
-                    // The action log has no reference id in the new format;
-                    // the payload store forwards this to `get log --type`.
-                    logReference: "action",
-                    testables: testables(on: device, from: tests)
-                )
+            // Two passes over the same walk, so the per-test reads can
+            // overlap (#162). Each test case costs one `activities`
+            // subprocess, and those are independent; issued one at a time
+            // from inside the walk they left a 1,500-test run 8× slower than
+            // 3.0.0, which read them concurrently. The first pass only records
+            // which test nodes the walk visits, in visit order; the reads then
+            // run concurrently; the second pass is the same walk consuming the
+            // results in that order. Both passes run `runs(on:from:testCase:)`,
+            // so they cannot disagree about the order.
+            var visited: [TestNode] = []
+            _ = runs(on: devices, from: tests) { node in
+                visited.append(node)
+                return Self.unreadTestCase
+            }
+            let read = visited.concurrentMap(readIsolated)
+            var cursor = read.makeIterator()
+            return ParsedResult(runs: runs(on: devices, from: tests) { _ in
+                // The second walk visits exactly what the first did, so the
+                // fallback is unreachable; it exists so a divergence renders
+                // an empty row instead of crashing the tool.
+                guard let (testCase, faults) = cursor.next() else {
+                    return Self.unreadTestCase
+                }
+                // Replayed in walk order, so the faults a read records are
+                // listed in the same order whatever order the reads finished.
+                for fault in faults {
+                    faultCollector.record(fault.kind, fault.detail)
+                }
+                return testCase
             })
         } catch {
             Logger.warning("Modern reader failed: \(error.localizedDescription)")
@@ -99,58 +114,25 @@ struct ModernResultReader: ResultReader {
 
     // MARK: Private
 
-    private static let bundleNodeTypes: Set<String> = [
-        "UI test bundle", "Unit test bundle",
-    ]
+    /// Stands in for a test case the first walk has not read yet. Never
+    /// reaches a report: the first walk's output is discarded.
+    private static let unreadTestCase = ParsedTestCase(
+        name: "", identifier: "", arguments: [], executionCount: 0, iterations: []
+    )
 
-    /// The test tree as it ran on one destination.
+    /// `parseTestCase`, safe to run concurrently with other test cases.
     ///
-    /// With a single destination — every fixture in this suite — this is the
-    /// whole tree. With several, the tree must be filtered to the device,
-    /// because `ParsedRun` is per-destination and duplicating the full tree
-    /// under each run doubles every header total.
-    ///
-    /// `Device` is itself a `TestNodeType`, so a multi-destination document
-    /// nests device nodes inside the tree. **Verify the shape against a real
-    /// two-destination bundle before implementing this** — no fixture here
-    /// produces one, and the single-destination case (no `Device` nodes,
-    /// return the tree as-is) is the only shape confirmed on Xcode 26.2.
-    private func testables(
-        on _: TestResultsDevice,
-        from tests: TestResultsTests
-    ) -> [ParsedTestable] {
-        (tests.testNodes ?? [])
-            .flatMap { $0.children ?? [] }
-            .filter { Self.bundleNodeTypes.contains($0.nodeType ?? "") }
-            .map { bundle in
-                ParsedTestable(
-                    targetName: bundle.name ?? "",
-                    groups: (bundle.children ?? []).map(parseGroup)
-                )
-            }
-    }
-
-    private func parseGroup(_ node: TestNode) -> ParsedGroup {
-        let children: [ParsedNode] = (node.children ?? []).compactMap { child in
-            switch child.nodeType {
-            case "Test Case": return .testCase(parseTestCase(child))
-            case "Test Suite": return .group(parseGroup(child))
-            default: return nil
-            }
-        }
-        return ParsedGroup(
-            name: node.name ?? "---group-name-not-found---",
-            identifier: node.nodeIdentifier ?? node.name ?? "---group-identifier-not-found---",
-            // `durationInSeconds` is null on every Test Suite, Test Plan and
-            // *test bundle node in all three fixtures, so this is always 0 for
-            // groups while legacy reports a real value. Not a bug to fix here —
-            // the format does not carry it — but it is why `durations` is an
-            // allow-list entry. Do not synthesise a sum of children: that would
-            // be a fabricated number, and it would make the two backends agree
-            // by inventing data rather than by sharing it.
-            duration: node.durationInSeconds ?? 0,
-            children: children
+    /// Faults go to a collector of this read's own and come back with the
+    /// result, so `read()` can record them in walk order: written straight to
+    /// the shared collector they would be listed in completion order, which
+    /// changes from run to run. The payload store keeps its own collector; it
+    /// records at most once per bundle, for the bulk export.
+    private func readIsolated(_ node: TestNode) -> (ParsedTestCase, [Fault]) {
+        let faults = FaultCollector()
+        let reader = ModernResultReader(
+            client: client, payloadStore: payloadStore, faultCollector: faults
         )
+        return (reader.parseTestCase(node), faults.faults)
     }
 
     private func parseTestCase(_ node: TestNode) -> ParsedTestCase {
