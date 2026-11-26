@@ -239,15 +239,18 @@ struct XCResultToolClient: XCResultToolInvoking {
 
         // Drain before waiting: xcresulttool output routinely outgrows the
         // pipe buffer, and waiting first deadlocks when it does.
-        var errorData = Data()
-        let group = DispatchGroup()
-        group.enter()
-        DispatchQueue.global().async {
-            errorData = err.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
-        }
+        //
+        // The stderr drain runs on a thread of its own, never on a GCD queue.
+        // The readers call this from up to `concurrentMap`'s width of pool
+        // threads at once, each blocking until its drain finishes. A drain
+        // queued on `DispatchQueue.global()` needs a *free* pool thread, and
+        // once 64 callers were blocked here (the pool's limit, reached on any
+        // Mac with 32 or more CPUs) none was left to run one: every call
+        // waited forever (#529 review). A dedicated thread cannot be starved
+        // that way. `SubprocessPoolExhaustionTests` pins it.
+        let errorDrain = PipeDrain(err.fileHandleForReading)
         let outputData = out.fileHandleForReading.readDataToEndOfFile()
-        group.wait()
+        let errorData = errorDrain.wait()
         process.waitUntilExit()
 
         guard process.terminationStatus == 0 else {
@@ -258,5 +261,29 @@ struct XCResultToolClient: XCResultToolInvoking {
             )
         }
         return outputData
+    }
+}
+
+/// Reads a pipe to end of file on a dedicated thread, independent of GCD's
+/// worker pool. See `XCResultToolClient.execute` for why that independence
+/// matters.
+private final class PipeDrain {
+    private let done = DispatchSemaphore(value: 0)
+    private var data = Data()
+
+    init(_ handle: FileHandle) {
+        let thread = Thread { [self] in
+            data = handle.readDataToEndOfFile()
+            done.signal()
+        }
+        thread.name = "xcresulttool stderr drain"
+        thread.start()
+    }
+
+    /// Blocks until the pipe reaches end of file. The semaphore orders the
+    /// drain thread's write of `data` before this read.
+    func wait() -> Data {
+        done.wait()
+        return data
     }
 }

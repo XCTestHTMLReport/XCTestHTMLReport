@@ -175,3 +175,34 @@ final class ConcurrentReadTests: XCTestCase {
         )
     }
 }
+
+/// Pins the deadlock the #529 concurrency review found: with 64 or more real
+/// `xcresulttool` calls in flight, every GCD worker thread sat in
+/// `XCResultToolClient.execute` waiting for a stderr drain that had been
+/// queued on that same exhausted pool, so none could ever run. The default
+/// width reached 64 on any Mac reporting 32 or more CPUs.
+///
+/// The width is passed explicitly, above both the pool limit and the default
+/// cap, so this keeps testing `execute` itself whatever the cap becomes. It
+/// runs on a background thread under a timeout: a regression fails here
+/// instead of hanging the suite (though the leaked threads may still stall
+/// what runs after it).
+final class SubprocessPoolExhaustionTests: XCTestCase {
+    func testManyConcurrentToolCallsDoNotExhaustTheThreadPool() throws {
+        let url = try XCTUnwrap(
+            Bundle.testBundle.url(forResource: "TestResults", withExtension: "xcresult")
+        )
+        let client = XCResultToolClient(bundleURL: url)
+        let finished = expectation(description: "every call returned")
+        var succeeded = 0
+        Thread.detachNewThread {
+            let results = Array(0 ..< 256).concurrentMap(width: 96) { _ in
+                (try? client.run(["get", "test-results", "summary"])) != nil
+            }
+            succeeded = results.filter { $0 }.count
+            finished.fulfill()
+        }
+        wait(for: [finished], timeout: 60)
+        XCTAssertEqual(succeeded, 256)
+    }
+}

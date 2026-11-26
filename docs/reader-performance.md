@@ -49,12 +49,33 @@ with `main`, which is why none of them showed it
 ([learning](learnings/benchmark-against-the-last-release.md)).
 
 Both readers now walk the tree twice. The first walk records which tests it
-visits. The reads then run through `Array.concurrentMap` at the same
-`cpuCount * 2` width as 3.0.0, and the second walk places the results in visit
-order. Both walks run the same code, so they cannot disagree about the order.
-The modern reader records each read's faults in a collector of its own and
-replays them in walk order, so the CLI lists faults in the same order on every
-run.
+visits. The reads then run through `Array.concurrentMap` at 3.0.0's
+`cpuCount * 2` width, capped at 20, and the second walk places the results in
+visit order. Both walks run the same code, so they cannot disagree about the
+order. The modern reader records each read's faults in a collector of its own
+and replays them in walk order, so the CLI lists faults in the same order on
+every run.
+
+**The cap, and a deadlock it is not the fix for.** Uncapped, a Mac with 32 or
+more CPUs ran 64 reads at once and the modern reader hung for good.
+`XCResultToolClient.execute` blocked each calling thread until a stderr drain
+it had queued on `DispatchQueue.global()` finished. GCD's worker pool holds 64
+threads, so once 64 callers were blocked no thread was left to run a drain.
+A probe of the production path passed at width 63 and hung at 64 every time.
+Legacy was unaffected, because XCResultKit never waits on GCD. The fix is in
+`execute`: the stderr drain now runs on a dedicated `Thread`, so a call never
+depends on a free pool thread, and `SubprocessPoolExhaustionTests` runs 256
+calls at width 96 to pin it. The cap is separate, and is there because width
+past ~20 buys nothing. In the reviewer's measurements, 400 reads took
+3.06 / 1.95 / 1.61 / 1.67 / 1.46 / 1.50 s at widths 4 / 8 / 12 / 16 / 20 / 32
+on this 10-core machine. After the fix, the same 400 reads on the 1,500-test
+bundle took 1.86 s at width 20, 1.58 s at 64 and 1.57 s at 128. 20 is also
+the width every measurement below was taken at.
+
+The fix costs nothing measurable. On the 1,500-test bundle, alternated three
+times with the previous head at load averages of 50–80, legacy took
+11.9–14.3 s against 12.4–13.9 s and modern 7.3–9.0 s against 7.5–7.9 s. All
+outputs were byte-identical to `main`.
 
 Measured 2026-11-25 on an Apple M1 Max (10 cores), macOS 27.2, Xcode 26.2, on
 one warmed bundle of 1,500 tests (150 classes of 10, each with an activity and
