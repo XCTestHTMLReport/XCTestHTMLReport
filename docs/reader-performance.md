@@ -28,6 +28,94 @@ so the two readers need separate statements:
 
 Rendering and memory were not primary bottlenecks at any size tested.
 
+**Those per-test costs are serial costs.** The sweeps were measured while the
+readers issued one subprocess at a time. Since #162 they overlap, and a
+1,500-test bundle went from ~165 s to 7–12 s — see "The per-test reads run
+concurrently again" below. The sweep tables are kept as measured, because they
+still show what scales with what, but their wall-clock numbers no longer
+describe `main`.
+
+## The per-test reads run concurrently again (#162)
+
+3.0.0 read concurrently. Its per-test `getActionTestSummary` call lived in
+`Iteration.init`, which was built inside the `cpuCount * 2` `OperationQueue`s
+in `Test.swift` and `Run.swift`, so the reads overlapped. The 4.0 reader
+rewrite (#443) moved every read into the readers, ahead of model building,
+where a synchronous tree walk issued them one at a time. The queues survived
+the move but now wrapped only the rendering of data that had already been read.
+So lead 3 below was not headroom when it was written: it was a regression
+against the last release. Every measurement in this document compared `main`
+with `main`, which is why none of them showed it
+([learning](learnings/benchmark-against-the-last-release.md)).
+
+Both readers now walk the tree twice. The first walk records which tests it
+visits. The reads then run through `Array.concurrentMap` at 3.0.0's
+`cpuCount * 2` width, capped at 20, and the second walk places the results in
+visit order. Both walks run the same code, so they cannot disagree about the
+order. The modern reader records each read's faults in a collector of its own
+and replays them in walk order, so the CLI lists faults in the same order on
+every run.
+
+**The cap, and a deadlock it is not the fix for.** Uncapped, a Mac with 32 or
+more CPUs ran 64 reads at once and the modern reader hung for good.
+`XCResultToolClient.execute` blocked each calling thread until a stderr drain
+it had queued on `DispatchQueue.global()` finished. GCD's worker pool holds 64
+threads, so once 64 callers were blocked no thread was left to run a drain.
+A probe of the production path passed at width 63 and hung at 64 every time.
+Legacy was unaffected, because XCResultKit never waits on GCD. The fix is in
+`execute`: the stderr drain now runs on a dedicated `Thread`, so a call never
+depends on a free pool thread, and `SubprocessPoolExhaustionTests` runs 256
+calls at width 96 to pin it. The cap is separate, and is there because width
+past ~20 buys nothing. In the reviewer's measurements, 400 reads took
+3.06 / 1.95 / 1.61 / 1.67 / 1.46 / 1.50 s at widths 4 / 8 / 12 / 16 / 20 / 32
+on this 10-core machine. After the fix, the same 400 reads on the 1,500-test
+bundle took 1.86 s at width 20, 1.58 s at 64 and 1.57 s at 128. 20 is also
+the width every measurement below was taken at.
+
+The fix costs nothing measurable. On the 1,500-test bundle, alternated three
+times with the previous head at load averages of 50–80, legacy took
+11.9–14.3 s against 12.4–13.9 s and modern 7.3–9.0 s against 7.5–7.9 s. All
+outputs were byte-identical to `main`.
+
+Measured 2026-11-25 on an Apple M1 Max (10 cores), macOS 27.2, Xcode 26.2, on
+one warmed bundle of 1,500 tests (150 classes of 10, each with an activity and
+an attachment, run with parallel testing), the same bundle as the #162
+reproduction. Each figure is one invocation, and the builds were alternated
+back to back. Before is `main` at `5bba74c`; after is the same commit with this
+change. The reports were byte-identical between the two builds in every pair
+(HTML, JUnit and JSON):
+
+| reader | before (`main`) | after | user+sys before → after |
+| --- | ---: | ---: | ---: |
+| legacy (`auto` resolves here) | 165.3 / 169.1 / 168.8 s | **11.7 / 11.7 / 11.7 s** | 83–86 s → 74–75 s |
+| modern | 163.3 / 163.7 / 164.3 s | **7.3 / 7.4 / 7.4 s** | 52–53 s → 42 s |
+
+Against 3.0.0 (`69b32fe`), on a copy of the same bundle, with the flags the
+#162 reproduction used (`-j`, linking mode). 3.0.0 runs without `--json`.
+Its JSON output costs it about 330 s of its own on this bundle (348 s per run
+with `--json`, 20 s without), which would measure something other than
+reading.
+
+| run | 3.0.0 | after, legacy | after, modern |
+| --- | ---: | ---: | ---: |
+| alternated back to back, `-j` only, 1-min load 62–81 | 20.1 s | 12.1 s | 7.7 s |
+| quiet machine, separate runs | 20 s, 25 s (timed to the second) | 11.4–11.7 s (×8) | 7.2–7.4 s (×6) |
+
+The quiet-machine "after" runs also passed `--json`, so they include its cost,
+which was not measured separately. Two more alternated rounds ran
+at load averages of 170–400 and are left out of both tables. They kept the same
+order (3.0.0 42.1 s and 73.4 s; after legacy 19.1 s and 15.1 s; after modern
+10.0 s and 7.7 s), but they say nothing about magnitude.
+
+Small bundles gain as well. On the 21-test `TestResults` fixture (five runs
+each, `-j`, identical HTML), legacy went from a median of 3.44 s to 1.08 s and
+modern from 3.01 s to 0.66 s.
+
+So `main` is now faster than 3.0.0 on both readers, not just back to its speed.
+Why it is faster was not investigated. Leads 1 and 2 cover only the modern
+reader, and legacy is also faster than 3.0.0, so they cannot be the whole
+answer.
+
 ## Method
 
 Bundles were generated by a throwaway `XCTestCase` in the sample app's UI test
@@ -244,28 +332,27 @@ reader — measured on `auto`, it shows nothing.
 
 ### 3. Parallelise the per-test reads
 
-They are independent subprocesses issued serially inside
-`ModernResultReader.read()`. `Run.swift` already runs the later model-building
-phase concurrently at `cpuCount * 2`; the reads predate that phase and do not
-share it.
+Done in #162. See "The per-test reads run concurrently again" above for the
+numbers, and for why this was a regression against 3.0.0 rather than headroom.
 
-The shape is forced by the current code: `activities()` is called from inside a
-synchronous recursive tree walk, so it cannot simply be wrapped. It becomes two
-passes — walk collecting identifiers, fetch them concurrently into a dictionary,
-walk again reading from the dictionary.
+When this lead was written, the reads were independent subprocesses issued
+serially inside `ModernResultReader.read()`, and likewise from
+`LegacyResultReader.parseIteration`. `Run.swift` already ran the later
+model-building phase concurrently at `cpuCount * 2`, but the reads came before
+that phase and did not share it.
 
-**How much this wins is unmeasured.** That 74 of 115 seconds is spent waiting
-says there is headroom, not how much is recoverable: process spawn serialises in
-the kernel, and how much of `xcresulttool`'s own time is CPU-bound is unknown.
-Measure before quoting a number — and note that leads 1 and 2 have already taken
-some of this headroom, since every call they removed is a call there is no
-longer anything to overlap.
+The shape followed from the code: the reads happen inside a synchronous
+recursive tree walk, so they could not simply be wrapped. This lead proposed
+fetching identifiers into a dictionary between two walks. The implementation
+instead runs each test's whole parse concurrently and keeps the parsed rows in
+visit order. A dictionary of fetched documents would have held every test's raw
+`activities` document at once, which is the O(tests) retention lead 2 avoided.
+The parsed rows are retained anyway, so keeping them costs nothing extra.
 
-Do not estimate this from the per-call table under "Root cause" either. Lead 2
-showed a removed call costing about 3× what that table predicts, for reasons not
-yet established, so an estimate built on it would be wrong in a direction nobody
-has bounded. This one needs a real concurrent implementation measured against a
-real bundle.
+The warning this lead carried still holds for leads not yet taken: do not
+estimate a saving from the per-call table under "Root cause". The concurrent
+read saved ~157 s of ~165 s on 1,500 tests. No per-call arithmetic predicted
+that; it had to be measured.
 
 ### 4. Read `database.sqlite3` directly
 

@@ -17,7 +17,37 @@ struct LegacyResultReader: ResultReader {
         guard let record = file.getInvocationRecord() else {
             return nil
         }
-        let runs = record.actions.compactMap(parseRun)
+        let plans = record.actions.compactMap(resolvePlan)
+
+        // Two passes over the same walk, so the per-test reads can overlap
+        // (#162). Each iteration costs one `getActionTestSummary` subprocess,
+        // and those are independent; issued one at a time from inside the
+        // walk they left a 1,500-test run 8× slower than 3.0.0, which read
+        // them concurrently. The first pass only records which metadata the
+        // walk visits, in visit order; the reads then run concurrently; the
+        // second pass is the same walk consuming the results in that order.
+        // Both passes run `parseRun`, so they cannot disagree about the order.
+        //
+        // `getInvocationRecord` above has already resolved XCResultKit's
+        // lazily cached `--legacy` probe, so the concurrent calls only read
+        // that cache rather than racing to fill it.
+        var visited: [ActionTestMetadata] = []
+        for (action, plan) in plans {
+            _ = parseRun(action, plan: plan) { metadata in
+                visited.append(metadata)
+                return Self.unreadIteration
+            }
+        }
+        let iterations = visited.concurrentMap(parseIteration)
+        var cursor = iterations.makeIterator()
+        let runs = plans.map { action, plan in
+            parseRun(action, plan: plan) { _ in
+                // The second walk visits exactly what the first did, so the
+                // fallback is unreachable; it exists so a divergence renders
+                // a test with no activities instead of crashing the tool.
+                cursor.next() ?? Self.unreadIteration
+            }
+        }
         // Same rule as the modern reader: a decodable document that yields no
         // runs is a failed read, not an empty result. Returning
         // `ParsedResult(runs: [])` would satisfy `Summary.init`'s `guard let`,
@@ -30,7 +60,15 @@ struct LegacyResultReader: ResultReader {
         return ParsedResult(runs: runs)
     }
 
-    private func parseRun(_ action: ActionRecord) -> ParsedRun? {
+    /// Stands in for an iteration the first walk has not read yet. Never
+    /// reaches a report: the first walk's output is discarded.
+    private static let unreadIteration = ParsedIteration(
+        iterationNumber: nil, status: .unknown, duration: 0, activities: []
+    )
+
+    private func resolvePlan(
+        _ action: ActionRecord
+    ) -> (ActionRecord, ActionTestPlanRunSummaries)? {
         guard
             let testsRef = action.actionResult.testsRef,
             let plan = file.getTestPlanRunSummaries(id: testsRef.id)
@@ -38,6 +76,14 @@ struct LegacyResultReader: ResultReader {
             Logger.warning("Can't find test reference for action \(action.title ?? "")")
             return nil
         }
+        return (action, plan)
+    }
+
+    private func parseRun(
+        _ action: ActionRecord,
+        plan: ActionTestPlanRunSummaries,
+        iteration: (ActionTestMetadata) -> ParsedIteration
+    ) -> ParsedRun {
         let device = action.runDestination.targetDeviceRecord
         return ParsedRun(
             destination: ParsedDestination(
@@ -50,13 +96,16 @@ struct LegacyResultReader: ResultReader {
             testables: plan.summaries.flatMap(\.testableSummaries).map { summary in
                 ParsedTestable(
                     targetName: summary.targetName ?? "",
-                    groups: summary.tests.map(parseGroup)
+                    groups: summary.tests.map { parseGroup($0, iteration: iteration) }
                 )
             }
         )
     }
 
-    private func parseGroup(_ group: ActionTestSummaryGroup) -> ParsedGroup {
+    private func parseGroup(
+        _ group: ActionTestSummaryGroup,
+        iteration: (ActionTestMetadata) -> ParsedIteration
+    ) -> ParsedGroup {
         // Legacy lists each repetition as its own sibling metadata entry under
         // one identifier. Merge them here so the renderer sees one test case
         // with N iterations, which is what TestGroup.init used to do inline.
@@ -76,7 +125,7 @@ struct LegacyResultReader: ResultReader {
             // have none at all), so break ties on source position to keep this
             // a total order — the same tiebreak `TestCase.merge` used.
             let iterations = entries
-                .map(parseIteration)
+                .map(iteration)
                 .enumerated()
                 .sorted { ($0.element.iterationNumber ?? 0, $0.offset) <
                     ($1.element.iterationNumber ?? 0, $1.offset)
@@ -104,7 +153,9 @@ struct LegacyResultReader: ResultReader {
             name: group.name ?? "---group-name-not-found---",
             identifier: group.identifier ?? "---group-identifier-not-found---",
             duration: group.duration,
-            children: cases + group.subtestGroups.map { .group(parseGroup($0)) }
+            children: cases + group.subtestGroups.map {
+                .group(parseGroup($0, iteration: iteration))
+            }
         )
     }
 
