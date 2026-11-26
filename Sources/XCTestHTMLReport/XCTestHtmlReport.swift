@@ -33,7 +33,10 @@ struct HtmlOptions: ParsableArguments {
 
     @Flag(
         name: .shortAndLong,
-        help: ArgumentHelp("Delete unattached files from bundle, reducing bundle size")
+        help: ArgumentHelp(
+            "DEPRECATED: Delete this tool's own exports that the report does not link.\n"
+                + "No longer shrinks the bundle, and will be removed in a later release."
+        )
     )
     var deleteUnattachedFiles = false
 }
@@ -142,6 +145,20 @@ struct XCTestHtmlReport: ParsableCommand {
         return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
     }
 
+    /// `-d` used to shrink a bundle by deleting Xcode's own files, which left
+    /// it unreadable (#220). It now deletes only this tool's stale exports, so
+    /// anyone relying on it for size is told so on every run.
+    static let deleteUnattachedFilesDeprecation =
+        "-d/--delete-unattached-files is deprecated and will be removed in a later release. "
+            + "It no longer shrinks the result bundle: it deletes only files this tool exported "
+            + "that the report does not link, and leaves everything Xcode wrote in place."
+
+    private func warnAboutDeprecatedFlags() {
+        if htmlOptions.deleteUnattachedFiles {
+            Logger.warning(Self.deleteUnattachedFilesDeprecation)
+        }
+    }
+
     func run() throws {
         Logger.verbose = verbose
         // git's rule (see `Logger.shouldShowProgress`): a redirected run stays
@@ -151,6 +168,7 @@ struct XCTestHtmlReport: ParsableCommand {
             forced: progress,
             quiet: quiet
         )
+        warnAboutDeprecatedFlags()
         // Outer phase: every other phase nests inside it, so its elapsed time
         // is the whole run. Closed once the report has been written.
         Logger.beginPhase("Wrote report")
