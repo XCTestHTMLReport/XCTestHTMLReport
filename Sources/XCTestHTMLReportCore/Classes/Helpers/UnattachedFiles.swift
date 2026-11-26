@@ -18,8 +18,9 @@ import Foundation
 /// `database.sqlite3`, the object store under `Data/`) or to someone we do not
 /// know about, and is never ours to delete (#220).
 func isOwnExportFileName(_ name: String) -> Bool {
-    let attachment = #"^0~[A-Za-z0-9_\-]+={0,2}(\.[A-Za-z0-9]+)?$"#
-    let runLog = #"^[0-9a-f]{32}\.log$"#
+    let attachment = #"^0~[A-Za-z0-9_\-]+={0,2}(\.[A-Za-z0-9]+)?\z"#
+    let runLog = #"^[0-9a-f]{32}\.log\z"#
+    // `\z`, not `$`: ICU's `$` also matches before a final newline.
     return [attachment, runLog].contains {
         name.range(of: $0, options: .regularExpression) != nil
     }
