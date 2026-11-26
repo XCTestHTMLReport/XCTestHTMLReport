@@ -32,7 +32,11 @@ Xcode-like HTML report for Unit and UI Tests
 -   Displays activity logs
 -   Junit report (`-j` flag)
 -   Json report (`--json` flag)
--   Shrink bundle size by removing unattached files (`-d` flag)
+-   `-d` is deprecated and will be removed in a later release. It used to shrink
+    the bundle by deleting files Xcode needs, which left the `.xcresult`
+    unreadable ([#220](https://github.com/XCTestHTMLReport/XCTestHTMLReport/issues/220)).
+    It now deletes only files this tool exported that the report does not link,
+    so the bundle stays about its original size
 -   Render as a single html file with inline attachments (`-i` flag) or as a bundle
 -   Downsize image attachments (`-z` flag, scaled by `--downsize-scale-factor`)
 -   Convert .heic images to JPEG, but only when downsizing with `-z`. Without it
