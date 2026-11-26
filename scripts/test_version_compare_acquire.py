@@ -94,6 +94,52 @@ class AcquireTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("xchtmlreport", result.stderr)
 
+    def fake_gh(self):
+        """A `gh` on PATH that records its arguments and writes a zip with a
+        stub binary to --output, so the real download path runs offline."""
+        bin_dir = os.path.join(self.dir, "fakebin")
+        os.makedirs(bin_dir)
+        log = os.path.join(self.dir, "gh-args.json")
+        gh = os.path.join(bin_dir, "gh")
+        with open(gh, "w", encoding="utf-8") as handle:
+            handle.write(
+                f"#!{sys.executable}\n"
+                "import json, sys, zipfile\n"
+                "args = sys.argv[1:]\n"
+                f"json.dump(args, open({log!r}, 'w'))\n"
+                "with zipfile.ZipFile(args[args.index('--output') + 1], 'w') as zf:\n"
+                "    zf.writestr('release/xchtmlreport', '#!/bin/sh\\n')\n"
+            )
+        os.chmod(gh, 0o755)
+        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ["PATH"])
+        return env, log
+
+    def download(self, tag):
+        env, log = self.fake_gh()
+        result = subprocess.run(
+            [sys.executable, SCRIPT, "--cache-dir", self.cache, "--out", self.out,
+             "--versions", tag],
+            capture_output=True, text=True, check=False, env=env,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with open(log, encoding="utf-8") as handle:
+            args = json.load(handle)
+        return args
+
+    def test_v_prefixed_tag_downloads_the_unprefixed_asset(self):
+        # release.yml names the archive for the version, not the tag.
+        args = self.download("v4.0.0-rc.2")
+        self.assertEqual(args[:3], ["release", "download", "v4.0.0-rc.2"])
+        self.assertEqual(args[args.index("--pattern") + 1],
+                         "xchtmlreport-4.0.0-rc.2.zip")
+        self.assertEqual(self.manifest()["tools"][0]["label"], "v4.0.0-rc.2")
+
+    def test_unprefixed_tag_downloads_its_own_name(self):
+        args = self.download("4.0.0rc1")
+        self.assertEqual(args[:3], ["release", "download", "4.0.0rc1"])
+        self.assertEqual(args[args.index("--pattern") + 1],
+                         "xchtmlreport-4.0.0rc1.zip")
+
 
 if __name__ == "__main__":
     unittest.main()

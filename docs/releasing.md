@@ -21,10 +21,9 @@ Two things about those package managers and the tag scheme:
   `url` is `…/archive/refs/tags/3.0.0.tar.gz`, and the autobump (and
   `homebrew-bump.yml`, which calls the same `brew bump-formula-pr
   --version`) rewrites it by replacing `3.0.0` with `4.0.0`, giving a
-  `refs/tags/4.0.0.tar.gz` that does not exist. After `v4.0.0` is
-  released, open the homebrew-core pull request by hand with the `url` set to
-  `…/archive/refs/tags/v4.0.0.tar.gz`. Once the formula's URL carries the
-  `v`, the replacement works again for every release after it.
+  `refs/tags/4.0.0.tar.gz` that does not exist. Step 5 below makes that one
+  bump by hand. Once the formula's URL carries the `v`, the replacement works
+  again for every release after it.
 
 ## Cutting a release
 
@@ -64,6 +63,11 @@ Two things about those package managers and the tag scheme:
    hand before tagging. A candidate gets no bump: the action that proposes the
    next version ignores pre-release tags, so after `v4.0.0-rc.2` it would
    propose 3.0.1.
+5. **After `v4.0.0` only, once:** update the Homebrew formula's `url` by hand in
+   a homebrew-core pull request, to `…/archive/refs/tags/v4.0.0.tar.gz` with its
+   `sha256`. `brew bump-formula-pr` refuses an autobumped formula, and its URL
+   rewrite would produce `refs/tags/4.0.0.tar.gz`, which 404s
+   ([above](#releasing)).
 
 A release is not re-runnable over a published tag: `gh release create` refuses,
 on purpose, rather than swap binaries people have already downloaded.

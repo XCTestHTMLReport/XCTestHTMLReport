@@ -28,8 +28,17 @@ def sha256_of(path):
     return digest.hexdigest()
 
 
+def asset_name(tag):
+    """The release archive for TAG. Tags are v-prefixed from 4.0.0 on
+    (v4.0.0-rc.2) but the archive is named for the version, without the v
+    (xchtmlreport-4.0.0-rc.2.zip), as release.yml strips it. Older unprefixed
+    tags (3.0.0, 4.0.0rc1) pass through unchanged."""
+    version = tag[1:] if tag.startswith("v") else tag
+    return f"xchtmlreport-{version}.zip"
+
+
 def download_zip(tag, slug, dest_dir):
-    asset = f"xchtmlreport-{tag}.zip"
+    asset = asset_name(tag)
     dest = os.path.join(dest_dir, asset)
     subprocess.run(
         ["gh", "release", "download", tag, "--repo", slug,
@@ -85,7 +94,7 @@ def ensure_release(tag, cache_dir, slug, offline_zips):
             binary, zip_sha = install_from_zip(zip_path, bin_dir)
 
     meta = {
-        "asset": f"xchtmlreport-{tag}.zip",
+        "asset": asset_name(tag),
         "zipSha256": zip_sha,
         "binarySha256": sha256_of(binary),
     }
