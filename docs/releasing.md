@@ -9,6 +9,23 @@ Homebrew and Mint both build from the tag's source, so the archive attached to
 the release is for people who download the binary directly. Homebrew picks a
 new release up on its own (see [`homebrew-bump.yml`](../.github/workflows/homebrew-bump.yml)).
 
+Two things about those package managers and the tag scheme:
+
+- **Mint takes candidates.** An unpinned `mint install
+  XCTestHTMLReport/XCTestHTMLReport` installs the highest tag it can parse as
+  semver, pre-releases included, so from `v4.0.0-rc.2` until `v4.0.0` exists
+  it installs the candidate. (`4.0.0rc1` was invisible to it only because it
+  was not semver.) Anyone who must stay on 3.x pins `@3.0.0`. Homebrew skips
+  pre-releases.
+- **The first v-prefixed final needs a hand-made formula bump.** The formula's
+  `url` is `…/archive/refs/tags/3.0.0.tar.gz`, and the autobump (and
+  `homebrew-bump.yml`, which calls the same `brew bump-formula-pr
+  --version`) rewrites it by replacing `3.0.0` with `4.0.0`, giving a
+  `refs/tags/4.0.0.tar.gz` that does not exist. After `v4.0.0` is
+  released, open the homebrew-core pull request by hand with the `url` set to
+  `…/archive/refs/tags/v4.0.0.tar.gz`. Once the formula's URL carries the
+  `v`, the replacement works again for every release after it.
+
 ## Cutting a release
 
 1. Run a [dry run](#dry-run) from `main` and see it pass. The credentials below
@@ -21,23 +38,32 @@ new release up on its own (see [`homebrew-bump.yml`](../.github/workflows/homebr
 3. Tag the commit and push the tag:
 
    ```bash
-   git tag 4.0.0
-   git push origin 4.0.0
+   git tag v4.0.0
+   git push origin v4.0.0
    ```
 
    or, for a candidate:
 
    ```bash
-   git tag 4.0.0rc1
-   git push origin 4.0.0rc1
+   git tag v4.0.0-rc.2
+   git push origin v4.0.0-rc.2
    ```
 
    Only a repository admin can push one: a ruleset restricts tags of this
-   shape ([why](#secrets)). Tags are `X.Y.Z` or `X.Y.ZrcN`, with no `v` prefix. An `rc` tag is published
-   as a pre-release and never becomes "Latest".
+   shape ([why](#secrets)). Tags are v-prefixed [semver](https://semver.org):
+   `vX.Y.Z`, or `vX.Y.Z-<pre-release>` for a candidate (`-rc.N` by
+   convention). The `v` belongs to the tag only: the version the binary
+   reports, the archive name (`xchtmlreport-4.0.0-rc.2.zip`), the notes file
+   and the demo site's `/v/4.0.0/` path all go without it. A tag with any
+   pre-release suffix is published as a pre-release and never becomes
+   "Latest". Tags up to `4.0.0rc1` used the older unprefixed `X.Y.Z` and
+   `X.Y.ZrcN` forms; they keep their names, and a tag in either form on a new
+   commit triggers nothing.
 4. After a final release the workflow opens a pull request bumping
    `Version.swift` to the next patch version. Major and minor bumps are made by
-   hand before tagging.
+   hand before tagging. A candidate gets no bump: the action that proposes the
+   next version ignores pre-release tags, so after `v4.0.0-rc.2` it would
+   propose 3.0.1.
 
 A release is not re-runnable over a published tag: `gh release create` refuses,
 on purpose, rather than swap binaries people have already downloaded.
@@ -110,7 +136,7 @@ codesign --verify --strict -vv release/xchtmlreport
 codesign --verify -R="notarized" --check-notarization -vv release/xchtmlreport
 gh attestation verify xchtmlreport-4.0.0.zip --repo XCTestHTMLReport/XCTestHTMLReport \
   --signer-workflow XCTestHTMLReport/XCTestHTMLReport/.github/workflows/release.yml \
-  --source-ref refs/tags/4.0.0
+  --source-ref refs/tags/v4.0.0
 ```
 
 The last two flags are what make the attestation mean "this release": without
@@ -142,9 +168,9 @@ the workflow and take the Developer ID key, or dispatch the workflow from that
 branch and download a signed, notarized build of it. The `release`
 environment's deployment rule admits the `main` branch and tags matching
 `*.*.*`, and GitHub refuses the signing job for anything else. `*.*.*` covers
-`4.1.0` and `4.1.0rc1`, and would cover a `v4.1.0` or `v4.1.0-rc.1` scheme too;
-a scheme with fewer than two dots would need its own rule added under
-*Settings → Environments → release*.
+`v4.0.0` and `v4.0.0-rc.2` (a `*` matches the `v` and the suffix alike), as
+it covered the older `3.0.0` and `4.0.0rc1`; a scheme with fewer than two dots
+would need its own rule added under *Settings → Environments → release*.
 
 **What it does not close, and what does.** A tag push runs the workflow as it
 stands in the tagged commit, and the rule admits any tag of that shape whatever
