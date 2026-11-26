@@ -167,6 +167,8 @@ final class DeleteUnattachedFilesTests: XCTestCase {
             "Screenshot_0_8D1E1B6C-0000-0000-0000-000000000000.png",
             "20264B52B84CB3E65C5FF06BE4BB344D.log",
             "0~a/b.png",
+            "0~keep=me.txt",
+            "0~abc===.png",
         ]
         for name in notOurs {
             XCTAssertFalse(isOwnExportFileName(name), name)

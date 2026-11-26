@@ -8,7 +8,8 @@ import Foundation
 ///
 /// Two shapes, and nothing else:
 /// - an exported attachment, named after its payload id by
-///   `ParsedAttachment.exportFileName` (`0~<base64url>[.<ext>]`, including the
+///   `ParsedAttachment.exportFileName` (`0~<base64url>[=padding][.<ext>]`, with
+///   `=` only as trailing padding, and including the
 ///   `.jpeg` that `-z` writes in place of the original);
 /// - an exported run log, named after the run's identifier path
 ///   (`<32 hex digits>.log`).
@@ -17,8 +18,11 @@ import Foundation
 /// `database.sqlite3`, the object store under `Data/`) or to someone we do not
 /// know about, and is never ours to delete (#220).
 func isOwnExportFileName(_ name: String) -> Bool {
-    name.range(of: #"^0~[A-Za-z0-9_\-=]+(\.[A-Za-z0-9]+)?$"#, options: .regularExpression) != nil
-        || name.range(of: #"^[0-9a-f]{32}\.log$"#, options: .regularExpression) != nil
+    let attachment = #"^0~[A-Za-z0-9_\-]+={0,2}(\.[A-Za-z0-9]+)?$"#
+    let runLog = #"^[0-9a-f]{32}\.log$"#
+    return [attachment, runLog].contains {
+        name.range(of: $0, options: .regularExpression) != nil
+    }
 }
 
 /// Deletes this tool's own exports that the report being written does not
